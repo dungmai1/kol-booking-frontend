@@ -1,37 +1,51 @@
 'use client';
 
-import { KOL } from '@/lib/mock-data';
-import { Star, MapPin, Users, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { Star, Users, DollarSign, MapPin, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
+import type { KolSummaryResponse } from '@/lib/api/types';
 
-export function KOLCard({ kol }: { kol: KOL }) {
+export function KOLCard({ kol }: { kol: KolSummaryResponse }) {
+  const formattedFollowers =
+    kol.maxFollowerCount >= 1_000_000
+      ? `${(kol.maxFollowerCount / 1_000_000).toFixed(1)}M`
+      : `${(kol.maxFollowerCount / 1_000).toFixed(0)}K`;
+
+  const formattedPrice = new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(kol.minPrice);
+
   return (
-    <Link href={`/kol/${kol.id}`}>
+    <Link href={`/kol/${kol.slug}`}>
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-cyan-300 transition-all cursor-pointer h-full group">
-        {/* Header with image */}
+        {/* Header */}
         <div className="relative h-48 bg-gradient-to-br from-cyan-400 to-teal-500 overflow-hidden">
-          <img
-            src={kol.avatar}
-            alt={kol.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-          {kol.verified && (
-            <div className="absolute top-3 right-3 bg-gradient-to-r from-cyan-500 to-teal-500 text-white rounded-full p-1 shadow-lg">
-              <CheckCircle2 className="w-4 h-4" />
+          {kol.avatarUrl ? (
+            <img
+              src={kol.avatarUrl}
+              alt={kol.displayName}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <span className="text-white text-6xl font-bold opacity-50">
+                {kol.displayName[0]}
+              </span>
             </div>
           )}
-          <div className="absolute top-3 left-3 bg-black/60 backdrop-blur text-white text-xs px-3 py-1 rounded-full font-medium">
-            {kol.platform}
-          </div>
         </div>
 
         {/* Body */}
         <div className="p-5">
-          {/* Name and Category */}
           <div className="mb-4">
-            <h3 className="font-bold text-lg text-slate-900">{kol.name}</h3>
-            <p className="text-sm text-slate-600">@{kol.username}</p>
-            <p className="text-xs text-cyan-600 font-medium mt-2">{kol.category}</p>
+            <h3 className="font-bold text-lg text-slate-900">{kol.displayName}</h3>
+            {(kol.city || kol.country) && (
+              <p className="text-sm text-slate-500 flex items-center gap-1 mt-1">
+                <MapPin className="w-3 h-3" />
+                {[kol.city, kol.country].filter(Boolean).join(', ')}
+              </p>
+            )}
           </div>
 
           {/* Stats Grid */}
@@ -41,43 +55,26 @@ export function KOLCard({ kol }: { kol: KOL }) {
                 <Users className="w-3.5 h-3.5 text-cyan-600" />
                 <span className="text-xs font-medium">Người theo dõi</span>
               </div>
-              <p className="font-bold text-slate-900">
-                {(kol.followers / 1000).toFixed(0)}K
-              </p>
+              <p className="font-bold text-slate-900">{formattedFollowers}</p>
             </div>
             <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-3 rounded-lg border border-teal-100">
               <div className="flex items-center gap-1 text-slate-600 mb-1">
-                <TrendingUp className="w-3.5 h-3.5 text-teal-600" />
-                <span className="text-xs font-medium">Tương tác</span>
+                <DollarSign className="w-3.5 h-3.5 text-teal-600" />
+                <span className="text-xs font-medium">Từ</span>
               </div>
-              <p className="font-bold text-slate-900">{kol.engagementRate}%</p>
+              <p className="font-bold text-slate-900 text-xs">{formattedPrice}</p>
             </div>
           </div>
 
           {/* Rating */}
           <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-200">
-            <div className="flex items-center gap-1">
-              <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-              <span className="font-semibold text-slate-900">{kol.rating}</span>
-            </div>
-            <span className="text-xs text-slate-600">({kol.reviewCount})</span>
+            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+            <span className="font-semibold text-slate-900">
+              {kol.avgRating > 0 ? kol.avgRating.toFixed(1) : 'Mới'}
+            </span>
+            <span className="text-xs text-slate-600">({kol.reviewCount} đánh giá)</span>
           </div>
 
-          {/* Pricing */}
-          <div className="mb-4">
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div>
-                <p className="text-slate-600 font-medium">Theo giờ</p>
-                <p className="font-bold text-slate-900 text-sm">${kol.hourlyRate}</p>
-              </div>
-              <div>
-                <p className="text-slate-600 font-medium">Theo tháng</p>
-                <p className="font-bold text-slate-900 text-sm">${kol.monthlyRate}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* CTA Button */}
           <button className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white py-2.5 rounded-lg text-sm font-semibold transition-all shadow-md hover:shadow-lg">
             Xem hồ sơ
           </button>

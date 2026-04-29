@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:blog.vn.revu.net)"
+      "WebFetch(domain:blog.vn.revu.net)",
+      "Bash(xargs wc *)",
+      "Bash(npm run *)",
+      "Bash(find /c/Users/win11/Desktop/dungmai/kol_booking-frontend -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\) ! -path \"*/node_modules/*\" -exec grep -l \"mock-data\\\\|mockKOLs\\\\|mockBookings\\\\|mockReviews\\\\|mockClients\\\\|mockCategories\" {} \\\\;)"
     ]
   }
 }
