@@ -8,6 +8,11 @@ interface ReviewCardProps {
   review: ReviewResponse & { helpfulCount?: number };
 }
 
+/**
+ * Review card — flat surface (DESIGN.md §Elevation calls for no shadows on
+ * content cards). Star glyph fills with `--ink`, not yellow, so the chrome
+ * stays monochrome with Pinterest Red reserved for primary CTAs.
+ */
 export function ReviewCard({ review }: ReviewCardProps) {
   const [helpful, setHelpful] = useState(false);
   const [helpfulCount, setHelpfulCount] = useState(review.helpfulCount ?? 0);
@@ -18,53 +23,43 @@ export function ReviewCard({ review }: ReviewCardProps) {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3 flex-1">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-teal-500 flex items-center justify-center text-white font-bold">
-            {review.authorId}
+    <article className="bg-canvas rounded-md border border-hairline p-6">
+      <header className="flex items-start justify-between gap-4 mb-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="grid place-items-center w-12 h-12 rounded-full bg-surface-card text-ink font-bold shrink-0">
+            #{review.authorId}
           </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">Người dùng #{review.authorId}</h3>
-            <p className="text-xs text-gray-500 capitalize">
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-ink truncate">Người dùng #{review.authorId}</h3>
+            <p className="text-xs text-mute capitalize">
               {review.direction === 'TO_KOL' ? 'Đánh giá KOL' : 'Đánh giá thương hiệu'}
             </p>
-            <p className="text-sm text-gray-600">
-              {new Date(review.createdAt).toLocaleDateString('vi-VN', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
+            <p className="text-xs text-mute">
+              {new Date(review.createdAt).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
           </div>
         </div>
-        <div className="text-right">
-          <div className="flex items-center gap-1 mb-1">
-            {Array.from({ length: review.rating }).map((_, i) => (
-              <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-            ))}
-            {Array.from({ length: 5 - review.rating }).map((_, i) => (
-              <Star key={`e${i}`} className="w-4 h-4 text-gray-300" />
-            ))}
-          </div>
-          <span className="text-sm font-semibold text-gray-900">{review.rating}.0</span>
+        <div className="flex items-center gap-1 shrink-0">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Star
+              key={i}
+              className={`w-4 h-4 ${i < review.rating ? 'fill-ink text-ink' : 'text-stone'}`}
+            />
+          ))}
         </div>
-      </div>
+      </header>
 
-      {/* Review Text */}
-      <p className="text-gray-700 leading-relaxed mb-4">{review.comment}</p>
+      <p className="text-sm text-body leading-relaxed mb-4">{review.comment}</p>
 
-      {/* Helpful Button */}
       <button
         onClick={handleHelpful}
-        className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg transition-colors ${
-          helpful ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+        className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+          helpful ? 'bg-ink text-on-dark' : 'bg-surface-card text-ink hover:bg-secondary-bg'
         }`}
       >
-        <ThumbsUp className="w-4 h-4" />
-        Hữu ích {helpfulCount > 0 && `(${helpfulCount})`}
+        <ThumbsUp className="w-3.5 h-3.5" />
+        Hữu ích {helpfulCount > 0 && `· ${helpfulCount}`}
       </button>
-    </div>
+    </article>
   );
 }

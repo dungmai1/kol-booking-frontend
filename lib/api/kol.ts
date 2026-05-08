@@ -12,7 +12,24 @@ import type {
   CreatePortfolioItemRequest,
   KolSearchParams,
   PageResponse,
+  Platform,
 } from './types';
+
+const PLATFORM_VALUES: readonly Platform[] = ['TIKTOK', 'INSTAGRAM', 'YOUTUBE', 'FACEBOOK'];
+
+/**
+ * Backend `Platform` enum is case-sensitive UPPERCASE (e.g. FACEBOOK).
+ * Defensive normalizer: accepts any casing ("facebook", "Facebook", "FACEBOOK")
+ * and returns the canonical enum string the backend expects.
+ * Throws on unknown values so we fail loudly during dev instead of sending a 400.
+ */
+export function normalizePlatform(value: string): Platform {
+  const upper = value.trim().toUpperCase();
+  if ((PLATFORM_VALUES as readonly string[]).includes(upper)) {
+    return upper as Platform;
+  }
+  throw new Error(`Unknown platform: "${value}"`);
+}
 
 export const kolApi = {
   // ─── My Profile ─────────────────────────────────────────────────────────────
@@ -38,7 +55,11 @@ export const kolApi = {
   // ─── Search & Discovery ──────────────────────────────────────────────────────
 
   search(params: KolSearchParams = {}): Promise<PageResponse<KolSummaryResponse>> {
-    const query = api.buildQuery(params as Record<string, unknown>);
+    const normalized: KolSearchParams = {
+      ...params,
+      ...(params.platforms && { platforms: params.platforms.map(normalizePlatform) }),
+    };
+    const query = api.buildQuery(normalized as Record<string, unknown>);
     return api.get(`/kols/search${query}`);
   },
 

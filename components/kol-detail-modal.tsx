@@ -1,8 +1,6 @@
 'use client';
 
-import {
-  X, Star, Users, TrendingUp, CheckCircle2, MessageSquare, Heart, ArrowRight, Loader2,
-} from 'lucide-react';
+import { X, Star, CheckCircle2, Heart, ArrowRight, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { kolApi } from '@/lib/api/kol';
@@ -14,6 +12,14 @@ import { BookingForm } from './booking-form';
 interface KOLDetailModalProps {
   kol: KolSummaryResponse;
   onClose: () => void;
+}
+
+const vnd = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
+
+function formatFollowers(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+  return n.toString();
 }
 
 export function KOLDetailModal({ kol, onClose }: KOLDetailModalProps) {
@@ -35,206 +41,138 @@ export function KOLDetailModal({ kol, onClose }: KOLDetailModalProps) {
     if (!isAuthenticated) return;
     setFavoriteLoading(true);
     try {
-      if (isFavorite) {
-        await brandApi.removeFavorite(kol.id);
-      } else {
-        await brandApi.addFavorite(kol.id);
-      }
+      if (isFavorite) await brandApi.removeFavorite(kol.id);
+      else await brandApi.addFavorite(kol.id);
       setIsFavorite(!isFavorite);
-    } catch {
-      // ignore
-    } finally {
-      setFavoriteLoading(false);
-    }
+    } catch { /* ignore */ }
+    finally { setFavoriteLoading(false); }
   }
 
-  const displayProfile = profile;
-  const minPrice = displayProfile?.pricingPackages.length
-    ? Math.min(...displayProfile.pricingPackages.map((p) => p.price))
+  const minPrice = profile?.pricingPackages.length
+    ? Math.min(...profile.pricingPackages.map((p) => p.price))
     : kol.minPrice;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-8">
-        {/* Header */}
-        <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 py-8 px-6 text-white rounded-t-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+
+      <div className="relative bg-canvas rounded-[2rem] w-full max-w-2xl my-8 overflow-hidden shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)]">
+        {/* Pin-card-large hero treatment with overlay attribution */}
+        <div className="relative aspect-[16/8] bg-secondary-bg">
+          {kol.avatarUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={kol.avatarUrl} alt={kol.displayName} className="absolute inset-0 w-full h-full object-cover" />
+          ) : (
+            <div className="absolute inset-0 grid place-items-center" style={{ background: 'linear-gradient(150deg, #f6dccb 0%, #c47a55 100%)' }}>
+              <span className="font-display font-extrabold text-on-dark text-[80px]">{kol.displayName[0]}</span>
+            </div>
+          )}
+
+          {profile?.status === 'APPROVED' && (
+            <span className="pin-overlay-pill top-4 left-4">
+              <CheckCircle2 className="w-3.5 h-3.5 text-pin-red mr-1.5" />
+              Đã xác minh
+            </span>
+          )}
+
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors"
+            className="absolute top-4 right-4 grid place-items-center w-10 h-10 rounded-full bg-canvas text-ink hover:bg-secondary-bg transition-colors"
+            aria-label="Đóng"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
 
-          <div className="flex items-start gap-4">
-            <div className="relative">
-              {kol.avatarUrl ? (
-                <img
-                  src={kol.avatarUrl}
-                  alt={kol.displayName}
-                  className="w-20 h-20 rounded-full border-4 border-white object-cover"
-                />
-              ) : (
-                <div className="w-20 h-20 rounded-full border-4 border-white bg-white/20 flex items-center justify-center text-3xl font-bold">
-                  {kol.displayName[0]}
-                </div>
-              )}
-              {displayProfile?.status === 'APPROVED' && (
-                <div className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-1 border-2 border-white">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h2 className="text-2xl font-bold">{kol.displayName}</h2>
-                  {(kol.city || kol.country) && (
-                    <p className="text-blue-100 text-sm">{[kol.city, kol.country].filter(Boolean).join(', ')}</p>
-                  )}
-                </div>
-                {isAuthenticated && user?.role === 'BRAND' && (
-                  <button
-                    onClick={handleFavorite}
-                    disabled={favoriteLoading}
-                    className="p-2 hover:bg-white/20 rounded-full transition-colors disabled:opacity-50"
-                  >
-                    <Heart className="w-5 h-5" fill={isFavorite ? 'currentColor' : 'none'} />
-                  </button>
-                )}
-              </div>
-
-              <div className="mt-3 grid grid-cols-3 gap-3 text-center text-sm">
-                <div>
-                  <p className="font-bold text-lg">
-                    {kol.maxFollowerCount >= 1_000_000
-                      ? `${(kol.maxFollowerCount / 1_000_000).toFixed(1)}M`
-                      : `${(kol.maxFollowerCount / 1_000).toFixed(0)}K`}
-                  </p>
-                  <p className="text-blue-100 text-xs">Followers</p>
-                </div>
-                <div>
-                  <p className="font-bold text-lg">
-                    {kol.avgRating > 0 ? kol.avgRating.toFixed(1) : 'Mới'}
-                  </p>
-                  <p className="text-blue-100 text-xs">Đánh giá</p>
-                </div>
-                <div>
-                  <p className="font-bold text-lg">{kol.reviewCount}</p>
-                  <p className="text-blue-100 text-xs">Nhận xét</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          {isAuthenticated && user?.role === 'BRAND' && (
+            <button
+              onClick={handleFavorite}
+              disabled={favoriteLoading}
+              className="absolute top-16 right-4 grid place-items-center w-10 h-10 rounded-full bg-canvas text-ink hover:bg-secondary-bg disabled:opacity-50 transition-colors"
+              aria-label={isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'}
+            >
+              <Heart className="w-5 h-5" fill={isFavorite ? 'var(--pin-red)' : 'none'} stroke={isFavorite ? 'var(--pin-red)' : 'currentColor'} />
+            </button>
+          )}
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-8">
+          <div className="flex items-start justify-between gap-4 mb-5">
+            <div className="min-w-0">
+              <h2 className="font-display font-bold text-ink text-[24px] tracking-tight truncate">{kol.displayName}</h2>
+              {(kol.city || kol.country) && (
+                <p className="text-mute text-sm mt-1">{[kol.city, kol.country].filter(Boolean).join(', ')}</p>
+              )}
+            </div>
+            <div className="text-right shrink-0">
+              <div className="inline-flex items-center gap-1 text-ink font-bold text-base">
+                <Star className="w-4 h-4 fill-ink text-ink" />
+                {kol.avgRating > 0 ? kol.avgRating.toFixed(1) : '—'}
+              </div>
+              <p className="text-xs text-mute">{kol.reviewCount} nhận xét</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 mb-6">
+            <div className="bg-surface-card rounded-md px-3 py-3 text-center">
+              <p className="font-display font-bold text-ink text-[18px]">{formatFollowers(kol.maxFollowerCount)}</p>
+              <p className="text-[11px] text-mute font-bold uppercase tracking-wider mt-1">Followers</p>
+            </div>
+            <div className="bg-surface-card rounded-md px-3 py-3 text-center">
+              <p className="font-display font-bold text-ink text-[18px]">{vnd.format(minPrice)}</p>
+              <p className="text-[11px] text-mute font-bold uppercase tracking-wider mt-1">Từ</p>
+            </div>
+            <div className="bg-surface-card rounded-md px-3 py-3 text-center">
+              <p className="font-display font-bold text-ink text-[18px]">{kol.reviewCount}</p>
+              <p className="text-[11px] text-mute font-bold uppercase tracking-wider mt-1">Reviews</p>
+            </div>
+          </div>
+
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 text-pin-red animate-spin" />
             </div>
           ) : (
             <>
-              {/* Bio */}
-              {displayProfile?.bio && (
-                <div className="mb-5 pb-5 border-b border-gray-100">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Giới thiệu</h3>
-                  <p className="text-gray-700 leading-relaxed text-sm">{displayProfile.bio}</p>
+              {profile?.bio && (
+                <div className="mb-5">
+                  <p className="text-sm text-body leading-relaxed">{profile.bio}</p>
                 </div>
               )}
 
-              {/* Channels */}
-              {displayProfile && displayProfile.channels.length > 0 && (
-                <div className="mb-5 pb-5 border-b border-gray-100">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Kênh mạng xã hội</h3>
-                  <div className="space-y-2">
-                    {displayProfile.channels.map((ch) => (
-                      <div key={ch.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-2.5">
-                        <span className="text-sm font-medium text-gray-900">{ch.platform} @{ch.username}</span>
-                        <span className="text-sm text-gray-600">
-                          {ch.followerCount >= 1_000_000
-                            ? `${(ch.followerCount / 1_000_000).toFixed(1)}M`
-                            : `${(ch.followerCount / 1_000).toFixed(0)}K`} • {ch.engagementRate}%
-                        </span>
-                      </div>
+              {profile && profile.channels.length > 0 && (
+                <div className="mb-5">
+                  <h3 className="text-xs font-bold text-mute uppercase tracking-wider mb-3">Kênh mạng xã hội</h3>
+                  <ul className="space-y-2">
+                    {profile.channels.slice(0, 3).map((ch) => (
+                      <li key={ch.id} className="flex items-center justify-between bg-surface-card rounded-md px-4 py-2.5">
+                        <span className="text-sm font-bold text-ink">{ch.platform} · @{ch.username}</span>
+                        <span className="text-xs text-mute">{formatFollowers(ch.followerCount)} · {ch.engagementRate}%</span>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </div>
               )}
-
-              {/* Pricing */}
-              {displayProfile && displayProfile.pricingPackages.length > 0 && (
-                <div className="mb-5 pb-5 border-b border-gray-100">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Bảng giá</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {displayProfile.pricingPackages.slice(0, 4).map((pkg) => (
-                      <div key={pkg.id} className="bg-blue-50 rounded-lg p-3">
-                        <p className="text-xs text-gray-500">{pkg.type} — {pkg.platform}</p>
-                        <p className="font-bold text-gray-900 text-sm mt-0.5">
-                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(pkg.price)}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Reviews summary */}
-              <div className="mb-6 pb-5 border-b border-gray-100">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Đánh giá</h3>
-                <div className="flex items-center gap-3">
-                  <div className="flex">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`w-4 h-4 ${
-                          i < Math.floor(kol.avgRating)
-                            ? 'fill-yellow-400 text-yellow-400'
-                            : 'text-gray-300'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-gray-600 text-sm">
-                    {kol.avgRating > 0 ? kol.avgRating.toFixed(1) : 'Chưa có'} ({kol.reviewCount} nhận xét)
-                  </span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="space-y-3">
-                {isAuthenticated && user?.role === 'BRAND' && (
-                  <button
-                    onClick={() => setShowBookingForm(true)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors"
-                  >
-                    Đặt ngay
-                  </button>
-                )}
-                <div className="flex gap-3">
-                  <Link
-                    href={`/kol/${kol.slug}`}
-                    onClick={onClose}
-                    className="flex-1 flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-100 text-gray-700 font-semibold py-2.5 rounded-lg transition-colors text-sm"
-                  >
-                    Xem hồ sơ đầy đủ
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                  <button
-                    onClick={onClose}
-                    className="flex-1 border border-gray-200 text-gray-600 hover:bg-gray-50 font-semibold py-2.5 rounded-lg transition-colors text-sm"
-                  >
-                    Đóng
-                  </button>
-                </div>
-              </div>
             </>
           )}
+
+          <div className="flex flex-col gap-3 pt-5 border-t border-hairline-soft">
+            {isAuthenticated && user?.role === 'BRAND' && (
+              <button onClick={() => setShowBookingForm(true)} className="btn-pin-primary !rounded-full w-full !py-3">
+                Đặt ngay
+              </button>
+            )}
+            <div className="flex gap-3">
+              <Link href={`/kol/${kol.slug}`} onClick={onClose} className="btn-pin-secondary !rounded-full flex-1 justify-center">
+                Xem hồ sơ đầy đủ
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <button onClick={onClose} className="btn-pin-tertiary !rounded-full flex-1">Đóng</button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Nested Booking Form */}
       {showBookingForm && (
         <BookingForm
           kol={{ id: kol.id, displayName: kol.displayName, minPrice }}

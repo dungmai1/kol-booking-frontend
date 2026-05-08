@@ -3,80 +3,132 @@
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
-  --background: oklch(0.985 0.005 280);
-  --foreground: oklch(0.15 0.01 270);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0.01 270);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0.01 270);
-  --primary: oklch(0.55 0.15 200);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.45 0.08 220);
-  --secondary-foreground: oklch(1 0 0);
-  --muted: oklch(0.93 0.01 0);
-  --muted-foreground: oklch(0.5 0.02 270);
-  --accent: oklch(0.65 0.18 190);
-  --accent-foreground: oklch(1 0 0);
-  --destructive: oklch(0.63 0.25 25);
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.93 0.01 270);
-  --input: oklch(0.98 0.01 270);
-  --ring: oklch(0.55 0.15 200);
-  --chart-1: oklch(0.65 0.18 190);
-  --chart-2: oklch(0.68 0.15 30);
-  --chart-3: oklch(0.72 0.1 130);
-  --chart-4: oklch(0.6 0.2 300);
-  --chart-5: oklch(0.7 0.15 50);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.985 0.005 280);
-  --sidebar-foreground: oklch(0.15 0.01 270);
-  --sidebar-primary: oklch(0.55 0.15 200);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.65 0.18 190);
-  --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: oklch(0.93 0.01 270);
-  --sidebar-ring: oklch(0.55 0.15 200);
-}
+/* =====================================================================
+   Pinterest design system — adapted from DESIGN.md
+   Cream chrome · Pinterest Red CTA · Inter (Pin Sans substitute)
+   16px / 32px / pill radius vocabulary
+   ===================================================================== */
 
-.dark {
-  --background: oklch(0.12 0.01 250);
-  --foreground: oklch(0.95 0.01 280);
-  --card: oklch(0.18 0.01 250);
-  --card-foreground: oklch(0.95 0.01 280);
-  --popover: oklch(0.18 0.01 250);
-  --popover-foreground: oklch(0.95 0.01 280);
-  --primary: oklch(0.65 0.18 190);
-  --primary-foreground: oklch(0.12 0.01 250);
-  --secondary: oklch(0.5 0.1 220);
-  --secondary-foreground: oklch(0.95 0.01 280);
-  --muted: oklch(0.3 0.01 270);
-  --muted-foreground: oklch(0.7 0.01 270);
-  --accent: oklch(0.72 0.2 200);
-  --accent-foreground: oklch(0.12 0.01 250);
-  --destructive: oklch(0.65 0.22 25);
-  --destructive-foreground: oklch(0.95 0.01 280);
-  --border: oklch(0.3 0.01 270);
-  --input: oklch(0.2 0.01 270);
-  --ring: oklch(0.65 0.18 190);
-  --chart-1: oklch(0.72 0.2 200);
-  --chart-2: oklch(0.75 0.18 30);
-  --chart-3: oklch(0.78 0.12 130);
-  --chart-4: oklch(0.68 0.22 300);
-  --chart-5: oklch(0.76 0.18 50);
-  --sidebar: oklch(0.12 0.01 250);
-  --sidebar-foreground: oklch(0.95 0.01 280);
-  --sidebar-primary: oklch(0.65 0.18 190);
-  --sidebar-primary-foreground: oklch(0.12 0.01 250);
-  --sidebar-accent: oklch(0.72 0.2 200);
-  --sidebar-accent-foreground: oklch(0.12 0.01 250);
-  --sidebar-border: oklch(0.3 0.01 270);
-  --sidebar-ring: oklch(0.65 0.18 190);
+:root {
+  /* --- Brand & accent --- */
+  --pin-red: #e60023;
+  --pin-red-pressed: #cc001f;
+
+  /* --- Surface --- */
+  --canvas: #ffffff;
+  --surface-soft: #fbfbf9;
+  --surface-card: #f6f6f3;
+  --secondary-bg: #e5e5e0;
+  --secondary-pressed: #c8c8c1;
+  --surface-dark: #262622;
+
+  /* --- Hairlines --- */
+  --hairline: #dadad3;
+  --hairline-soft: #e5e5e0;
+
+  /* --- Text --- */
+  --ink: #000000;
+  --ink-soft: #211922;
+  --body-text: #33332e;
+  --charcoal: #262622;
+  --mute: #62625b;
+  --ash: #91918c;
+  --stone: #c8c8c1;
+  --on-dark: #ffffff;
+
+  /* --- Semantic --- */
+  --error: #9e0a0a;
+  --error-deep: #cc001f;
+  --success-deep: #103c25;
+  --success-pale: #c7f0da;
+  --focus-outer: #435ee5;
+  --focus-inner: #ffffff;
+
+  /* --- Editorial accents --- */
+  --accent-pressed-blue: #617bff;
+  --accent-purple: #7e238b;
+  --accent-purple-deep: #6845ab;
+
+  /* --- shadcn-compatible mapping (existing UI components keep working) --- */
+  --background: var(--surface-soft);
+  --foreground: var(--ink);
+  --card: var(--canvas);
+  --card-foreground: var(--ink);
+  --popover: var(--canvas);
+  --popover-foreground: var(--ink);
+  --primary: var(--pin-red);
+  --primary-foreground: var(--on-dark);
+  --secondary: var(--secondary-bg);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface-card);
+  --muted-foreground: var(--mute);
+  --accent: var(--surface-card);
+  --accent-foreground: var(--ink);
+  --destructive: var(--error);
+  --destructive-foreground: var(--on-dark);
+  --border: var(--hairline);
+  --input: var(--canvas);
+  --ring: var(--focus-outer);
+
+  /* Charts pull from editorial accents instead of cyan/teal/purple */
+  --chart-1: var(--pin-red);
+  --chart-2: var(--accent-purple);
+  --chart-3: var(--success-deep);
+  --chart-4: var(--accent-pressed-blue);
+  --chart-5: var(--charcoal);
+
+  /* Two-radius vocabulary: 16px / 32px / pill */
+  --radius: 1rem; /* 16px = rounded-md (Pinterest default) */
+
+  --sidebar: var(--canvas);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--pin-red);
+  --sidebar-primary-foreground: var(--on-dark);
+  --sidebar-accent: var(--surface-card);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--focus-outer);
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  /* Pin Sans substitute (per DESIGN.md): Inter at body, Manrope at display.
+     The --font-inter / --font-manrope CSS variables are wired up in app/layout.tsx
+     via next/font, so the bundle ships only what we use. */
+  --font-sans: var(--font-inter), -apple-system, system-ui, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-display: var(--font-manrope), var(--font-inter), -apple-system,
+    system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Pinterest palette as Tailwind utility classes (bg-pin-red, text-ink, …) */
+  --color-pin-red: var(--pin-red);
+  --color-pin-red-pressed: var(--pin-red-pressed);
+  --color-canvas: var(--canvas);
+  --color-surface-soft: var(--surface-soft);
+  --color-surface-card: var(--surface-card);
+  --color-secondary-bg: var(--secondary-bg);
+  --color-secondary-pressed: var(--secondary-pressed);
+  --color-surface-dark: var(--surface-dark);
+  --color-hairline: var(--hairline);
+  --color-hairline-soft: var(--hairline-soft);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-body: var(--body-text);
+  --color-charcoal: var(--charcoal);
+  --color-mute: var(--mute);
+  --color-ash: var(--ash);
+  --color-stone: var(--stone);
+  --color-on-dark: var(--on-dark);
+  --color-pin-error: var(--error);
+  --color-pin-error-deep: var(--error-deep);
+  --color-success-deep: var(--success-deep);
+  --color-success-pale: var(--success-pale);
+  --color-focus-outer: var(--focus-outer);
+  --color-accent-purple: var(--accent-purple);
+  --color-accent-purple-deep: var(--accent-purple-deep);
+  --color-accent-pressed-blue: var(--accent-pressed-blue);
+
+  /* shadcn-compat color tokens */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -101,10 +153,18 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Two-radius vocabulary expressed as a five-step scale that snaps:
+       sm → 8px (rare)
+       md → 16px (DEFAULT — buttons, inputs, pin-card, feature-card)
+       lg → 32px (modals, pin-card-large)
+       xl → 32px (alias)
+     There is no value between md and lg. */
+  --radius-sm: 0.5rem;
+  --radius-md: 1rem;
+  --radius-lg: 2rem;
+  --radius-xl: 2rem;
+
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -119,7 +179,99 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+  body {
+    background: var(--surface-soft);
+    color: var(--body-text);
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+  }
+
+  /* Display tier — tight tracking is part of the brand voice (DESIGN.md §Typography) */
+  .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+@layer components {
+  /* --- Pinterest button-primary (always Pinterest Red) --- */
+  .btn-pin-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-pin-red text-on-dark font-bold rounded-md px-4 py-2.5 text-sm transition-colors;
+  }
+  .btn-pin-primary:hover { background: var(--pin-red-pressed); }
+  .btn-pin-primary:active { background: var(--pin-red-pressed); }
+  .btn-pin-primary:disabled {
+    background: var(--surface-card);
+    color: var(--ash);
+    cursor: not-allowed;
+  }
+
+  /* --- button-secondary (gray-cream) --- */
+  .btn-pin-secondary {
+    @apply inline-flex items-center justify-center gap-2 bg-secondary-bg text-ink font-bold rounded-md px-4 py-2.5 text-sm transition-colors;
+  }
+  .btn-pin-secondary:hover { background: var(--secondary-pressed); }
+
+  /* --- button-tertiary (ghost link) --- */
+  .btn-pin-tertiary {
+    @apply inline-flex items-center justify-center gap-2 text-ink font-bold rounded-md px-4 py-2.5 text-sm transition-colors;
+  }
+  .btn-pin-tertiary:hover { background: var(--surface-card); }
+
+  /* --- pin-card masonry tile (full-bleed image, no internal padding) --- */
+  .pin-card {
+    @apply relative overflow-hidden bg-surface-card rounded-md break-inside-avoid mb-2;
+  }
+  .pin-card-lg {
+    @apply rounded-[2rem];
+  }
+
+  /* --- pin overlay pill (signature gesture: "Cherry red", "Preppy look") --- */
+  .pin-overlay-pill {
+    @apply absolute inline-flex items-center bg-canvas text-ink font-bold rounded-full px-3 py-1.5 text-xs;
+  }
+
+  /* --- filter-chip + filter-chip-active --- */
+  .pin-chip {
+    @apply inline-flex items-center bg-surface-card text-ink font-bold rounded-full px-4 py-2 text-sm transition-colors whitespace-nowrap;
+  }
+  .pin-chip:hover { background: var(--secondary-bg); }
+  .pin-chip-active {
+    @apply bg-ink text-on-dark;
+  }
+  .pin-chip-active:hover { background: var(--charcoal); }
+
+  /* --- search-bar (pill, surface-card by default; flips to canvas when focused) --- */
+  .pin-search {
+    @apply w-full bg-surface-card text-ink placeholder:text-ash rounded-full px-12 py-3 text-base outline-none transition-colors border border-transparent;
+  }
+  .pin-search:focus {
+    background: var(--canvas);
+    border-color: var(--ash);
+  }
+
+  /* --- text-input with the signature double-ring focus --- */
+  .pin-input {
+    @apply w-full bg-canvas text-ink placeholder:text-ash rounded-md px-4 py-3 text-base outline-none transition-shadow;
+    border: 1px solid var(--ash);
+  }
+  .pin-input:focus {
+    border: 2px solid var(--ink);
+    box-shadow:
+      0 0 0 2px var(--focus-inner),
+      0 0 0 6px var(--focus-outer);
+  }
+
+  /* --- Masonry column flow for pin grid --- */
+  .pin-masonry {
+    column-gap: 0.5rem; /* 8px gutters per DESIGN.md */
+    column-count: 1;
+  }
+  @media (min-width: 480px) { .pin-masonry { column-count: 2; } }
+  @media (min-width: 768px) { .pin-masonry { column-count: 3; } }
+  @media (min-width: 1024px) { .pin-masonry { column-count: 4; } }
+  @media (min-width: 1440px) { .pin-masonry { column-count: 5; } }
+  @media (min-width: 1920px) { .pin-masonry { column-count: 6; } }
 }

@@ -16,6 +16,13 @@ interface BookingFormProps {
   onSuccess?: () => void;
 }
 
+const vnd = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
+
+/**
+ * Booking modal — DESIGN.md `modal-card`: 32px radius, 32px padding,
+ * sits on a 50%-opacity scrim with a 16px ambient shadow lifting it.
+ * Inputs use the signature double-ring focus.
+ */
 export function BookingForm({ kol, onClose, onSuccess }: BookingFormProps) {
   const [campaignName, setCampaignName] = useState('');
   const [description, setDescription] = useState('');
@@ -26,7 +33,7 @@ export function BookingForm({ kol, onClose, onSuccess }: BookingFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
@@ -48,153 +55,98 @@ export function BookingForm({ kol, onClose, onSuccess }: BookingFormProps) {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
-          <h2 className="text-2xl font-bold text-gray-900">Đặt lịch với {kol.displayName}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+
+      <div className="relative bg-canvas rounded-[2rem] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)]">
+        <div className="sticky top-0 bg-canvas flex items-center justify-between px-8 py-6 border-b border-hairline-soft z-10 rounded-t-[2rem]">
+          <h2 className="font-display font-bold text-ink text-[22px] tracking-tight">
+            Đặt lịch với {kol.displayName}
+          </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="grid place-items-center w-10 h-10 rounded-full bg-surface-card text-ink hover:bg-secondary-bg"
+            aria-label="Đóng"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="px-8 py-6 space-y-6">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+            <div className="rounded-md px-4 py-3 text-sm font-bold" style={{ background: 'var(--success-pale)', color: 'var(--error)' }}>
               {error}
             </div>
           )}
-          {/* Campaign Details */}
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Thông tin chiến dịch</h3>
+
+          <section>
+            <h3 className="text-xs font-bold text-mute uppercase tracking-wider mb-4">Thông tin chiến dịch</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tên chiến dịch *
-                </label>
-                <input
-                  type="text"
-                  value={campaignName}
-                  onChange={(e) => setCampaignName(e.target.value)}
-                  placeholder="VD: Ra mắt bộ sưu tập mùa hè"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <label className="block text-sm font-bold text-ink mb-2">Tên chiến dịch *</label>
+                <input type="text" value={campaignName} onChange={(e) => setCampaignName(e.target.value)} placeholder="VD: Ra mắt bộ sưu tập mùa hè" required className="pin-input" />
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Mô tả *
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Mô tả chiến dịch và kỳ vọng của bạn..."
-                  required
-                  rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <label className="block text-sm font-bold text-ink mb-2">Mô tả *</label>
+                <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả chiến dịch và kỳ vọng của bạn..." required rows={4} className="pin-input" />
               </div>
             </div>
-          </div>
+          </section>
 
-          {/* Dates */}
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Thời gian chiến dịch</h3>
+          <section>
+            <h3 className="text-xs font-bold text-mute uppercase tracking-wider mb-4">Thời gian</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <Calendar className="w-4 h-4 inline mr-1" />
-                  Ngày bắt đầu *
+                <label className="block text-sm font-bold text-ink mb-2">
+                  <Calendar className="w-4 h-4 inline mr-1.5" />Bắt đầu *
                 </label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required className="pin-input" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <Calendar className="w-4 h-4 inline mr-1" />
-                  Ngày kết thúc *
+                <label className="block text-sm font-bold text-ink mb-2">
+                  <Calendar className="w-4 h-4 inline mr-1.5" />Kết thúc *
                 </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required className="pin-input" />
               </div>
             </div>
-          </div>
+          </section>
 
-          {/* Budget */}
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Ngân sách</h3>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                <DollarSign className="w-4 h-4 inline mr-1" />
-                Tổng ngân sách (VND) *
-              </label>
-              <input
-                type="number"
-                value={budget}
-                onChange={(e) => setBudget(e.target.value)}
-                min="1"
-                required
-                placeholder="10000000"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {kol.minPrice && (
-                <p className="text-sm text-gray-600 mt-2">
-                  Gói thấp nhất: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(kol.minPrice)}
-                </p>
-              )}
-            </div>
-          </div>
+          <section>
+            <h3 className="text-xs font-bold text-mute uppercase tracking-wider mb-4">Ngân sách</h3>
+            <label className="block text-sm font-bold text-ink mb-2">
+              <DollarSign className="w-4 h-4 inline mr-1.5" />
+              Tổng ngân sách (VND) *
+            </label>
+            <input type="number" value={budget} onChange={(e) => setBudget(e.target.value)} min="1" required placeholder="10000000" className="pin-input" />
+            {kol.minPrice && (
+              <p className="text-xs text-mute mt-2">Gói thấp nhất: {vnd.format(kol.minPrice)}</p>
+            )}
+          </section>
 
-          {/* Deliverables */}
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Sản phẩm bàn giao</h3>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              <FileText className="w-4 h-4 inline mr-1" />
-              Mô tả deliverables
+          <section>
+            <h3 className="text-xs font-bold text-mute uppercase tracking-wider mb-4">Deliverables</h3>
+            <label className="block text-sm font-bold text-ink mb-2">
+              <FileText className="w-4 h-4 inline mr-1.5" />Mô tả deliverables
             </label>
             <textarea
               value={deliverables}
               onChange={(e) => setDeliverables(e.target.value)}
               placeholder='VD: [{"type":"VIDEO","platform":"TIKTOK","quantity":3}]'
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+              className="pin-input font-mono text-sm"
             />
-          </div>
+          </section>
 
-          {/* Buttons */}
-          <div className="flex gap-4 pt-4 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
-            >
+          <div className="flex gap-3 pt-4 border-t border-hairline-soft">
+            <button type="button" onClick={onClose} className="btn-pin-secondary !rounded-full flex-1 !py-3">
               Hủy
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-            >
+            <button type="submit" disabled={isSubmitting} className="btn-pin-primary !rounded-full flex-1 !py-3">
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isSubmitting ? 'Đang gửi...' : 'Gửi yêu cầu đặt lịch'}
+              {isSubmitting ? 'Đang gửi…' : 'Gửi yêu cầu'}
             </button>
           </div>
         </form>

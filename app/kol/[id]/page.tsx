@@ -10,10 +10,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   Star,
   CheckCircle2,
-  Users,
   MapPin,
   Heart,
-  MessageSquare,
   Loader2,
   DollarSign,
   Calendar,
@@ -23,12 +21,20 @@ import {
 import { useState, use, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
-const PLATFORM_ICONS: Record<string, string> = {
-  TIKTOK: '🎵',
-  INSTAGRAM: '📸',
-  YOUTUBE: '▶️',
-  FACEBOOK: '👍',
+const PLATFORM_GLYPH: Record<string, string> = {
+  TIKTOK: 'TT',
+  INSTAGRAM: 'IG',
+  YOUTUBE: 'YT',
+  FACEBOOK: 'FB',
 };
+
+const vnd = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
+
+function formatFollowers(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+  return n.toString();
+}
 
 export default function KOLDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: slug } = use(params);
@@ -76,17 +82,11 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
     if (!isAuthenticated || !kol) return;
     setFavoriteLoading(true);
     try {
-      if (isFavorite) {
-        await brandApi.removeFavorite(kol.id);
-      } else {
-        await brandApi.addFavorite(kol.id);
-      }
+      if (isFavorite) await brandApi.removeFavorite(kol.id);
+      else await brandApi.addFavorite(kol.id);
       setIsFavorite(!isFavorite);
-    } catch {
-      // ignore
-    } finally {
-      setFavoriteLoading(false);
-    }
+    } catch { /* ignore */ }
+    finally { setFavoriteLoading(false); }
   }, [isAuthenticated, kol, isFavorite]);
 
   async function handleBookingSubmit(e: React.FormEvent) {
@@ -105,7 +105,7 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
         endDate,
       });
       setShowBookingForm(false);
-      alert('Đã gửi yêu cầu đặt lịch thành công! KOL sẽ phản hồi sớm nhất.');
+      alert('Đã gửi yêu cầu đặt lịch thành công!');
     } catch (err: unknown) {
       setBookingError(err instanceof Error ? err.message : 'Không thể tạo booking. Vui lòng thử lại.');
     } finally {
@@ -117,8 +117,8 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
     return (
       <>
         <Header />
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+        <div className="min-h-screen flex items-center justify-center bg-surface-soft">
+          <Loader2 className="w-10 h-10 text-pin-red animate-spin" />
         </div>
       </>
     );
@@ -128,162 +128,172 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
     return (
       <>
         <Header />
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Không tìm thấy KOL</h1>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <Link href="/discover" className="text-blue-600 hover:text-blue-700 font-medium">
-              ← Quay lại tìm kiếm
-            </Link>
+        <div className="min-h-screen flex items-center justify-center bg-surface-soft">
+          <div className="text-center max-w-sm">
+            <h1 className="font-display font-bold text-ink text-[28px] tracking-tight mb-2">Không tìm thấy KOL</h1>
+            <p className="text-mute mb-6">{error}</p>
+            <Link href="/discover" className="btn-pin-primary !rounded-full">← Quay lại tìm kiếm</Link>
           </div>
         </div>
       </>
     );
   }
 
-  const minPrice = kol.pricingPackages.length > 0
-    ? Math.min(...kol.pricingPackages.map((p) => p.price))
-    : null;
+  const minPrice = kol.pricingPackages.length > 0 ? Math.min(...kol.pricingPackages.map(p => p.price)) : null;
 
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gray-50">
-        {/* Hero */}
-        <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 py-12">
-          {kol.coverUrl && (
-            <img src={kol.coverUrl} alt="cover" className="absolute inset-0 w-full h-full object-cover opacity-20" />
-          )}
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col md:flex-row gap-8 items-start">
-              <div className="relative">
+      <main className="min-h-screen bg-surface-soft">
+        {/* Hero — pin-card-large treatment with attribution chip */}
+        <section className="mx-auto max-w-[1280px] px-4 sm:px-6 pt-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Cover/avatar block — large rounded pin */}
+            <div className="lg:col-span-5">
+              <div
+                className="relative aspect-[4/5] rounded-[2rem] overflow-hidden bg-secondary-bg"
+                style={kol.coverUrl ? undefined : { background: 'linear-gradient(150deg, #f6dccb 0%, #c47a55 100%)' }}
+              >
+                {kol.coverUrl && (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={kol.coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-50" />
+                )}
                 {kol.avatarUrl ? (
-                  <img
-                    src={kol.avatarUrl}
-                    alt={kol.displayName}
-                    className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-white object-cover"
-                  />
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={kol.avatarUrl} alt={kol.displayName} className="absolute inset-0 w-full h-full object-cover" />
                 ) : (
-                  <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-white bg-white/20 flex items-center justify-center">
-                    <span className="text-white text-5xl font-bold">{kol.displayName[0]}</span>
+                  <div className="absolute inset-0 grid place-items-center">
+                    <span className="font-display font-extrabold text-on-dark text-[120px]">{kol.displayName[0]}</span>
                   </div>
                 )}
                 {kol.status === 'APPROVED' && (
-                  <div className="absolute bottom-0 right-0 bg-blue-500 text-white rounded-full p-2 border-4 border-white">
-                    <CheckCircle2 className="w-5 h-5" />
-                  </div>
+                  <span className="pin-overlay-pill top-4 left-4">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-pin-red mr-1.5" />
+                    Đã xác minh
+                  </span>
                 )}
-              </div>
-
-              <div className="flex-1 text-white">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h1 className="text-4xl font-bold mb-1">{kol.displayName}</h1>
-                    {(kol.city || kol.country) && (
-                      <p className="text-blue-100 flex items-center gap-1 mb-2">
-                        <MapPin className="w-4 h-4" />
-                        {[kol.city, kol.country].filter(Boolean).join(', ')}
-                      </p>
-                    )}
-                  </div>
-                  {isAuthenticated && user?.role === 'BRAND' && (
-                    <button
-                      onClick={handleFavorite}
-                      disabled={favoriteLoading}
-                      className="text-white hover:bg-white/20 p-3 rounded-full transition-colors disabled:opacity-50"
-                    >
-                      <Heart className="w-6 h-6" fill={isFavorite ? 'currentColor' : 'none'} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Channels quick stats */}
-                {kol.channels.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {kol.channels.slice(0, 4).map((ch) => (
-                      <div key={ch.id} className="bg-white/20 rounded-lg p-3">
-                        <p className="text-blue-100 text-xs">{PLATFORM_ICONS[ch.platform]} {ch.platform}</p>
-                        <p className="text-xl font-bold">
-                          {ch.followerCount >= 1_000_000
-                            ? `${(ch.followerCount / 1_000_000).toFixed(1)}M`
-                            : `${(ch.followerCount / 1_000).toFixed(0)}K`}
-                        </p>
-                      </div>
-                    ))}
-                    <div className="bg-white/20 rounded-lg p-3">
-                      <p className="text-blue-100 text-xs">⭐ Đánh giá</p>
-                      <p className="text-xl font-bold">
-                        {kol.avgRating > 0 ? kol.avgRating.toFixed(1) : 'Mới'}
-                      </p>
-                    </div>
-                  </div>
+                {isAuthenticated && user?.role === 'BRAND' && (
+                  <button
+                    onClick={handleFavorite}
+                    disabled={favoriteLoading}
+                    className="absolute top-4 right-4 grid place-items-center w-10 h-10 rounded-full bg-canvas text-ink hover:bg-secondary-bg disabled:opacity-50 transition-colors"
+                    aria-label={isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'}
+                  >
+                    <Heart className="w-5 h-5" fill={isFavorite ? 'var(--pin-red)' : 'none'} stroke={isFavorite ? 'var(--pin-red)' : 'currentColor'} />
+                  </button>
                 )}
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Main content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Bio */}
-              {kol.bio && (
-                <div className="bg-white rounded-lg border border-gray-200 p-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Giới thiệu</h2>
-                  <p className="text-gray-600 leading-relaxed">{kol.bio}</p>
-                </div>
+            {/* Identity column */}
+            <div className="lg:col-span-7 lg:pl-4 flex flex-col">
+              <h1 className="font-display font-extrabold text-ink text-[44px] lg:text-[56px] tracking-[-1.2px] leading-[1.05]">
+                {kol.displayName}
+              </h1>
+              {(kol.city || kol.country) && (
+                <p className="text-mute flex items-center gap-1 mt-3 text-sm font-semibold">
+                  <MapPin className="w-4 h-4" />
+                  {[kol.city, kol.country].filter(Boolean).join(', ')}
+                </p>
               )}
 
-              {/* Social Channels */}
+              {kol.bio && (
+                <p className="text-body text-base lg:text-lg leading-relaxed mt-5 max-w-xl">{kol.bio}</p>
+              )}
+
+              {/* Stat tiles */}
               {kol.channels.length > 0 && (
-                <div className="bg-white rounded-lg border border-gray-200 p-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Kênh mạng xã hội</h2>
-                  <div className="space-y-4">
-                    {kol.channels.map((ch) => (
-                      <div key={ch.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">{PLATFORM_ICONS[ch.platform]}</span>
-                          <div>
-                            <p className="font-semibold text-gray-900">{ch.platform}</p>
-                            <p className="text-sm text-gray-600">@{ch.username}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-gray-900">
-                            {ch.followerCount >= 1_000_000
-                              ? `${(ch.followerCount / 1_000_000).toFixed(1)}M`
-                              : `${(ch.followerCount / 1_000).toFixed(0)}K`} followers
-                          </p>
-                          <p className="text-sm text-gray-600">{ch.engagementRate}% engagement</p>
-                        </div>
-                        <a href={ch.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 ml-4">
-                          <ExternalLink className="w-5 h-5" />
-                        </a>
-                      </div>
-                    ))}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+                  {kol.channels.slice(0, 3).map((ch) => (
+                    <div key={ch.id} className="bg-canvas rounded-md border border-hairline p-4">
+                      <p className="text-xs text-mute font-bold uppercase tracking-wider mb-1">{PLATFORM_GLYPH[ch.platform] ?? ch.platform.slice(0, 2)} · {ch.platform}</p>
+                      <p className="font-display font-bold text-ink text-[22px] tracking-tight">{formatFollowers(ch.followerCount)}</p>
+                    </div>
+                  ))}
+                  <div className="bg-canvas rounded-md border border-hairline p-4">
+                    <p className="text-xs text-mute font-bold uppercase tracking-wider mb-1">Đánh giá</p>
+                    <div className="flex items-baseline gap-1">
+                      <p className="font-display font-bold text-ink text-[22px] tracking-tight">{kol.avgRating > 0 ? kol.avgRating.toFixed(1) : '—'}</p>
+                      <Star className="w-4 h-4 fill-ink text-ink" />
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Portfolio */}
+              {/* Booking summary card (mobile-friendly inline) */}
+              <div className="mt-6 bg-canvas rounded-md border border-hairline p-5 lg:hidden">
+                {minPrice !== null && (
+                  <p className="text-xs text-mute font-bold uppercase tracking-wider mb-2">Bắt đầu từ</p>
+                )}
+                {minPrice !== null && (
+                  <p className="font-display font-bold text-ink text-[24px] tracking-tight mb-4">{vnd.format(minPrice)}</p>
+                )}
+                {isAuthenticated && user?.role === 'BRAND' && kol.status === 'APPROVED' ? (
+                  <button onClick={() => setShowBookingForm(true)} className="btn-pin-primary !rounded-full w-full !py-3">
+                    Đặt ngay
+                  </button>
+                ) : !isAuthenticated ? (
+                  <Link href="/auth/login" className="btn-pin-primary !rounded-full w-full !py-3 justify-center">
+                    Đăng nhập để đặt
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-[1280px] px-4 sm:px-6 py-12 lg:py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              {/* Channels */}
+              {kol.channels.length > 0 && (
+                <div className="bg-canvas rounded-md border border-hairline p-8">
+                  <h2 className="font-display font-bold text-ink text-[22px] tracking-tight mb-5">Kênh mạng xã hội</h2>
+                  <ul className="divide-y divide-hairline-soft">
+                    {kol.channels.map((ch) => (
+                      <li key={ch.id} className="py-4 first:pt-0 last:pb-0 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="grid place-items-center w-10 h-10 rounded-full bg-surface-card text-ink font-bold text-xs">
+                            {PLATFORM_GLYPH[ch.platform] ?? ch.platform.slice(0, 2)}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="font-bold text-ink text-sm">{ch.platform}</p>
+                            <p className="text-xs text-mute truncate">@{ch.username}</p>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-bold text-ink text-sm">{formatFollowers(ch.followerCount)} followers</p>
+                          <p className="text-xs text-mute">{ch.engagementRate}% engagement</p>
+                        </div>
+                        <a href={ch.url} target="_blank" rel="noopener noreferrer" className="grid place-items-center w-9 h-9 rounded-full text-mute hover:bg-surface-card hover:text-ink transition-colors shrink-0">
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Portfolio — masonry-style mini grid */}
               {kol.portfolio.length > 0 && (
-                <div className="bg-white rounded-lg border border-gray-200 p-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Portfolio</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-canvas rounded-md border border-hairline p-8">
+                  <h2 className="font-display font-bold text-ink text-[22px] tracking-tight mb-5">Portfolio</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {kol.portfolio.map((item) => (
-                      <div key={item.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div key={item.id} className="pin-card !mb-0">
                         {item.mediaType === 'IMAGE' ? (
-                          <img src={item.mediaUrl} alt={item.title} className="w-full h-40 object-cover" />
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img src={item.mediaUrl} alt={item.title} className="w-full aspect-[3/4] object-cover" />
                         ) : (
-                          <div className="w-full h-40 bg-gray-100 flex items-center justify-center">
-                            <span className="text-4xl">▶️</span>
+                          <div className="aspect-[3/4] bg-surface-card grid place-items-center">
+                            <span className="grid place-items-center w-12 h-12 rounded-full bg-canvas">
+                              <span className="text-pin-red font-bold">▶</span>
+                            </span>
                           </div>
                         )}
-                        <div className="p-3">
-                          <p className="font-medium text-gray-900 text-sm">{item.title}</p>
-                          {item.campaignName && <p className="text-xs text-gray-500 mt-0.5">{item.campaignName}</p>}
+                        <div className="px-1 pt-2 pb-3">
+                          <p className="text-xs font-bold text-ink truncate">{item.title}</p>
+                          {item.campaignName && <p className="text-[11px] text-mute truncate">{item.campaignName}</p>}
                         </div>
                       </div>
                     ))}
@@ -292,220 +302,139 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
               )}
 
               {/* Reviews */}
-              <div className="bg-white rounded-lg border border-gray-200 p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                  Đánh giá ({kol.reviewCount})
+              <div className="bg-canvas rounded-md border border-hairline p-8">
+                <h2 className="font-display font-bold text-ink text-[22px] tracking-tight mb-5">
+                  Đánh giá <span className="text-mute font-normal text-base">({kol.reviewCount})</span>
                 </h2>
                 {reviews.length > 0 ? (
-                  <div className="space-y-6">
+                  <ul className="divide-y divide-hairline-soft">
                     {reviews.map((review) => (
-                      <div key={review.id} className="border-b border-gray-100 pb-6 last:border-0">
+                      <li key={review.id} className="py-5 first:pt-0 last:pb-0">
                         <div className="flex items-center justify-between mb-2">
-                          <div className="flex">
-                            {Array.from({ length: review.rating }).map((_, i) => (
-                              <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star key={i} className={`w-4 h-4 ${i < review.rating ? 'fill-ink text-ink' : 'text-stone'}`} />
                             ))}
                           </div>
-                          <span className="text-sm text-gray-500">
-                            {new Date(review.createdAt).toLocaleDateString('vi-VN')}
-                          </span>
+                          <span className="text-xs text-mute">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</span>
                         </div>
-                        <p className="text-gray-700">{review.comment}</p>
-                      </div>
+                        <p className="text-sm text-body leading-relaxed">{review.comment}</p>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 ) : (
-                  <p className="text-gray-500">Chưa có đánh giá nào</p>
+                  <p className="text-mute text-sm">Chưa có đánh giá nào.</p>
                 )}
               </div>
             </div>
 
-            {/* Right - Booking card */}
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg border border-gray-200 p-8 sticky top-20">
-                <h3 className="text-xl font-bold text-gray-900 mb-6">Bảng giá dịch vụ</h3>
+            {/* Right rail — sticky booking card */}
+            <aside className="hidden lg:block">
+              <div className="sticky top-20 bg-canvas rounded-md border border-hairline p-6">
+                <h3 className="font-display font-bold text-ink text-[18px] mb-4">Bảng giá</h3>
 
                 {kol.pricingPackages.length > 0 ? (
-                  <div className="space-y-3 mb-6">
+                  <ul className="space-y-2 mb-5">
                     {kol.pricingPackages.map((pkg) => (
-                      <div key={pkg.id} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium text-gray-900 text-sm">{pkg.type} — {pkg.platform}</p>
-                          {pkg.description && <p className="text-xs text-gray-500 mt-0.5">{pkg.description}</p>}
+                      <li key={pkg.id} className="flex items-start justify-between gap-3 p-3 bg-surface-card rounded-md">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-ink truncate">{pkg.type} · {pkg.platform}</p>
+                          {pkg.description && <p className="text-xs text-mute mt-0.5 line-clamp-2">{pkg.description}</p>}
                         </div>
-                        <p className="font-bold text-gray-900 text-sm ml-4 whitespace-nowrap">
-                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(pkg.price)}
-                        </p>
-                      </div>
+                        <p className="text-sm font-bold text-ink shrink-0 whitespace-nowrap">{vnd.format(pkg.price)}</p>
+                      </li>
                     ))}
-                    {minPrice !== null && (
-                      <p className="text-sm text-gray-500 text-center pt-2">Từ {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(minPrice)}</p>
-                    )}
-                  </div>
+                  </ul>
                 ) : (
-                  <p className="text-gray-500 text-sm mb-6">Liên hệ để biết giá</p>
+                  <p className="text-sm text-mute mb-5">Liên hệ để biết giá</p>
                 )}
 
-                <div className="space-y-3">
-                  {isAuthenticated && user?.role === 'BRAND' ? (
-                    <>
-                      {kol.status === 'APPROVED' ? (
-                        <button
-                          onClick={() => setShowBookingForm(true)}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors"
-                        >
-                          Đặt ngay
-                        </button>
-                      ) : (
-                        <div className="text-center text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-lg p-3">
-                          KOL chưa được phê duyệt
-                        </div>
-                      )}
-                    </>
-                  ) : !isAuthenticated ? (
-                    <Link
-                      href="/auth/login"
-                      className="block text-center w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors"
-                    >
-                      Đăng nhập để đặt
-                    </Link>
-                  ) : null}
-                </div>
+                {isAuthenticated && user?.role === 'BRAND' ? (
+                  kol.status === 'APPROVED' ? (
+                    <button onClick={() => setShowBookingForm(true)} className="btn-pin-primary !rounded-full w-full !py-3">
+                      Đặt ngay
+                    </button>
+                  ) : (
+                    <p className="text-center text-xs font-bold text-pin-red bg-surface-card rounded-md p-3">
+                      KOL chưa được phê duyệt
+                    </p>
+                  )
+                ) : !isAuthenticated ? (
+                  <Link href="/auth/login" className="btn-pin-primary !rounded-full w-full !py-3 justify-center">
+                    Đăng nhập để đặt
+                  </Link>
+                ) : null}
 
-                <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
-                  <p className="text-sm text-green-800">✓ Thanh toán an toàn được bảo vệ bởi KOL Hub</p>
-                </div>
-
-                {kol.avgRating > 0 && (
-                  <div className="mt-4 bg-gray-50 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="flex">
-                        {Array.from({ length: Math.round(kol.avgRating) }).map((_, i) => (
-                          <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                        ))}
-                      </div>
-                      <span className="font-bold text-gray-900">{kol.avgRating.toFixed(1)}</span>
-                    </div>
-                    <p className="text-sm text-gray-600">Dựa trên {kol.reviewCount} đánh giá</p>
-                  </div>
-                )}
+                <p className="text-xs text-mute text-center mt-4">
+                  ✓ Thanh toán an toàn được bảo vệ bởi KOL Hub
+                </p>
               </div>
-            </div>
+            </aside>
           </div>
-        </div>
-      </div>
+        </section>
+      </main>
 
-      {/* Booking Form Modal */}
+      {/* Booking modal */}
       {showBookingForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
-              <h2 className="text-xl font-bold text-gray-900">Đặt lịch với {kol.displayName}</h2>
-              <button onClick={() => setShowBookingForm(false)}>
-                <X className="w-6 h-6 text-gray-500" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowBookingForm(false)} />
+          <div className="relative bg-canvas rounded-[2rem] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)]">
+            <div className="sticky top-0 bg-canvas flex items-center justify-between px-8 py-6 border-b border-hairline-soft z-10 rounded-t-[2rem]">
+              <h2 className="font-display font-bold text-ink text-[22px] tracking-tight">Đặt lịch với {kol.displayName}</h2>
+              <button onClick={() => setShowBookingForm(false)} className="grid place-items-center w-10 h-10 rounded-full bg-surface-card text-ink hover:bg-secondary-bg" aria-label="Đóng">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleBookingSubmit} className="p-6 space-y-5">
+            <form onSubmit={handleBookingSubmit} className="px-8 py-6 space-y-5">
               {bookingError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+                <div className="rounded-md px-4 py-3 text-sm font-bold" style={{ background: 'var(--success-pale)', color: 'var(--error)' }}>
                   {bookingError}
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Tên chiến dịch *</label>
-                <input
-                  type="text"
-                  value={campaignTitle}
-                  onChange={(e) => setCampaignTitle(e.target.value)}
-                  required
-                  placeholder="VD: Ra mắt bộ sưu tập mùa hè"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <label className="block text-sm font-bold text-ink mb-2">Tên chiến dịch *</label>
+                <input type="text" value={campaignTitle} onChange={(e) => setCampaignTitle(e.target.value)} required placeholder="VD: Ra mắt bộ sưu tập mùa hè" className="pin-input" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Campaign Brief *</label>
-                <textarea
-                  value={campaignBrief}
-                  onChange={(e) => setCampaignBrief(e.target.value)}
-                  required
-                  rows={4}
-                  placeholder="Mô tả chi tiết chiến dịch và kỳ vọng..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <label className="block text-sm font-bold text-ink mb-2">Campaign Brief *</label>
+                <textarea value={campaignBrief} onChange={(e) => setCampaignBrief(e.target.value)} required rows={4} placeholder="Mô tả chi tiết chiến dịch và kỳ vọng..." className="pin-input" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Deliverables</label>
-                <textarea
-                  value={deliverables}
-                  onChange={(e) => setDeliverables(e.target.value)}
-                  rows={3}
-                  placeholder='VD: [{"type":"VIDEO","platform":"TIKTOK","quantity":3}]'
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                />
+                <label className="block text-sm font-bold text-ink mb-2">Deliverables</label>
+                <textarea value={deliverables} onChange={(e) => setDeliverables(e.target.value)} rows={3} placeholder='VD: [{"type":"VIDEO","platform":"TIKTOK","quantity":3}]' className="pin-input font-mono text-sm" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  <DollarSign className="w-4 h-4 inline mr-1" />
-                  Ngân sách (VND) *
+                <label className="block text-sm font-bold text-ink mb-2">
+                  <DollarSign className="w-4 h-4 inline mr-1.5" />Ngân sách (VND) *
                 </label>
-                <input
-                  type="number"
-                  value={budget}
-                  onChange={(e) => setBudget(e.target.value)}
-                  required
-                  min="1"
-                  placeholder="10000000"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <input type="number" value={budget} onChange={(e) => setBudget(e.target.value)} required min="1" placeholder="10000000" className="pin-input" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    <Calendar className="w-4 h-4 inline mr-1" />Ngày bắt đầu *
+                  <label className="block text-sm font-bold text-ink mb-2">
+                    <Calendar className="w-4 h-4 inline mr-1.5" />Bắt đầu *
                   </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required className="pin-input" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    <Calendar className="w-4 h-4 inline mr-1" />Ngày kết thúc *
+                  <label className="block text-sm font-bold text-ink mb-2">
+                    <Calendar className="w-4 h-4 inline mr-1.5" />Kết thúc *
                   </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required className="pin-input" />
                 </div>
               </div>
 
-              <div className="flex gap-4 pt-4 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => setShowBookingForm(false)}
-                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={bookingLoading}
-                  className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
+              <div className="flex gap-3 pt-4 border-t border-hairline-soft">
+                <button type="button" onClick={() => setShowBookingForm(false)} className="btn-pin-secondary !rounded-full flex-1 !py-3">Hủy</button>
+                <button type="submit" disabled={bookingLoading} className="btn-pin-primary !rounded-full flex-1 !py-3">
                   {bookingLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {bookingLoading ? 'Đang gửi...' : 'Gửi yêu cầu'}
+                  {bookingLoading ? 'Đang gửi…' : 'Gửi yêu cầu'}
                 </button>
               </div>
             </form>

@@ -7,7 +7,6 @@ import type { BookingResponse, BookingStatus } from '@/lib/api/types';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   Calendar,
-  DollarSign,
   CheckCircle2,
   Clock,
   X,
@@ -36,28 +35,33 @@ const filterOptions: Array<BookingStatus | 'all'> = [
   'all', 'PENDING', 'ACCEPTED', 'IN_PROGRESS', 'DELIVERED', 'COMPLETED',
 ];
 
-function getStatusColor(status: BookingStatus): string {
+function statusPillStyle(status: BookingStatus): string {
   switch (status) {
-    case 'PENDING': return 'bg-yellow-50 text-yellow-800 border-yellow-200';
-    case 'ACCEPTED': return 'bg-blue-50 text-blue-800 border-blue-200';
-    case 'IN_PROGRESS': return 'bg-indigo-50 text-indigo-800 border-indigo-200';
-    case 'DELIVERED': return 'bg-purple-50 text-purple-800 border-purple-200';
-    case 'COMPLETED': return 'bg-green-50 text-green-800 border-green-200';
-    case 'DISPUTED': return 'bg-orange-50 text-orange-800 border-orange-200';
-    default: return 'bg-gray-50 text-gray-800 border-gray-200';
+    case 'PENDING': return 'bg-surface-card text-ink';
+    case 'ACCEPTED':
+    case 'IN_PROGRESS':
+    case 'DELIVERED': return 'bg-ink text-on-dark';
+    case 'COMPLETED': return 'text-on-dark';
+    case 'DISPUTED':
+    case 'REJECTED':
+    case 'CANCELLED':
+    case 'CANCELLED_BY_ADMIN': return 'bg-pin-red text-on-dark';
+    default: return 'bg-surface-card text-ink';
   }
 }
 
-function getStatusIcon(status: BookingStatus) {
+function statusIcon(status: BookingStatus) {
   switch (status) {
-    case 'PENDING': return <Clock className="w-4 h-4" />;
+    case 'PENDING': return <Clock className="w-3.5 h-3.5" />;
     case 'ACCEPTED':
     case 'COMPLETED':
-    case 'DELIVERED': return <CheckCircle2 className="w-4 h-4" />;
-    case 'DISPUTED': return <AlertTriangle className="w-4 h-4" />;
-    default: return <X className="w-4 h-4" />;
+    case 'DELIVERED': return <CheckCircle2 className="w-3.5 h-3.5" />;
+    case 'DISPUTED': return <AlertTriangle className="w-3.5 h-3.5" />;
+    default: return <X className="w-3.5 h-3.5" />;
   }
 }
+
+const vnd = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
 
 export default function BookingsPage() {
   const { user, isAuthenticated } = useAuth();
@@ -89,66 +93,38 @@ export default function BookingsPage() {
     }
   }, [isAuthenticated, user?.role]);
 
-  useEffect(() => {
-    fetchBookings(0);
-  }, [fetchBookings]);
+  useEffect(() => { fetchBookings(0); }, [fetchBookings]);
 
-  const filteredBookings = filter === 'all'
-    ? bookings
-    : bookings.filter((b) => b.status === filter);
+  const filteredBookings = filter === 'all' ? bookings : bookings.filter(b => b.status === filter);
 
   async function handleAccept(id: number) {
     setActionLoading(id);
-    try {
-      await bookingsApi.accept(id);
-      await fetchBookings(page);
-      if (selectedBooking?.id === id) setSelectedBooking(null);
-    } catch {
-      alert('Không thể chấp nhận đơn. Vui lòng thử lại.');
-    } finally {
-      setActionLoading(null);
-    }
+    try { await bookingsApi.accept(id); await fetchBookings(page); if (selectedBooking?.id === id) setSelectedBooking(null); }
+    catch { alert('Không thể chấp nhận đơn.'); } finally { setActionLoading(null); }
   }
-
   async function handleReject(id: number) {
     const reason = window.prompt('Lý do từ chối (không bắt buộc):') ?? undefined;
     setActionLoading(id);
-    try {
-      await bookingsApi.reject(id, reason || undefined);
-      await fetchBookings(page);
-      if (selectedBooking?.id === id) setSelectedBooking(null);
-    } catch {
-      alert('Không thể từ chối đơn. Vui lòng thử lại.');
-    } finally {
-      setActionLoading(null);
-    }
+    try { await bookingsApi.reject(id, reason || undefined); await fetchBookings(page); if (selectedBooking?.id === id) setSelectedBooking(null); }
+    catch { alert('Không thể từ chối đơn.'); } finally { setActionLoading(null); }
   }
-
   async function handleCancel(id: number) {
     if (!confirm('Bạn có chắc muốn hủy đơn này?')) return;
     const reason = window.prompt('Lý do hủy (không bắt buộc):') ?? undefined;
     setActionLoading(id);
-    try {
-      await bookingsApi.cancel(id, reason || undefined);
-      await fetchBookings(page);
-      if (selectedBooking?.id === id) setSelectedBooking(null);
-    } catch {
-      alert('Không thể hủy đơn. Vui lòng thử lại.');
-    } finally {
-      setActionLoading(null);
-    }
+    try { await bookingsApi.cancel(id, reason || undefined); await fetchBookings(page); if (selectedBooking?.id === id) setSelectedBooking(null); }
+    catch { alert('Không thể hủy đơn.'); } finally { setActionLoading(null); }
   }
 
   if (!isAuthenticated) {
     return (
       <>
         <Header />
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <p className="text-gray-600 text-lg mb-4">Bạn cần đăng nhập để xem đơn đặt</p>
-            <Link href="/auth/login" className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors">
-              Đăng nhập
-            </Link>
+        <div className="min-h-screen flex items-center justify-center bg-surface-soft">
+          <div className="text-center max-w-sm">
+            <h1 className="font-display font-bold text-ink text-[28px] tracking-tight mb-3">Cần đăng nhập</h1>
+            <p className="text-mute mb-6">Bạn cần đăng nhập để xem và quản lý đơn đặt của mình.</p>
+            <Link href="/auth/login" className="btn-pin-primary !rounded-full">Đăng nhập</Link>
           </div>
         </div>
       </>
@@ -158,286 +134,207 @@ export default function BookingsPage() {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gray-50">
-        <div className="bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <h1 className="text-3xl font-bold text-gray-900">
-              {user?.role === 'KOL' ? 'Đơn được gửi đến' : 'Đơn đặt của tôi'}
-            </h1>
-            <p className="text-gray-600 mt-2">Quản lý các yêu cầu đặt KOL và chiến dịch của bạn</p>
-          </div>
+      <main className="min-h-screen bg-surface-soft">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6 pt-10 pb-6">
+          <h1 className="font-display font-bold text-ink text-[28px] lg:text-[44px] tracking-[-0.8px]">
+            {user?.role === 'KOL' ? 'Đơn được gửi đến' : 'Đơn đặt của tôi'}
+          </h1>
+          <p className="text-mute mt-2 max-w-xl">Quản lý các yêu cầu đặt KOL và chiến dịch của bạn.</p>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Filters */}
-          <div className="flex gap-3 mb-8 flex-wrap">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6 pb-16">
+          {/* Filter chips */}
+          <div className="flex gap-2 overflow-x-auto pb-4 mb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {filterOptions.map((status) => (
               <button
                 key={status}
                 onClick={() => setFilter(status)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  filter === status
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white border border-gray-200 text-gray-700 hover:border-gray-300'
-                }`}
+                className={`pin-chip shrink-0 ${filter === status ? 'pin-chip-active' : ''}`}
               >
                 {statusLabels[status]}
               </button>
             ))}
           </div>
 
-          {/* Content */}
           {isLoading ? (
-            <div className="flex items-center justify-center py-24">
-              <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+            <div className="flex items-center justify-center py-32">
+              <Loader2 className="w-10 h-10 text-pin-red animate-spin" />
             </div>
           ) : error ? (
-            <div className="bg-white rounded-lg border border-red-200 p-12 text-center">
-              <p className="text-red-600 mb-4">{error}</p>
-              <button onClick={() => fetchBookings(0)} className="text-blue-600 hover:text-blue-700 font-medium">
-                Thử lại
-              </button>
+            <div className="bg-canvas rounded-md border border-hairline p-12 text-center">
+              <p className="text-pin-red font-bold mb-4">{error}</p>
+              <button onClick={() => fetchBookings(0)} className="btn-pin-secondary !rounded-full">Thử lại</button>
             </div>
-          ) : filteredBookings.length > 0 ? (
+          ) : filteredBookings.length === 0 ? (
+            <div className="bg-canvas rounded-md border border-hairline p-12 text-center">
+              <p className="text-ink text-lg font-bold mb-2">Chưa có đơn đặt nào</p>
+              {user?.role !== 'KOL' && (
+                <>
+                  <p className="text-mute mb-6">Hãy bắt đầu khám phá và đặt KOL</p>
+                  <Link href="/discover" className="btn-pin-primary !rounded-full">Khám phá KOL</Link>
+                </>
+              )}
+            </div>
+          ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredBookings.map((booking) => (
-                  <div
-                    key={booking.id}
-                    className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
-                  >
-                    <div className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-200">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900">{booking.campaignTitle}</h3>
-                          <p className="text-sm text-gray-500 mt-0.5">#{booking.id}</p>
+                  <article key={booking.id} className="bg-canvas rounded-md border border-hairline overflow-hidden">
+                    <div className="p-6">
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="min-w-0">
+                          <h3 className="font-display font-bold text-ink text-[18px] leading-tight truncate">{booking.campaignTitle}</h3>
+                          <p className="text-xs text-mute mt-1">#{booking.id}</p>
                         </div>
-                        <div className={`px-3 py-1 rounded-full border text-xs font-medium flex items-center gap-1 ${getStatusColor(booking.status)}`}>
-                          {getStatusIcon(booking.status)}
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${statusPillStyle(booking.status)}`} style={booking.status === 'COMPLETED' ? { background: 'var(--success-deep)' } : undefined}>
+                          {statusIcon(booking.status)}
                           {statusLabels[booking.status]}
-                        </div>
+                        </span>
                       </div>
-                    </div>
 
-                    <div className="p-6 space-y-4">
-                      <div className="flex items-center gap-3">
-                        <Calendar className="w-5 h-5 text-gray-400" />
+                      <dl className="grid grid-cols-2 gap-4 mb-4">
                         <div>
-                          <p className="text-sm text-gray-600">Thời gian</p>
-                          <p className="font-medium text-gray-900">
-                            {new Date(booking.startDate).toLocaleDateString('vi-VN')} – {new Date(booking.endDate).toLocaleDateString('vi-VN')}
-                          </p>
+                          <dt className="text-xs text-mute font-semibold mb-1">Thời gian</dt>
+                          <dd className="text-sm text-ink font-bold flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5 text-mute" />
+                            {new Date(booking.startDate).toLocaleDateString('vi-VN')}
+                          </dd>
                         </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <DollarSign className="w-5 h-5 text-gray-400" />
                         <div>
-                          <p className="text-sm text-gray-600">Ngân sách</p>
-                          <p className="font-medium text-gray-900">
-                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(booking.budget)}
-                          </p>
+                          <dt className="text-xs text-mute font-semibold mb-1">Ngân sách</dt>
+                          <dd className="text-sm text-ink font-bold">{vnd.format(booking.budget)}</dd>
                         </div>
-                      </div>
+                      </dl>
 
-                      <div>
-                        <p className="text-sm text-gray-600 mb-1">Mô tả chiến dịch</p>
-                        <p className="text-gray-700 line-clamp-2 text-sm">{booking.campaignBrief}</p>
-                      </div>
+                      <p className="text-sm text-body line-clamp-2 mb-5">{booking.campaignBrief}</p>
 
-                      <div className="pt-4 border-t border-gray-200 flex gap-2 flex-wrap">
-                        <button
-                          onClick={() => setSelectedBooking(booking)}
-                          className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm"
-                        >
-                          <Eye className="w-4 h-4" />
-                          Chi tiết
+                      <div className="flex flex-wrap gap-2 pt-4 border-t border-hairline-soft">
+                        <button onClick={() => setSelectedBooking(booking)} className="btn-pin-secondary !rounded-full !py-2 !px-4 text-xs">
+                          <Eye className="w-3.5 h-3.5" /> Chi tiết
                         </button>
 
                         {user?.role === 'KOL' && booking.status === 'PENDING' && (
                           <>
-                            <button
-                              onClick={() => handleAccept(booking.id)}
-                              disabled={actionLoading === booking.id}
-                              className="flex items-center gap-2 bg-green-50 hover:bg-green-100 text-green-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm disabled:opacity-50"
-                            >
-                              {actionLoading === booking.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                            <button onClick={() => handleAccept(booking.id)} disabled={actionLoading === booking.id} className="btn-pin-primary !rounded-full !py-2 !px-4 text-xs">
+                              {actionLoading === booking.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                               Chấp nhận
                             </button>
-                            <button
-                              onClick={() => handleReject(booking.id)}
-                              disabled={actionLoading === booking.id}
-                              className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm disabled:opacity-50"
-                            >
-                              <X className="w-4 h-4" />
-                              Từ chối
+                            <button onClick={() => handleReject(booking.id)} disabled={actionLoading === booking.id} className="btn-pin-tertiary !rounded-full !py-2 !px-4 text-xs">
+                              <X className="w-3.5 h-3.5" /> Từ chối
                             </button>
                           </>
                         )}
-
                         {user?.role === 'BRAND' && booking.status === 'PENDING' && (
-                          <button
-                            onClick={() => handleCancel(booking.id)}
-                            disabled={actionLoading === booking.id}
-                            className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm disabled:opacity-50"
-                          >
-                            <X className="w-4 h-4" />
-                            Hủy đơn
+                          <button onClick={() => handleCancel(booking.id)} disabled={actionLoading === booking.id} className="btn-pin-tertiary !rounded-full !py-2 !px-4 text-xs">
+                            <X className="w-3.5 h-3.5" /> Hủy đơn
                           </button>
                         )}
-
                         {user?.role === 'BRAND' && booking.status === 'ACCEPTED' && (
-                          <Link
-                            href={`/bookings/${booking.id}/payment`}
-                            className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm"
-                          >
-                            <DollarSign className="w-4 h-4" />
+                          <Link href={`/bookings/${booking.id}/payment`} className="btn-pin-primary !rounded-full !py-2 !px-4 text-xs">
                             Thanh toán
                           </Link>
                         )}
-
                         {user?.role === 'BRAND' && booking.status === 'DELIVERED' && (
                           <button
                             onClick={async () => {
                               if (!confirm('Xác nhận đã nhận kết quả và hoàn thành booking?')) return;
                               setActionLoading(booking.id);
-                              try {
-                                await bookingsApi.approveDelivery(booking.id);
-                                await fetchBookings(page);
-                              } catch {
-                                alert('Không thể xác nhận. Vui lòng thử lại.');
-                              } finally {
-                                setActionLoading(null);
-                              }
+                              try { await bookingsApi.approveDelivery(booking.id); await fetchBookings(page); }
+                              catch { alert('Không thể xác nhận.'); }
+                              finally { setActionLoading(null); }
                             }}
                             disabled={actionLoading === booking.id}
-                            className="flex items-center gap-2 bg-green-50 hover:bg-green-100 text-green-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm disabled:opacity-50"
+                            className="btn-pin-primary !rounded-full !py-2 !px-4 text-xs"
                           >
-                            <CheckCircle2 className="w-4 h-4" />
-                            Xác nhận hoàn thành
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Xác nhận hoàn thành
                           </button>
                         )}
                       </div>
                     </div>
-                  </div>
+                  </article>
                 ))}
               </div>
 
-              {/* Pagination */}
               {totalPages > 1 && (
-                <div className="mt-8 flex items-center justify-center gap-2">
-                  <button
-                    onClick={() => fetchBookings(page - 1)}
-                    disabled={page === 0}
-                    className="p-2 rounded-lg border border-gray-200 hover:border-blue-400 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
+                <div className="mt-10 flex items-center justify-center gap-3">
+                  <button onClick={() => fetchBookings(page - 1)} disabled={page === 0}
+                    className="grid place-items-center w-10 h-10 rounded-full bg-surface-card text-ink hover:bg-secondary-bg disabled:opacity-40 disabled:cursor-not-allowed">
                     <ChevronLeft className="w-5 h-5" />
                   </button>
-                  <span className="text-gray-700 text-sm">Trang {page + 1} / {totalPages}</span>
-                  <button
-                    onClick={() => fetchBookings(page + 1)}
-                    disabled={page >= totalPages - 1}
-                    className="p-2 rounded-lg border border-gray-200 hover:border-blue-400 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
+                  <span className="text-sm font-bold text-ink">Trang {page + 1} / {totalPages}</span>
+                  <button onClick={() => fetchBookings(page + 1)} disabled={page >= totalPages - 1}
+                    className="grid place-items-center w-10 h-10 rounded-full bg-surface-card text-ink hover:bg-secondary-bg disabled:opacity-40 disabled:cursor-not-allowed">
                     <ChevronRight className="w-5 h-5" />
                   </button>
                 </div>
               )}
             </>
-          ) : (
-            <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-              <p className="text-gray-600 text-lg mb-2">Chưa có đơn đặt nào</p>
-              {user?.role !== 'KOL' && (
-                <>
-                  <p className="text-gray-500 mb-6">Hãy bắt đầu khám phá và đặt KOL</p>
-                  <Link href="/discover" className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors">
-                    Khám phá KOL
-                  </Link>
-                </>
-              )}
-            </div>
           )}
         </div>
-      </div>
+      </main>
 
-      {/* Booking Detail Modal */}
+      {/* Modal — Pinterest modal-card pattern */}
       {selectedBooking && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
-              <h2 className="text-xl font-bold text-gray-900">{selectedBooking.campaignTitle}</h2>
-              <button onClick={() => setSelectedBooking(null)}>
-                <X className="w-6 h-6 text-gray-500" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          {/* 50% opacity scrim per DESIGN.md §Elevation */}
+          <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedBooking(null)} />
+          <div className="relative bg-canvas rounded-[2rem] p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)]">
+            <button
+              onClick={() => setSelectedBooking(null)}
+              className="absolute top-5 right-5 grid place-items-center w-10 h-10 rounded-full bg-surface-card text-ink hover:bg-secondary-bg"
+              aria-label="Đóng"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="font-display font-bold text-ink text-[22px] tracking-tight pr-12 mb-1">{selectedBooking.campaignTitle}</h2>
+            <p className="text-xs text-mute mb-5">#{selectedBooking.id}</p>
+
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-6 ${statusPillStyle(selectedBooking.status)}`} style={selectedBooking.status === 'COMPLETED' ? { background: 'var(--success-deep)', color: 'var(--on-dark)' } : undefined}>
+              {statusIcon(selectedBooking.status)}
+              {statusLabels[selectedBooking.status]}
+            </span>
+
+            <dl className="grid grid-cols-2 gap-5 mb-6">
+              <div>
+                <dt className="text-xs text-mute font-semibold mb-1">Ngân sách</dt>
+                <dd className="text-base font-bold text-ink">{vnd.format(selectedBooking.budget)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-mute font-semibold mb-1">Ngày tạo</dt>
+                <dd className="text-base font-bold text-ink">{new Date(selectedBooking.createdAt).toLocaleDateString('vi-VN')}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-mute font-semibold mb-1">Bắt đầu</dt>
+                <dd className="text-base font-bold text-ink">{new Date(selectedBooking.startDate).toLocaleDateString('vi-VN')}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-mute font-semibold mb-1">Kết thúc</dt>
+                <dd className="text-base font-bold text-ink">{new Date(selectedBooking.endDate).toLocaleDateString('vi-VN')}</dd>
+              </div>
+            </dl>
+
+            <div className="mb-6">
+              <h3 className="text-xs text-mute font-semibold mb-2">Campaign Brief</h3>
+              <p className="text-sm text-body leading-relaxed">{selectedBooking.campaignBrief}</p>
             </div>
 
-            <div className="p-6 space-y-6">
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${getStatusColor(selectedBooking.status)}`}>
-                {getStatusIcon(selectedBooking.status)}
-                {statusLabels[selectedBooking.status]}
+            {selectedBooking.deliverables && (
+              <div className="mb-6">
+                <h3 className="text-xs text-mute font-semibold mb-2">Deliverables</h3>
+                <p className="text-sm text-body whitespace-pre-wrap bg-surface-card p-4 rounded-md">{selectedBooking.deliverables}</p>
               </div>
+            )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Ngân sách</label>
-                  <p className="text-lg font-semibold text-gray-900">
-                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(selectedBooking.budget)}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Ngày tạo</label>
-                  <p className="text-gray-900">{new Date(selectedBooking.createdAt).toLocaleDateString('vi-VN')}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Ngày bắt đầu</label>
-                  <p className="text-gray-900">{new Date(selectedBooking.startDate).toLocaleDateString('vi-VN')}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Ngày kết thúc</label>
-                  <p className="text-gray-900">{new Date(selectedBooking.endDate).toLocaleDateString('vi-VN')}</p>
-                </div>
+            {selectedBooking.rejectReason && (
+              <div className="mb-6 p-4 rounded-md" style={{ background: 'var(--success-pale)', color: 'var(--error)' }}>
+                <p className="text-xs font-bold mb-1">Lý do từ chối</p>
+                <p className="text-sm">{selectedBooking.rejectReason}</p>
               </div>
+            )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-2">Campaign Brief</label>
-                <p className="text-gray-700 leading-relaxed">{selectedBooking.campaignBrief}</p>
-              </div>
-
-              {selectedBooking.deliverables && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-2">Deliverables</label>
-                  <p className="text-gray-700 whitespace-pre-wrap text-sm bg-gray-50 p-3 rounded-lg">{selectedBooking.deliverables}</p>
-                </div>
-              )}
-
-              {selectedBooking.rejectReason && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <p className="text-sm font-medium text-red-800">Lý do từ chối:</p>
-                  <p className="text-sm text-red-700 mt-1">{selectedBooking.rejectReason}</p>
-                </div>
-              )}
-
-              {selectedBooking.cancelReason && (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                  <p className="text-sm font-medium text-orange-800">Lý do hủy:</p>
-                  <p className="text-sm text-orange-700 mt-1">{selectedBooking.cancelReason}</p>
-                </div>
-              )}
-
-              <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
-                <Link
-                  href={`/bookings/${selectedBooking.id}`}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors"
-                >
-                  Xem đầy đủ
-                </Link>
-                <button
-                  onClick={() => setSelectedBooking(null)}
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-6 rounded-lg transition-colors"
-                >
-                  Đóng
-                </button>
-              </div>
+            <div className="flex gap-3 justify-end pt-4 border-t border-hairline-soft">
+              <Link href={`/bookings/${selectedBooking.id}`} className="btn-pin-primary !rounded-full">Xem đầy đủ</Link>
+              <button onClick={() => setSelectedBooking(null)} className="btn-pin-secondary !rounded-full">Đóng</button>
             </div>
           </div>
         </div>

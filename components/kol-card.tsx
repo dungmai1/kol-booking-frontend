@@ -1,14 +1,29 @@
 'use client';
 
-import { Star, Users, DollarSign, MapPin, CheckCircle2 } from 'lucide-react';
+import { Star } from 'lucide-react';
 import Link from 'next/link';
 import type { KolSummaryResponse } from '@/lib/api/types';
 
+/**
+ * Pin-card adaptation for the KOL discovery masonry grid.
+ *
+ * Per DESIGN.md §Components: container is `surface-card` with `rounded-md`
+ * (16px), no internal padding — the photograph IS the card. Metadata sits
+ * over the image (overlay-pill bottom-left for the price tag) or in a
+ * compact attribution row beneath, mirroring Pinterest's pin tiles.
+ *
+ * The masonry parent assigns column flow; tiles preserve their natural
+ * aspect ratio. We pseudo-randomise the aspect (3:4 / 4:5 / 1:1) per id so
+ * the column doesn't tile uniformly — this is the visual signature of the
+ * Pinterest grid.
+ */
 export function KOLCard({ kol }: { kol: KolSummaryResponse }) {
   const formattedFollowers =
     kol.maxFollowerCount >= 1_000_000
       ? `${(kol.maxFollowerCount / 1_000_000).toFixed(1)}M`
-      : `${(kol.maxFollowerCount / 1_000).toFixed(0)}K`;
+      : kol.maxFollowerCount >= 1_000
+        ? `${(kol.maxFollowerCount / 1_000).toFixed(0)}K`
+        : `${kol.maxFollowerCount}`;
 
   const formattedPrice = new Intl.NumberFormat('vi-VN', {
     style: 'currency',
@@ -16,68 +31,55 @@ export function KOLCard({ kol }: { kol: KolSummaryResponse }) {
     maximumFractionDigits: 0,
   }).format(kol.minPrice);
 
+  // Stable mixed aspect ratios drive the masonry rhythm.
+  const ratios = ['aspect-[3/4]', 'aspect-[4/5]', 'aspect-[1/1]', 'aspect-[2/3]'];
+  const ratioClass = ratios[(Number(kol.id) || kol.displayName.length) % ratios.length];
+
   return (
-    <Link href={`/kol/${kol.slug}`}>
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-cyan-300 transition-all cursor-pointer h-full group">
-        {/* Header */}
-        <div className="relative h-48 bg-gradient-to-br from-cyan-400 to-teal-500 overflow-hidden">
-          {kol.avatarUrl ? (
-            <img
-              src={kol.avatarUrl}
-              alt={kol.displayName}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <span className="text-white text-6xl font-bold opacity-50">
-                {kol.displayName[0]}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Body */}
-        <div className="p-5">
-          <div className="mb-4">
-            <h3 className="font-bold text-lg text-slate-900">{kol.displayName}</h3>
-            {(kol.city || kol.country) && (
-              <p className="text-sm text-slate-500 flex items-center gap-1 mt-1">
-                <MapPin className="w-3 h-3" />
-                {[kol.city, kol.country].filter(Boolean).join(', ')}
-              </p>
-            )}
-          </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
-            <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-3 rounded-lg border border-cyan-100">
-              <div className="flex items-center gap-1 text-slate-600 mb-1">
-                <Users className="w-3.5 h-3.5 text-cyan-600" />
-                <span className="text-xs font-medium">Người theo dõi</span>
-              </div>
-              <p className="font-bold text-slate-900">{formattedFollowers}</p>
-            </div>
-            <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-3 rounded-lg border border-teal-100">
-              <div className="flex items-center gap-1 text-slate-600 mb-1">
-                <DollarSign className="w-3.5 h-3.5 text-teal-600" />
-                <span className="text-xs font-medium">Từ</span>
-              </div>
-              <p className="font-bold text-slate-900 text-xs">{formattedPrice}</p>
-            </div>
-          </div>
-
-          {/* Rating */}
-          <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-200">
-            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-            <span className="font-semibold text-slate-900">
-              {kol.avgRating > 0 ? kol.avgRating.toFixed(1) : 'Mới'}
+    <Link
+      href={`/kol/${kol.slug}`}
+      className="pin-card block group"
+      aria-label={kol.displayName}
+    >
+      {/* Image well — full bleed */}
+      <div className={`relative w-full ${ratioClass} bg-secondary-bg overflow-hidden rounded-md`}>
+        {kol.avatarUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={kol.avatarUrl}
+            alt={kol.displayName}
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            loading="lazy"
+          />
+        ) : (
+          <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-secondary-bg to-stone">
+            <span className="font-display font-extrabold text-6xl text-mute">
+              {kol.displayName[0]}
             </span>
-            <span className="text-xs text-slate-600">({kol.reviewCount} đánh giá)</span>
           </div>
+        )}
 
-          <button className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white py-2.5 rounded-lg text-sm font-semibold transition-all shadow-md hover:shadow-lg">
-            Xem hồ sơ
-          </button>
+        {/* Pin overlay pill: anchored bottom-left, the system's signature gesture */}
+        <span className="pin-overlay-pill bottom-3 left-3">
+          Từ {formattedPrice}
+        </span>
+
+      </div>
+
+      {/* Compact attribution strip (sits flush against the image, no padding above) */}
+      <div className="flex items-center justify-between gap-2 px-1 pt-2 pb-3">
+        <div className="min-w-0">
+          <p className="font-bold text-sm text-ink truncate">{kol.displayName}</p>
+          <p className="text-xs text-mute truncate">
+            {formattedFollowers} người theo dõi
+            {kol.city && ` · ${kol.city}`}
+          </p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <Star className="w-3.5 h-3.5 fill-ink text-ink" />
+          <span className="text-xs font-bold text-ink">
+            {kol.avgRating > 0 ? kol.avgRating.toFixed(1) : 'Mới'}
+          </span>
         </div>
       </div>
     </Link>

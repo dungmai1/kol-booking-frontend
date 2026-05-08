@@ -7,6 +7,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ApiError } from '@/lib/api/client';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
+/**
+ * Login — adapts the Pinterest `modal-card` (DESIGN.md §Components):
+ * canvas surface, 32px radius, 32px padding, double-ring focus inputs,
+ * Pinterest-red "Continue", and a soft cream scrim under the modal.
+ */
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
@@ -22,67 +27,68 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const tokens = await login({ email, password });
-      // Redirect based on role
-      if (tokens.role === 'ADMIN') {
-        router.push('/admin');
-      } else if (tokens.role === 'KOL') {
-        router.push('/kol-dashboard/me');
-      } else {
-        router.push('/dashboard');
-      }
+      if (tokens.role === 'ADMIN') router.push('/admin');
+      else if (tokens.role === 'KOL') router.push('/kol-dashboard/me');
+      else router.push('/dashboard');
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError('Đã xảy ra lỗi. Vui lòng thử lại.');
-      }
+      setError(err instanceof ApiError ? err.message : 'Đã xảy ra lỗi. Vui lòng thử lại.');
     } finally {
       setIsLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-teal-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
+    <div className="min-h-screen bg-surface-soft flex items-center justify-center p-4">
+      {/* Decorative pin-board scrim — adds Pinterest atmosphere without an image */}
+      <div className="pointer-events-none absolute inset-0 grid grid-cols-6 gap-2 p-4 opacity-50">
+        {DECOR_TILES.map((t, i) => (
+          <div
+            key={i}
+            className={`rounded-md ${t.ratio}`}
+            style={{ background: t.bg, gridColumn: t.col, gridRow: t.row }}
+          />
+        ))}
+      </div>
+
+      <div className="relative w-full max-w-[440px]">
+        {/* Brand mark */}
+        <div className="text-center mb-6">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">K</span>
-            </div>
-            <span className="font-bold text-2xl bg-gradient-to-r from-cyan-600 to-teal-600 bg-clip-text text-transparent">KOL Hub</span>
+            <span className="grid place-items-center w-10 h-10 rounded-full bg-pin-red text-on-dark font-extrabold text-lg">K</span>
+            <span className="font-display font-extrabold text-2xl text-pin-red tracking-tight">KOL Hub</span>
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900 mt-6">Đăng nhập</h1>
-          <p className="text-gray-600 mt-1">Chào mừng bạn quay trở lại!</p>
         </div>
 
-        {/* Form */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Modal card — 32px radius, 32px padding, soft 16px ambient shadow */}
+        <div className="bg-canvas rounded-[2rem] p-8 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)]">
+          <h1 className="font-display font-bold text-ink text-[22px] tracking-tight">
+            Chào mừng trở lại
+          </h1>
+          <p className="text-mute text-sm mt-1 mb-6">
+            Đăng nhập để tiếp tục đặt KOL cho chiến dịch.
+          </p>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+              <div className="rounded-md px-4 py-3 text-sm font-bold" style={{ background: 'var(--success-pale)', color: 'var(--error)' }}>
                 {error}
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Email
-              </label>
+              <label className="block text-sm font-bold text-ink mb-2">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="your@email.com"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
+                placeholder="ban@email.com"
+                className="pin-input"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Mật khẩu
-              </label>
+              <label className="block text-sm font-bold text-ink mb-2">Mật khẩu</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -90,12 +96,13 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
+                  className="pin-input pr-12"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 grid place-items-center w-9 h-9 rounded-full text-mute hover:text-ink hover:bg-surface-card transition-colors"
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -103,7 +110,7 @@ export default function LoginPage() {
             </div>
 
             <div className="flex justify-end">
-              <Link href="/auth/forgot-password" className="text-sm text-cyan-600 hover:text-cyan-700 font-medium">
+              <Link href="/auth/forgot-password" className="text-sm font-bold text-ink-soft hover:text-pin-red">
                 Quên mật khẩu?
               </Link>
             </div>
@@ -111,17 +118,17 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+              className="btn-pin-primary w-full !py-3 !rounded-full text-base"
             >
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+              {isLoading ? 'Đang đăng nhập…' : 'Tiếp tục'}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
-            Chưa có tài khoản?{' '}
-            <Link href="/auth/register" className="text-cyan-600 hover:text-cyan-700 font-semibold">
-              Đăng ký ngay
+          <div className="mt-6 pt-6 border-t border-hairline-soft text-center">
+            <span className="text-sm text-mute">Chưa có tài khoản? </span>
+            <Link href="/auth/register" className="text-sm font-bold text-ink hover:text-pin-red">
+              Tạo tài khoản
             </Link>
           </div>
         </div>
@@ -129,3 +136,12 @@ export default function LoginPage() {
     </div>
   );
 }
+
+const DECOR_TILES: Array<{ ratio: string; bg: string; col: string; row: string }> = [
+  { ratio: 'aspect-[3/4]', bg: 'linear-gradient(160deg,#f6dccb,#d8a785)', col: '1 / span 1', row: '1 / span 2' },
+  { ratio: 'aspect-square', bg: 'linear-gradient(150deg,#e9d5e6,#b287b3)', col: '1 / span 1', row: '3 / span 1' },
+  { ratio: 'aspect-square', bg: 'linear-gradient(160deg,#d6e3dd,#82a193)', col: '1 / span 1', row: '4 / span 1' },
+  { ratio: 'aspect-[3/4]', bg: 'linear-gradient(150deg,#f1d9c6,#c5825a)', col: '6 / span 1', row: '1 / span 2' },
+  { ratio: 'aspect-square', bg: 'linear-gradient(140deg,#e3dccd,#a59b80)', col: '6 / span 1', row: '3 / span 1' },
+  { ratio: 'aspect-[4/5]', bg: 'linear-gradient(150deg,#dde6df,#a3b9ac)', col: '6 / span 1', row: '4 / span 1' },
+];

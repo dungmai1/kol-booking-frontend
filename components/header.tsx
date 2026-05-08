@@ -7,6 +7,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { notificationsApi } from '@/lib/api/notifications';
 
+/**
+ * Pinterest primary-nav: red wordmark left, centered pill search bar,
+ * right cluster of ghost links + always-red "Đăng ký" CTA.
+ */
 export function Header() {
   const { user, isAuthenticated, logout } = useAuth();
   const router = useRouter();
@@ -15,15 +19,14 @@ export function Header() {
   const [unreadCount, setUnreadCount] = useState(0);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  // Fetch unread notification count
   useEffect(() => {
     if (!isAuthenticated) return;
-    notificationsApi.getUnreadCount()
+    notificationsApi
+      .getUnreadCount()
       .then((res) => setUnreadCount(res.count))
       .catch(() => {});
   }, [isAuthenticated]);
 
-  // Close user menu on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
@@ -41,111 +44,114 @@ export function Header() {
   }
 
   return (
-    <header className="bg-white/95 border-b border-slate-200 sticky top-0 z-50 backdrop-blur-sm shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-9 h-9 bg-gradient-to-br from-cyan-500 via-teal-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-            <span className="text-white font-bold text-lg">K</span>
-          </div>
-          <span className="font-bold text-lg bg-gradient-to-r from-cyan-600 to-teal-600 bg-clip-text text-transparent hidden sm:inline">KOL Hub</span>
+    <header className="bg-canvas border-b border-hairline sticky top-0 z-50">
+      <div className="mx-auto max-w-[1280px] px-4 sm:px-6 h-16 flex items-center gap-4">
+        {/* Brand wordmark — Pinterest red, the only red on chrome aside from the CTA */}
+        <Link href="/" className="flex items-center gap-2 shrink-0">
+          <span
+            className="grid place-items-center w-8 h-8 rounded-full bg-pin-red text-on-dark font-extrabold text-base"
+            aria-hidden
+          >
+            K
+          </span>
+          <span className="font-display font-extrabold text-lg text-pin-red tracking-tight hidden sm:inline">
+            KOL Hub
+          </span>
         </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-1">
-          <Link href="/discover" className="px-3 py-2 rounded-lg text-slate-700 hover:text-cyan-600 hover:bg-cyan-50 font-medium transition-colors">
-            Khám phá KOL
+        {/* Ghost link cluster (visible on desktop) */}
+        <nav className="hidden lg:flex items-center gap-1 shrink-0">
+          <Link href="/discover" className="px-3 py-2 text-ink font-semibold text-[15px] hover:bg-surface-card rounded-full transition-colors">
+            Khám phá
           </Link>
-          <Link href="/kol-profiles" className="px-3 py-2 rounded-lg text-slate-700 hover:text-cyan-600 hover:bg-cyan-50 font-medium transition-colors">
+          <Link href="/kol-profiles" className="px-3 py-2 text-ink font-semibold text-[15px] hover:bg-surface-card rounded-full transition-colors">
             Hồ sơ KOL
-          </Link>
-          {isAuthenticated && (
-            <>
-              <Link href="/bookings" className="px-3 py-2 rounded-lg text-slate-700 hover:text-cyan-600 hover:bg-cyan-50 font-medium transition-colors">
-                Đơn đặt của tôi
-              </Link>
-              <Link href="/dashboard" className="px-3 py-2 rounded-lg text-slate-700 hover:text-cyan-600 hover:bg-cyan-50 font-medium transition-colors">
-                Bảng điều khiển
-              </Link>
-            </>
-          )}
-          <Link href="/pricing" className="px-3 py-2 rounded-lg text-slate-700 hover:text-cyan-600 hover:bg-cyan-50 font-medium transition-colors">
-            Bảng giá
           </Link>
         </nav>
 
-        {/* Right side */}
-        <div className="flex items-center gap-3">
-          <Link href="/discover" className="hidden sm:flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-colors text-slate-600">
-            <Search className="w-4 h-4" />
-            <span className="text-sm hidden sm:inline">Tìm kiếm</span>
+        {/* Centered pill search bar */}
+        <div className="flex-1 max-w-[640px] mx-auto">
+          <div className="relative hidden md:block">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-mute pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm ý tưởng, KOL, chiến dịch…"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const v = (e.target as HTMLInputElement).value.trim();
+                  router.push(v ? `/discover?q=${encodeURIComponent(v)}` : '/discover');
+                }
+              }}
+              className="pin-search h-12"
+              aria-label="Tìm kiếm"
+            />
+          </div>
+          {/* Mobile: search collapses to a circular icon button */}
+          <button
+            onClick={() => router.push('/discover')}
+            className="md:hidden grid place-items-center w-10 h-10 rounded-full bg-surface-card text-ink hover:bg-secondary-bg transition-colors"
+            aria-label="Tìm kiếm"
+          >
+            <Search className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Right cluster */}
+        <div className="flex items-center gap-2 shrink-0">
+          <Link href="/pricing" className="hidden lg:inline-flex px-3 py-2 text-ink font-semibold text-[15px] hover:bg-surface-card rounded-full transition-colors">
+            Bảng giá
           </Link>
 
           {isAuthenticated ? (
             <>
-              {/* KOL Dashboard link */}
-              {user?.role === 'KOL' && (
-                <Link href="/kol-dashboard/me" className="px-3 py-2 rounded-lg text-slate-700 hover:text-cyan-600 hover:bg-cyan-50 font-medium transition-colors hidden sm:inline">
-                  Trang quản lý
-                </Link>
-              )}
+              {/* Bookings + Dashboard quick links */}
+              <Link href="/bookings" className="hidden md:inline-flex px-3 py-2 text-ink font-semibold text-[15px] hover:bg-surface-card rounded-full transition-colors">
+                Đơn đặt
+              </Link>
 
               {/* Notifications */}
-              <Link href="/notifications" className="relative p-2 text-slate-600 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors">
+              <Link
+                href="/notifications"
+                className="relative grid place-items-center w-10 h-10 rounded-full bg-surface-card text-ink hover:bg-secondary-bg transition-colors"
+                aria-label="Thông báo"
+              >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                  <span className="absolute -top-0.5 -right-0.5 grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-pin-red text-on-dark text-[10px] font-bold">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
               </Link>
 
-              {/* User Menu */}
+              {/* Avatar + menu */}
               <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="w-9 h-9 bg-gradient-to-br from-cyan-500 to-teal-600 rounded-full hover:shadow-lg transition-shadow flex items-center justify-center text-white font-bold text-sm"
+                  className="grid place-items-center w-10 h-10 rounded-full bg-ink text-on-dark font-bold text-sm hover:bg-charcoal transition-colors"
                   aria-label="Tài khoản"
                 >
                   {user?.email?.[0]?.toUpperCase() ?? 'U'}
                 </button>
                 {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50">
-                    <div className="px-4 py-3 border-b border-gray-100">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{user?.email}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{user?.role}</p>
+                  <div className="absolute right-0 mt-2 w-60 bg-canvas rounded-[16px] py-2 z-50 border border-hairline shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)]">
+                    <div className="px-4 py-3 border-b border-hairline-soft">
+                      <p className="text-sm font-bold text-ink truncate">{user?.email}</p>
+                      <p className="text-xs text-mute mt-0.5">{user?.role}</p>
                     </div>
-                    <Link
-                      href="/profile"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-50"
-                    >
-                      <User className="w-4 h-4" />
-                      Hồ sơ của tôi
+                    <Link href="/profile" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
+                      <User className="w-4 h-4" /> Hồ sơ
                     </Link>
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-50"
-                    >
-                      <LayoutDashboard className="w-4 h-4" />
-                      Bảng điều khiển
+                    <Link href="/dashboard" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
+                      <LayoutDashboard className="w-4 h-4" /> Bảng điều khiển
                     </Link>
-                    <Link
-                      href="/settings"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-50"
-                    >
-                      <Settings className="w-4 h-4" />
-                      Cài đặt
-                    </Link>
-                    <div className="border-t border-gray-100 mt-1 pt-1">
-                      <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        Đăng xuất
+                    {user?.role === 'KOL' && (
+                      <Link href="/kol-dashboard/me" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
+                        <Settings className="w-4 h-4" /> Trang quản lý KOL
+                      </Link>
+                    )}
+                    <div className="border-t border-hairline-soft mt-1 pt-1">
+                      <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold text-left">
+                        <LogOut className="w-4 h-4" /> Đăng xuất
                       </button>
                     </div>
                   </div>
@@ -153,71 +159,62 @@ export function Header() {
               </div>
             </>
           ) : (
-            <div className="flex items-center gap-2">
-              <Link
-                href="/auth/login"
-                className="px-4 py-2 text-slate-700 hover:text-cyan-600 font-medium transition-colors hidden sm:inline"
-              >
+            <>
+              <Link href="/auth/login" className="hidden sm:inline-flex btn-pin-secondary !rounded-full">
                 Đăng nhập
               </Link>
-              <Link
-                href="/auth/register"
-                className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-md hover:shadow-lg text-sm"
-              >
+              <Link href="/auth/register" className="btn-pin-primary !rounded-full">
                 Đăng ký
               </Link>
-            </div>
+            </>
           )}
 
           {/* Mobile menu toggle */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden text-gray-700"
+            className="lg:hidden grid place-items-center w-10 h-10 rounded-full text-ink hover:bg-surface-card transition-colors"
+            aria-label="Menu"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-gray-200 bg-white">
-          <nav className="flex flex-col gap-1 p-4">
-            <Link href="/discover" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded">
-              Khám phá KOL
+        <div className="lg:hidden border-t border-hairline bg-canvas">
+          <nav className="flex flex-col p-3">
+            <Link href="/discover" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
+              Khám phá
             </Link>
-            <Link href="/kol-profiles" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded">
+            <Link href="/kol-profiles" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
               Hồ sơ KOL
+            </Link>
+            <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
+              Bảng giá
             </Link>
             {isAuthenticated ? (
               <>
-                <Link href="/bookings" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded">
-                  Đơn đặt của tôi
+                <Link href="/bookings" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
+                  Đơn đặt
                 </Link>
-                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded">
+                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
                   Bảng điều khiển
                 </Link>
-                <button
-                  onClick={handleLogout}
-                  className="text-left px-4 py-2 text-red-600 hover:bg-red-50 rounded flex items-center gap-2"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Đăng xuất
+                <button onClick={handleLogout} className="text-left px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card flex items-center gap-2">
+                  <LogOut className="w-4 h-4" /> Đăng xuất
                 </button>
               </>
             ) : (
-              <>
-                <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded">
+              <div className="flex gap-2 mt-2">
+                <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)} className="flex-1 btn-pin-secondary !rounded-full">
                   Đăng nhập
                 </Link>
-                <Link href="/auth/register" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2 text-cyan-600 font-medium hover:bg-cyan-50 rounded">
+                <Link href="/auth/register" onClick={() => setMobileMenuOpen(false)} className="flex-1 btn-pin-primary !rounded-full">
                   Đăng ký
                 </Link>
-              </>
+              </div>
             )}
-            <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded">
-              Bảng giá
-            </Link>
           </nav>
         </div>
       )}
