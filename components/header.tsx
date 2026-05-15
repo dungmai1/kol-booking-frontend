@@ -86,14 +86,16 @@ export function Header() {
               aria-label="Tìm kiếm"
             />
           </div>
-          {/* Mobile: search collapses to a circular icon button */}
-          <button
-            onClick={() => router.push('/discover')}
+          {/* Mobile: search collapses to a circular icon button.
+              Use Link (not router.push) so Next.js prefetches /discover. */}
+          <Link
+            href="/discover"
+            prefetch
             className="md:hidden grid place-items-center w-10 h-10 rounded-full bg-surface-card text-ink hover:bg-secondary-bg transition-colors"
             aria-label="Tìm kiếm"
           >
             <Search className="w-5 h-5" />
-          </button>
+          </Link>
         </div>
 
         {/* Right cluster */}

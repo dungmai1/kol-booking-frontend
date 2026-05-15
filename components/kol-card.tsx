@@ -5,17 +5,16 @@ import Link from 'next/link';
 import type { KolSummaryResponse } from '@/lib/api/types';
 
 /**
- * Pin-card adaptation for the KOL discovery masonry grid.
+ * Pin-card adaptation for the KOL discovery grid.
  *
  * Per DESIGN.md §Components: container is `surface-card` with `rounded-md`
  * (16px), no internal padding — the photograph IS the card. Metadata sits
- * over the image (overlay-pill bottom-left for the price tag) or in a
- * compact attribution row beneath, mirroring Pinterest's pin tiles.
+ * over the image (overlay-pill bottom-left for the price tag) and in a
+ * compact attribution row beneath.
  *
- * The masonry parent assigns column flow; tiles preserve their natural
- * aspect ratio. We pseudo-randomise the aspect (3:4 / 4:5 / 1:1) per id so
- * the column doesn't tile uniformly — this is the visual signature of the
- * Pinterest grid.
+ * Image area is locked to a single 4:5 aspect ratio so every card in the
+ * uniform grid has the same width AND same image height; the info strip
+ * below sits at a fixed line-count, keeping all tiles visually aligned.
  */
 export function KOLCard({ kol }: { kol: KolSummaryResponse }) {
   const formattedFollowers =
@@ -25,24 +24,17 @@ export function KOLCard({ kol }: { kol: KolSummaryResponse }) {
         ? `${(kol.maxFollowerCount / 1_000).toFixed(0)}K`
         : `${kol.maxFollowerCount}`;
 
-  const formattedPrice = new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(kol.minPrice);
-
-  // Stable mixed aspect ratios drive the masonry rhythm.
-  const ratios = ['aspect-[3/4]', 'aspect-[4/5]', 'aspect-[1/1]', 'aspect-[2/3]'];
-  const ratioClass = ratios[(Number(kol.id) || kol.displayName.length) % ratios.length];
+  const priceLabel = 'Liên hệ';
 
   return (
     <Link
       href={`/kol/${kol.slug}`}
-      className="pin-card block group"
+      prefetch={false}
+      className="pin-card group flex flex-col h-full"
       aria-label={kol.displayName}
     >
-      {/* Image well — full bleed */}
-      <div className={`relative w-full ${ratioClass} bg-secondary-bg overflow-hidden rounded-md`}>
+      {/* Image well — fixed 4:5, image scales with object-cover */}
+      <div className="relative w-full aspect-[4/5] bg-secondary-bg overflow-hidden rounded-md">
         {kol.avatarUrl ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
@@ -61,13 +53,13 @@ export function KOLCard({ kol }: { kol: KolSummaryResponse }) {
 
         {/* Pin overlay pill: anchored bottom-left, the system's signature gesture */}
         <span className="pin-overlay-pill bottom-3 left-3">
-          Từ {formattedPrice}
+          {priceLabel}
         </span>
 
       </div>
 
-      {/* Compact attribution strip (sits flush against the image, no padding above) */}
-      <div className="flex items-center justify-between gap-2 px-1 pt-2 pb-3">
+      {/* Compact attribution strip — fixed height, sits flush against the image */}
+      <div className="flex items-center justify-between gap-2 px-1 pt-2 pb-3 mt-auto">
         <div className="min-w-0">
           <p className="font-bold text-sm text-ink truncate">{kol.displayName}</p>
           <p className="text-xs text-mute truncate">

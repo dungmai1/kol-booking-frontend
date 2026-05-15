@@ -220,9 +220,9 @@
   }
   .btn-pin-tertiary:hover { background: var(--surface-card); }
 
-  /* --- pin-card masonry tile (full-bleed image, no internal padding) --- */
+  /* --- pin-card grid tile (uniform size, full-bleed image, no internal padding) --- */
   .pin-card {
-    @apply relative overflow-hidden bg-surface-card rounded-md break-inside-avoid mb-2;
+    @apply relative overflow-hidden bg-surface-card rounded-md;
   }
   .pin-card-lg {
     @apply rounded-[2rem];
@@ -264,14 +264,15 @@
       0 0 0 6px var(--focus-outer);
   }
 
-  /* --- Masonry column flow for pin grid --- */
+  /* --- Uniform grid for pin tiles (fixed columns + gutters, equal-size cards) --- */
   .pin-masonry {
-    column-gap: 0.5rem; /* 8px gutters per DESIGN.md */
-    column-count: 1;
+    display: grid;
+    gap: 0.5rem; /* 8px gutters per DESIGN.md */
+    grid-template-columns: repeat(1, minmax(0, 1fr));
   }
-  @media (min-width: 480px) { .pin-masonry { column-count: 2; } }
-  @media (min-width: 768px) { .pin-masonry { column-count: 3; } }
-  @media (min-width: 1024px) { .pin-masonry { column-count: 4; } }
-  @media (min-width: 1440px) { .pin-masonry { column-count: 5; } }
-  @media (min-width: 1920px) { .pin-masonry { column-count: 6; } }
+  @media (min-width: 480px)  { .pin-masonry { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 768px)  { .pin-masonry { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (min-width: 1024px) { .pin-masonry { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (min-width: 1440px) { .pin-masonry { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+  @media (min-width: 1920px) { .pin-masonry { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 }

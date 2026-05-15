@@ -44,6 +44,7 @@ export default function RootLayout({
       <body
         className="font-sans antialiased"
         style={{ fontFamily: 'var(--font-inter), -apple-system, system-ui, sans-serif' }}
+        suppressHydrationWarning
       >
         <AuthProvider>{children}</AuthProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
