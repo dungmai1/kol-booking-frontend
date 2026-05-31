@@ -1,20 +1,54 @@
 'use client';
 
 import { Header } from '@/components/header';
+import { authApi, brandApi } from '@/lib/api';
 import { Save } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function ProfilePage() {
   const [formData, setFormData] = useState({
-    fullName: 'Nguyễn Văn A',
-    email: 'vana@example.com',
-    phone: '+84 123 456 789',
+    fullName: '',
+    email: '',
+    phone: '',
     country: 'Việt Nam',
-    bio: 'Quản lý thương hiệu tập trung vào các chiến dịch marketing số.',
-    company: 'Công ty Brand Marketing',
-    industry: 'Thương mại điện tử',
+    bio: '',
+    company: '',
+    industry: '',
   });
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const [me, brand] = await Promise.all([
+          authApi.getMe(),
+          brandApi.getMyProfile(),
+        ]);
+        setFormData({
+          fullName: brand.contactName ?? '',
+          email: me.email,
+          phone: brand.contactPhone ?? '',
+          country: 'Việt Nam',
+          bio: '',
+          company: brand.companyName ?? '',
+          industry: brand.industry ?? '',
+        });
+      } catch {
+        // Nếu profile brand chưa tồn tại, chỉ lấy email từ authApi
+        try {
+          const me = await authApi.getMe();
+          setFormData(prev => ({ ...prev, email: me.email }));
+        } catch {
+          // Ignore — người dùng sẽ thấy form trống
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadProfile();
+  }, []);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     const { name, value } = e.target;
@@ -24,7 +58,30 @@ export default function ProfilePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsSaving(true);
-    setTimeout(() => { setIsSaving(false); alert('Cập nhật hồ sơ thành công!'); }, 800);
+    try {
+      await brandApi.updateMyProfile({
+        contactName: formData.fullName || undefined,
+        contactPhone: formData.phone || undefined,
+        companyName: formData.company || undefined,
+        industry: formData.industry || undefined,
+      });
+      alert('Cập nhật hồ sơ thành công!');
+    } catch {
+      alert('Cập nhật thất bại. Vui lòng thử lại.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <>
+        <Header />
+        <main className="min-h-screen bg-surface-soft flex items-center justify-center">
+          <p className="text-mute">Đang tải hồ sơ…</p>
+        </main>
+      </>
+    );
   }
 
   return (
@@ -43,7 +100,7 @@ export default function ProfilePage() {
               <h2 className="font-display font-bold text-ink text-[18px] mb-6">Ảnh đại diện</h2>
               <div className="flex items-center gap-6">
                 <div className="grid place-items-center w-24 h-24 rounded-full bg-ink text-on-dark font-display font-extrabold text-4xl">
-                  NA
+                  {formData.fullName ? formData.fullName.charAt(0).toUpperCase() : formData.email.charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <button type="button" className="btn-pin-primary !rounded-full">Tải ảnh lên</button>
@@ -60,7 +117,7 @@ export default function ProfilePage() {
                   <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} className="pin-input" />
                 </Field>
                 <Field label="Email">
-                  <input type="email" name="email" value={formData.email} onChange={handleChange} className="pin-input" />
+                  <input type="email" name="email" value={formData.email} readOnly className="pin-input opacity-60 cursor-not-allowed" />
                 </Field>
                 <Field label="Số điện thoại">
                   <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="pin-input" />
@@ -86,6 +143,7 @@ export default function ProfilePage() {
                 </Field>
                 <Field label="Ngành nghề">
                   <select name="industry" value={formData.industry} onChange={handleChange} className="pin-input">
+                    <option value="">-- Chọn ngành nghề --</option>
                     <option>Thương mại điện tử</option><option>Thời trang</option><option>Làm đẹp</option>
                     <option>Thực phẩm & Đồ uống</option><option>Công nghệ</option><option>Khác</option>
                   </select>

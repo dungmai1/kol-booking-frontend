@@ -125,6 +125,15 @@ export interface ResetPasswordRequest {
   newPassword: string;
 }
 
+export interface MeResponse {
+  id: number;
+  email: string;
+  role: Role;
+  status: UserStatus;
+  emailVerified: boolean;
+  createdAt: string;
+}
+
 // ─── KOL Profile ──────────────────────────────────────────────────────────────
 
 export interface KolSocialChannelResponse {

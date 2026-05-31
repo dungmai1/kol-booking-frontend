@@ -69,6 +69,10 @@ export const kolApi = {
 
   // ─── Channels ────────────────────────────────────────────────────────────────
 
+  getChannels(): Promise<KolSocialChannelResponse[]> {
+    return api.get('/kols/me/channels');
+  },
+
   addChannel(data: CreateChannelRequest): Promise<KolSocialChannelResponse> {
     return api.post('/kols/me/channels', data);
   },
@@ -79,6 +83,10 @@ export const kolApi = {
 
   // ─── Pricing Packages ────────────────────────────────────────────────────────
 
+  getPackages(): Promise<KolPricingPackageResponse[]> {
+    return api.get('/kols/me/packages');
+  },
+
   addPackage(data: CreatePackageRequest): Promise<KolPricingPackageResponse> {
     return api.post('/kols/me/packages', data);
   },
@@ -88,6 +96,10 @@ export const kolApi = {
   },
 
   // ─── Portfolio ───────────────────────────────────────────────────────────────
+
+  getPortfolio(): Promise<KolPortfolioItemResponse[]> {
+    return api.get('/kols/me/portfolio');
+  },
 
   addPortfolioItem(data: CreatePortfolioItemRequest): Promise<KolPortfolioItemResponse> {
     return api.post('/kols/me/portfolio', data);

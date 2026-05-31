@@ -1,6 +1,7 @@
 import { api, saveTokens, clearTokens } from './client';
 import type {
   AuthTokens,
+  MeResponse,
   RegisterRequest,
   LoginRequest,
   RefreshTokenRequest,
@@ -11,6 +12,10 @@ import type {
 } from './types';
 
 export const authApi = {
+  getMe(): Promise<MeResponse> {
+    return api.get<MeResponse>('/users/me');
+  },
+
   register(data: RegisterRequest): Promise<AuthTokens> {
     return api.post<AuthTokens>('/auth/register', data);
   },
