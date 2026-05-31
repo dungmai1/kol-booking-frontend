@@ -46,9 +46,6 @@ export default function HomePage() {
                     Bắt đầu khám phá
                     <ArrowRight className="w-4 h-4" />
                   </Link>
-                  <Link href="/pricing" className="btn-pin-tertiary !rounded-full !px-6 !py-3 text-sm">
-                    Xem bảng giá →
-                  </Link>
                 </div>
               </div>
 
@@ -413,7 +410,6 @@ function PinterestFooter() {
             <ul className="space-y-2 text-sm text-mute">
               <li><Link href="/discover" className="hover:text-ink">Khám phá</Link></li>
               <li><Link href="/kol-profiles" className="hover:text-ink">Hồ sơ KOL</Link></li>
-              <li><Link href="/pricing" className="hover:text-ink">Bảng giá</Link></li>
               <li><Link href="/reviews" className="hover:text-ink">Đánh giá</Link></li>
             </ul>
           </div>

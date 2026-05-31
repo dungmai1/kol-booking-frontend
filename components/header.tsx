@@ -100,10 +100,6 @@ export function Header() {
 
         {/* Right cluster */}
         <div className="flex items-center gap-2 shrink-0">
-          <Link href="/pricing" className="hidden lg:inline-flex px-3 py-2 text-ink font-semibold text-[15px] hover:bg-surface-card rounded-full transition-colors">
-            Bảng giá
-          </Link>
-
           {isAuthenticated ? (
             <>
               {/* Bookings + Dashboard quick links */}
@@ -191,9 +187,6 @@ export function Header() {
             </Link>
             <Link href="/kol-profiles" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
               Hồ sơ KOL
-            </Link>
-            <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
-              Bảng giá
             </Link>
             {isAuthenticated ? (
               <>
