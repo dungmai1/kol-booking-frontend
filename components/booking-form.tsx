@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X, Calendar, DollarSign, FileText, Loader2 } from 'lucide-react';
 import { bookingsApi } from '@/lib/api/bookings';
 import { ApiError } from '@/lib/api/client';
+import { PLATFORM_FEE_RATE, kolPayout, platformFee } from '@/lib/bookings/status';
 import type { KolPublicResponse, KolSummaryResponse } from '@/lib/api/types';
 
 type KolProp = Pick<KolPublicResponse | KolSummaryResponse, 'id' | 'displayName'> & {
@@ -123,6 +124,25 @@ export function BookingForm({ kol, onClose, onSuccess }: BookingFormProps) {
             <input type="number" value={budget} onChange={(e) => setBudget(e.target.value)} min="1" required placeholder="10000000" className="pin-input" />
             {kol.minPrice && (
               <p className="text-xs text-mute mt-2">Gói thấp nhất: {vnd.format(kol.minPrice)}</p>
+            )}
+            {Number(budget) > 0 && (
+              <div className="mt-3 rounded-2xl border border-hairline-soft bg-surface-card p-4 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-mute">KOL nhận (90%)</span>
+                  <span className="font-bold text-ink">{vnd.format(kolPayout(Number(budget)))}</span>
+                </div>
+                <div className="mt-1.5 flex items-center justify-between">
+                  <span className="text-mute">Phí nền tảng ({Math.round(PLATFORM_FEE_RATE * 100)}%)</span>
+                  <span className="font-bold text-ink">{vnd.format(platformFee(Number(budget)))}</span>
+                </div>
+                <div className="mt-2 pt-2 border-t border-hairline-soft flex items-center justify-between">
+                  <span className="font-bold text-ink">Brand thanh toán</span>
+                  <span className="font-bold text-ink">{vnd.format(Number(budget))}</span>
+                </div>
+                <p className="mt-2 text-[11px] text-mute">
+                  Tiền giữ trong ví đối soát và chỉ giải ngân khi đơn hoàn tất.
+                </p>
+              </div>
             )}
           </section>
 

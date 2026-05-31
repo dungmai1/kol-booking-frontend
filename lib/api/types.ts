@@ -190,6 +190,9 @@ export interface KolSummaryResponse {
   reviewCount: number;
   maxFollowerCount: number;
   minPrice: number;
+  platforms?: Platform[];
+  categories?: CategoryResponse[];
+  isFavorite?: boolean;
 }
 
 export interface UpdateKolProfileRequest {
@@ -240,7 +243,13 @@ export interface KolSearchParams {
   country?: string;
   gender?: Gender;
   minRating?: number;
-  sort?: 'featured' | 'rating' | 'price_asc' | 'price_desc' | 'followers';
+  sort?:
+    | 'featured'
+    | 'rating'
+    | 'price_asc'
+    | 'price_desc'
+    | 'followers'
+    | 'newest';
   page?: number;
   size?: number;
 }
