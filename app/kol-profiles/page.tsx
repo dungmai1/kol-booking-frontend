@@ -151,7 +151,6 @@ export default function KOLProfilesPage() {
                 <thead>
                   <tr className="bg-surface-card">
                     <th className="px-6 py-3 text-left text-[11px] font-bold text-mute uppercase tracking-wider">Hồ sơ</th>
-                    <th className="px-6 py-3 text-left text-[11px] font-bold text-mute uppercase tracking-wider">Địa điểm</th>
                     <th className="px-6 py-3 text-left text-[11px] font-bold text-mute uppercase tracking-wider">Followers</th>
                     <th className="px-6 py-3 text-left text-[11px] font-bold text-mute uppercase tracking-wider">Đánh giá</th>
                     <th className="px-6 py-3 text-left text-[11px] font-bold text-mute uppercase tracking-wider">Từ</th>
@@ -174,7 +173,6 @@ export default function KOLProfilesPage() {
                           <p className="font-bold text-ink text-sm">{kol.displayName}</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-mute">{[kol.city, kol.country].filter(Boolean).join(', ') || '—'}</td>
                       <td className="px-6 py-4 text-sm font-bold text-ink">
                         {kol.maxFollowerCount >= 1_000_000
                           ? `${(kol.maxFollowerCount / 1_000_000).toFixed(1)}M`
@@ -186,7 +184,7 @@ export default function KOLProfilesPage() {
                           <span className="text-sm font-bold text-ink">{kol.avgRating > 0 ? kol.avgRating.toFixed(1) : '—'}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm font-bold text-ink">{vnd.format(kol.minPrice)}</td>
+                      <td className="px-6 py-4 text-sm font-bold text-ink">{kol.minPrice > 0 ? vnd.format(kol.minPrice) : '—'}</td>
                       <td className="px-6 py-4 text-right">
                         <button
                           onClick={() => setSelectedKOL(kol)}
