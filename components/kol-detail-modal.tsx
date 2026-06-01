@@ -7,7 +7,7 @@ import { kolApi } from '@/lib/api/kol';
 import { brandApi } from '@/lib/api/brand';
 import { useAuth } from '@/contexts/AuthContext';
 import type { KolSummaryResponse, KolPublicResponse } from '@/lib/api/types';
-import { BookingForm } from './booking-form';
+import { BookingFormDialog } from './booking-form';
 
 interface KOLDetailModalProps {
   kol: KolSummaryResponse;
@@ -28,7 +28,6 @@ export function KOLDetailModal({ kol, onClose }: KOLDetailModalProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
-  const [showBookingForm, setShowBookingForm] = useState(false);
 
   useEffect(() => {
     kolApi.getPublicProfile(kol.slug)
@@ -158,9 +157,14 @@ export function KOLDetailModal({ kol, onClose }: KOLDetailModalProps) {
 
           <div className="flex flex-col gap-3 pt-5 border-t border-hairline-soft">
             {isAuthenticated && user?.role === 'BRAND' && (
-              <button onClick={() => setShowBookingForm(true)} className="btn-pin-primary !rounded-full w-full !py-3">
-                Đặt ngay
-              </button>
+              <BookingFormDialog
+                kolProfileId={kol.id}
+                kolName={kol.displayName}
+                defaultBudget={minPrice}
+                triggerLabel="Đặt ngay"
+                triggerClassName="btn-pin-primary !rounded-full w-full !py-3"
+                onSuccess={() => onClose()}
+              />
             )}
             <div className="flex gap-3">
               <Link href={`/kol/${kol.slug}`} onClick={onClose} className="btn-pin-secondary !rounded-full flex-1 justify-center">
@@ -173,13 +177,6 @@ export function KOLDetailModal({ kol, onClose }: KOLDetailModalProps) {
         </div>
       </div>
 
-      {showBookingForm && (
-        <BookingForm
-          kol={{ id: kol.id, displayName: kol.displayName, minPrice }}
-          onClose={() => setShowBookingForm(false)}
-          onSuccess={onClose}
-        />
-      )}
     </div>
   );
 }

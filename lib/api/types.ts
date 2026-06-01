@@ -479,6 +479,14 @@ export interface AdminStatsOverview {
   totalBookings: number;
   totalRevenue: number;
   activeBookings: number;
+  previousMonth?: {
+    totalUsers?: number;
+    totalKols?: number;
+    totalBrands?: number;
+    totalBookings?: number;
+    totalRevenue?: number;
+    activeBookings?: number;
+  };
 }
 
 export interface AdminBookingStats {

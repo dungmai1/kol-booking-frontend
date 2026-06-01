@@ -1,176 +1,385 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Calendar, DollarSign, FileText, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Info, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { bookingsApi } from '@/lib/api/bookings';
+import { brandApi } from '@/lib/api/brand';
 import { ApiError } from '@/lib/api/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { PLATFORM_FEE_RATE, kolPayout, platformFee } from '@/lib/bookings/status';
-import type { KolPublicResponse, KolSummaryResponse } from '@/lib/api/types';
 
-type KolProp = Pick<KolPublicResponse | KolSummaryResponse, 'id' | 'displayName'> & {
-  minPrice?: number;
-};
-
-interface BookingFormProps {
-  kol: KolProp;
-  onClose: () => void;
-  onSuccess?: () => void;
+interface BookingFormDialogProps {
+  kolProfileId: number;
+  kolName: string;
+  defaultBudget?: number;
+  triggerLabel?: string;
+  onSuccess?: (bookingId: number) => void;
+  /** Override the default gradient trigger button (e.g. for compact layouts). */
+  triggerClassName?: string;
 }
 
-const vnd = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
+const vnd = new Intl.NumberFormat('vi-VN', {
+  style: 'currency',
+  currency: 'VND',
+  maximumFractionDigits: 0,
+});
 
-/**
- * Booking modal — DESIGN.md `modal-card`: 32px radius, 32px padding,
- * sits on a 50%-opacity scrim with a 16px ambient shadow lifting it.
- * Inputs use the signature double-ring focus.
- */
-export function BookingForm({ kol, onClose, onSuccess }: BookingFormProps) {
-  const [campaignName, setCampaignName] = useState('');
-  const [description, setDescription] = useState('');
-  const [budget, setBudget] = useState(kol.minPrice ? kol.minPrice.toString() : '');
+function formatThousands(digits: string): string {
+  if (!digits) return '';
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function todayISO(): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  const tz = d.getTimezoneOffset() * 60_000;
+  return new Date(d.getTime() - tz).toISOString().split('T')[0];
+}
+
+export function BookingFormDialog({
+  kolProfileId,
+  kolName,
+  defaultBudget,
+  triggerLabel = 'Đặt KOL này',
+  onSuccess,
+  triggerClassName,
+}: BookingFormDialogProps) {
+  const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
+
+  const [open, setOpen] = useState(false);
+  const [checking, setChecking] = useState(false);
+
+  const [campaignTitle, setCampaignTitle] = useState('');
+  const [campaignBrief, setCampaignBrief] = useState('');
+  const [deliverables, setDeliverables] = useState('');
+  const [budgetDigits, setBudgetDigits] = useState(
+    defaultBudget ? String(Math.round(defaultBudget)) : '',
+  );
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [deliverables, setDeliverables] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  const minDate = todayISO();
+  const budget = Number(budgetDigits || '0');
+
+  function resetForm() {
+    setCampaignTitle('');
+    setCampaignBrief('');
+    setDeliverables('');
+    setBudgetDigits(defaultBudget ? String(Math.round(defaultBudget)) : '');
+    setStartDate('');
+    setEndDate('');
+    setError('');
+  }
+
+  async function handleTriggerClick() {
+    if (!isAuthenticated) {
+      router.push('/auth/login');
+      return;
+    }
+    if (user?.role !== 'BRAND') {
+      toast.error('Chỉ tài khoản Brand mới có thể đặt KOL');
+      return;
+    }
+    setChecking(true);
+    try {
+      const profile = await brandApi.getMyProfile();
+      if (profile.status !== 'APPROVED') {
+        toast.error('Vui lòng hoàn thiện hồ sơ Brand trước');
+        return;
+      }
+      resetForm();
+      setOpen(true);
+    } catch (err) {
+      const msg =
+        err instanceof ApiError ? err.message : 'Không thể kiểm tra hồ sơ Brand';
+      toast.error(msg);
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  function validate(): string | null {
+    if (!campaignTitle.trim()) return 'Vui lòng nhập tên chiến dịch';
+    if (campaignTitle.length > 200) return 'Tên chiến dịch tối đa 200 ký tự';
+    if (campaignBrief.trim().length < 50)
+      return 'Mô tả chiến dịch tối thiểu 50 ký tự';
+    if (campaignBrief.length > 2000)
+      return 'Mô tả chiến dịch tối đa 2000 ký tự';
+    if (!deliverables.trim()) return 'Vui lòng nhập yêu cầu sản phẩm';
+    if (!budget || budget <= 0) return 'Vui lòng nhập ngân sách hợp lệ';
+    if (defaultBudget && budget < defaultBudget)
+      return `Ngân sách tối thiểu ${vnd.format(defaultBudget)}`;
+    if (!startDate) return 'Vui lòng chọn ngày bắt đầu';
+    if (!endDate) return 'Vui lòng chọn ngày kết thúc';
+    if (startDate < minDate) return 'Ngày bắt đầu không thể trong quá khứ';
+    if (endDate <= startDate) return 'Ngày kết thúc phải sau ngày bắt đầu';
+    return null;
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    setIsSubmitting(true);
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setSubmitting(true);
     try {
-      await bookingsApi.create({
-        kolProfileId: kol.id,
-        campaignTitle: campaignName,
-        campaignBrief: description,
-        deliverables,
-        budget: parseFloat(budget),
+      const booking = await bookingsApi.create({
+        kolProfileId,
+        campaignTitle: campaignTitle.trim(),
+        campaignBrief: campaignBrief.trim(),
+        deliverables: deliverables.trim(),
+        budget,
         startDate,
         endDate,
       });
-      onSuccess?.();
-      onClose();
-      alert(`Đã gửi yêu cầu đặt lịch với ${kol.displayName} thành công!`);
+      toast.success('Đã gửi yêu cầu đặt KOL');
+      setOpen(false);
+      onSuccess?.(booking.id);
+      router.push(`/bookings/${booking.id}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Không thể tạo booking. Vui lòng thử lại.');
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : 'Không thể gửi yêu cầu, vui lòng thử lại',
+      );
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+    <>
+      <Button
+        type="button"
+        onClick={handleTriggerClick}
+        disabled={checking}
+        className={
+          triggerClassName ??
+          'w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 shadow-md'
+        }
+      >
+        {checking ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+        {triggerLabel}
+      </Button>
 
-      <div className="relative bg-canvas rounded-[2rem] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)]">
-        <div className="sticky top-0 bg-canvas flex items-center justify-between px-8 py-6 border-b border-hairline-soft z-10 rounded-t-[2rem]">
-          <h2 className="font-display font-bold text-ink text-[22px] tracking-tight">
-            Đặt lịch với {kol.displayName}
-          </h2>
-          <button
-            onClick={onClose}
-            className="grid place-items-center w-10 h-10 rounded-full bg-surface-card text-ink hover:bg-secondary-bg"
-            aria-label="Đóng"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+      <Dialog open={open} onOpenChange={(v) => !submitting && setOpen(v)}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Đặt lịch với {kolName}</DialogTitle>
+            <DialogDescription>
+              Điền thông tin chiến dịch để gửi yêu cầu hợp tác đến KOL.
+            </DialogDescription>
+          </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="px-8 py-6 space-y-6">
-          {error && (
-            <div className="rounded-md px-4 py-3 text-sm font-bold" style={{ background: 'var(--success-pale)', color: 'var(--error)' }}>
-              {error}
-            </div>
-          )}
-
-          <section>
-            <h3 className="text-xs font-bold text-mute uppercase tracking-wider mb-4">Thông tin chiến dịch</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-ink mb-2">Tên chiến dịch *</label>
-                <input type="text" value={campaignName} onChange={(e) => setCampaignName(e.target.value)} placeholder="VD: Ra mắt bộ sưu tập mùa hè" required className="pin-input" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-ink mb-2">Mô tả *</label>
-                <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả chiến dịch và kỳ vọng của bạn..." required rows={4} className="pin-input" />
-              </div>
-            </div>
-          </section>
-
-          <section>
-            <h3 className="text-xs font-bold text-mute uppercase tracking-wider mb-4">Thời gian</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-bold text-ink mb-2">
-                  <Calendar className="w-4 h-4 inline mr-1.5" />Bắt đầu *
-                </label>
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required className="pin-input" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-ink mb-2">
-                  <Calendar className="w-4 h-4 inline mr-1.5" />Kết thúc *
-                </label>
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required className="pin-input" />
-              </div>
-            </div>
-          </section>
-
-          <section>
-            <h3 className="text-xs font-bold text-mute uppercase tracking-wider mb-4">Ngân sách</h3>
-            <label className="block text-sm font-bold text-ink mb-2">
-              <DollarSign className="w-4 h-4 inline mr-1.5" />
-              Tổng ngân sách (VND) *
-            </label>
-            <input type="number" value={budget} onChange={(e) => setBudget(e.target.value)} min="1" required placeholder="10000000" className="pin-input" />
-            {kol.minPrice && (
-              <p className="text-xs text-mute mt-2">Gói thấp nhất: {vnd.format(kol.minPrice)}</p>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
-            {Number(budget) > 0 && (
-              <div className="mt-3 rounded-2xl border border-hairline-soft bg-surface-card p-4 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-mute">KOL nhận (90%)</span>
-                  <span className="font-bold text-ink">{vnd.format(kolPayout(Number(budget)))}</span>
-                </div>
-                <div className="mt-1.5 flex items-center justify-between">
-                  <span className="text-mute">Phí nền tảng ({Math.round(PLATFORM_FEE_RATE * 100)}%)</span>
-                  <span className="font-bold text-ink">{vnd.format(platformFee(Number(budget)))}</span>
-                </div>
-                <div className="mt-2 pt-2 border-t border-hairline-soft flex items-center justify-between">
-                  <span className="font-bold text-ink">Brand thanh toán</span>
-                  <span className="font-bold text-ink">{vnd.format(Number(budget))}</span>
-                </div>
-                <p className="mt-2 text-[11px] text-mute">
-                  Tiền giữ trong ví đối soát và chỉ giải ngân khi đơn hoàn tất.
+
+            <div className="space-y-2">
+              <Label htmlFor="bf-title">
+                Tên chiến dịch <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="bf-title"
+                value={campaignTitle}
+                onChange={(e) =>
+                  setCampaignTitle(e.target.value.slice(0, 200))
+                }
+                maxLength={200}
+                placeholder="VD: Ra mắt bộ sưu tập mùa hè 2026"
+                required
+              />
+              <p className="text-xs text-muted-foreground text-right">
+                {campaignTitle.length}/200
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bf-brief">
+                Mô tả chiến dịch <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="bf-brief"
+                value={campaignBrief}
+                onChange={(e) =>
+                  setCampaignBrief(e.target.value.slice(0, 2000))
+                }
+                maxLength={2000}
+                placeholder="Mô tả chi tiết: mục tiêu chiến dịch, tệp khách hàng, thông điệp chính, kỳ vọng… (tối thiểu 50 ký tự)"
+                rows={4}
+                required
+              />
+              <p className="text-xs text-muted-foreground text-right">
+                {campaignBrief.length}/2000 (tối thiểu 50)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bf-deliverables">
+                Yêu cầu sản phẩm <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="bf-deliverables"
+                value={deliverables}
+                onChange={(e) => setDeliverables(e.target.value)}
+                placeholder="VD: 2 video TikTok 30s + 3 stories Instagram, đăng trong tuần đầu tháng 7"
+                rows={3}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="bf-budget">
+                  Ngân sách (VND) <span className="text-destructive">*</span>
+                </Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Thông tin phí dịch vụ"
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Info className="w-3.5 h-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p>Phí dịch vụ 10% sẽ được trừ vào số tiền KOL nhận.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <Input
+                id="bf-budget"
+                type="text"
+                inputMode="numeric"
+                value={formatThousands(budgetDigits)}
+                onChange={(e) =>
+                  setBudgetDigits(e.target.value.replace(/\D/g, ''))
+                }
+                placeholder="VD: 10.000.000"
+                required
+              />
+              {budget > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  ≈ {vnd.format(budget)}
                 </p>
+              )}
+              {defaultBudget ? (
+                <p className="text-xs text-muted-foreground">
+                  Tối thiểu: {vnd.format(defaultBudget)}
+                </p>
+              ) : null}
+
+              {budget > 0 && (
+                <div className="mt-2 rounded-md border bg-muted/40 p-3 text-sm space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      KOL nhận ({Math.round((1 - PLATFORM_FEE_RATE) * 100)}%)
+                    </span>
+                    <span className="font-semibold">
+                      {vnd.format(kolPayout(budget))}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      Phí nền tảng ({Math.round(PLATFORM_FEE_RATE * 100)}%)
+                    </span>
+                    <span className="font-semibold">
+                      {vnd.format(platformFee(budget))}
+                    </span>
+                  </div>
+                  <div className="flex justify-between pt-1.5 border-t">
+                    <span className="font-semibold">Brand thanh toán</span>
+                    <span className="font-bold">{vnd.format(budget)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="bf-start">
+                  Ngày bắt đầu <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="bf-start"
+                  type="date"
+                  value={startDate}
+                  min={minDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  required
+                />
               </div>
-            )}
-          </section>
+              <div className="space-y-2">
+                <Label htmlFor="bf-end">
+                  Ngày kết thúc <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="bf-end"
+                  type="date"
+                  value={endDate}
+                  min={startDate || minDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
 
-          <section>
-            <h3 className="text-xs font-bold text-mute uppercase tracking-wider mb-4">Deliverables</h3>
-            <label className="block text-sm font-bold text-ink mb-2">
-              <FileText className="w-4 h-4 inline mr-1.5" />Mô tả deliverables
-            </label>
-            <textarea
-              value={deliverables}
-              onChange={(e) => setDeliverables(e.target.value)}
-              placeholder='VD: [{"type":"VIDEO","platform":"TIKTOK","quantity":3}]'
-              rows={3}
-              className="pin-input font-mono text-sm"
-            />
-          </section>
-
-          <div className="flex gap-3 pt-4 border-t border-hairline-soft">
-            <button type="button" onClick={onClose} className="btn-pin-secondary !rounded-full flex-1 !py-3">
-              Hủy
-            </button>
-            <button type="submit" disabled={isSubmitting} className="btn-pin-primary !rounded-full flex-1 !py-3">
-              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isSubmitting ? 'Đang gửi…' : 'Gửi yêu cầu'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline" disabled={submitting}>
+                  Hủy
+                </Button>
+              </DialogClose>
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              >
+                {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {submitting ? 'Đang gửi…' : 'Gửi yêu cầu'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
+
+// Backwards-compat alias for existing imports
+export { BookingFormDialog as BookingForm };

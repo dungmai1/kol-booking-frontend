@@ -3,7 +3,6 @@
 import { Header } from '@/components/header';
 import { kolApi } from '@/lib/api/kol';
 import { brandApi } from '@/lib/api/brand';
-import { bookingsApi } from '@/lib/api/bookings';
 import { reviewsApi } from '@/lib/api/reviews';
 import type { KolPublicResponse, ReviewResponse } from '@/lib/api/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,13 +12,11 @@ import {
   MapPin,
   Heart,
   Loader2,
-  DollarSign,
-  Calendar,
   ExternalLink,
-  X,
 } from 'lucide-react';
 import { useState, use, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { BookingFormDialog } from '@/components/booking-form';
 
 const PLATFORM_GLYPH: Record<string, string> = {
   TIKTOK: 'TT',
@@ -46,17 +43,6 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
   const [error, setError] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
-  const [showBookingForm, setShowBookingForm] = useState(false);
-
-  // Booking form state
-  const [campaignTitle, setCampaignTitle] = useState('');
-  const [campaignBrief, setCampaignBrief] = useState('');
-  const [deliverables, setDeliverables] = useState('');
-  const [budget, setBudget] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [bookingLoading, setBookingLoading] = useState(false);
-  const [bookingError, setBookingError] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -88,30 +74,6 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
     } catch { /* ignore */ }
     finally { setFavoriteLoading(false); }
   }, [isAuthenticated, kol, isFavorite]);
-
-  async function handleBookingSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!kol) return;
-    setBookingError('');
-    setBookingLoading(true);
-    try {
-      await bookingsApi.create({
-        kolProfileId: kol.id,
-        campaignTitle,
-        campaignBrief,
-        deliverables,
-        budget: parseFloat(budget),
-        startDate,
-        endDate,
-      });
-      setShowBookingForm(false);
-      alert('Đã gửi yêu cầu đặt lịch thành công!');
-    } catch (err: unknown) {
-      setBookingError(err instanceof Error ? err.message : 'Không thể tạo booking. Vui lòng thử lại.');
-    } finally {
-      setBookingLoading(false);
-    }
-  }
 
   if (isLoading) {
     return (
@@ -229,9 +191,13 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
                   <p className="font-display font-bold text-ink text-[24px] tracking-tight mb-4">{vnd.format(minPrice)}</p>
                 )}
                 {isAuthenticated && user?.role === 'BRAND' && kol.status === 'APPROVED' ? (
-                  <button onClick={() => setShowBookingForm(true)} className="btn-pin-primary !rounded-full w-full !py-3">
-                    Đặt ngay
-                  </button>
+                  <BookingFormDialog
+                    kolProfileId={kol.id}
+                    kolName={kol.displayName}
+                    defaultBudget={minPrice ?? undefined}
+                    triggerLabel="Đặt ngay"
+                    triggerClassName="btn-pin-primary !rounded-full w-full !py-3"
+                  />
                 ) : !isAuthenticated ? (
                   <Link href="/auth/login" className="btn-pin-primary !rounded-full w-full !py-3 justify-center">
                     Đăng nhập để đặt
@@ -351,9 +317,13 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
 
                 {isAuthenticated && user?.role === 'BRAND' ? (
                   kol.status === 'APPROVED' ? (
-                    <button onClick={() => setShowBookingForm(true)} className="btn-pin-primary !rounded-full w-full !py-3">
-                      Đặt ngay
-                    </button>
+                    <BookingFormDialog
+                      kolProfileId={kol.id}
+                      kolName={kol.displayName}
+                      defaultBudget={minPrice ?? undefined}
+                      triggerLabel="Đặt ngay"
+                      triggerClassName="btn-pin-primary !rounded-full w-full !py-3"
+                    />
                   ) : (
                     <p className="text-center text-xs font-bold text-pin-red bg-surface-card rounded-md p-3">
                       KOL chưa được phê duyệt
@@ -373,74 +343,6 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
           </div>
         </section>
       </main>
-
-      {/* Booking modal */}
-      {showBookingForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowBookingForm(false)} />
-          <div className="relative bg-canvas rounded-[2rem] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)]">
-            <div className="sticky top-0 bg-canvas flex items-center justify-between px-8 py-6 border-b border-hairline-soft z-10 rounded-t-[2rem]">
-              <h2 className="font-display font-bold text-ink text-[22px] tracking-tight">Đặt lịch với {kol.displayName}</h2>
-              <button onClick={() => setShowBookingForm(false)} className="grid place-items-center w-10 h-10 rounded-full bg-surface-card text-ink hover:bg-secondary-bg" aria-label="Đóng">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleBookingSubmit} className="px-8 py-6 space-y-5">
-              {bookingError && (
-                <div className="rounded-md px-4 py-3 text-sm font-bold" style={{ background: 'var(--success-pale)', color: 'var(--error)' }}>
-                  {bookingError}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-bold text-ink mb-2">Tên chiến dịch *</label>
-                <input type="text" value={campaignTitle} onChange={(e) => setCampaignTitle(e.target.value)} required placeholder="VD: Ra mắt bộ sưu tập mùa hè" className="pin-input" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-ink mb-2">Campaign Brief *</label>
-                <textarea value={campaignBrief} onChange={(e) => setCampaignBrief(e.target.value)} required rows={4} placeholder="Mô tả chi tiết chiến dịch và kỳ vọng..." className="pin-input" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-ink mb-2">Deliverables</label>
-                <textarea value={deliverables} onChange={(e) => setDeliverables(e.target.value)} rows={3} placeholder='VD: [{"type":"VIDEO","platform":"TIKTOK","quantity":3}]' className="pin-input font-mono text-sm" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-ink mb-2">
-                  <DollarSign className="w-4 h-4 inline mr-1.5" />Ngân sách (VND) *
-                </label>
-                <input type="number" value={budget} onChange={(e) => setBudget(e.target.value)} required min="1" placeholder="10000000" className="pin-input" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-ink mb-2">
-                    <Calendar className="w-4 h-4 inline mr-1.5" />Bắt đầu *
-                  </label>
-                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required className="pin-input" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-ink mb-2">
-                    <Calendar className="w-4 h-4 inline mr-1.5" />Kết thúc *
-                  </label>
-                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required className="pin-input" />
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4 border-t border-hairline-soft">
-                <button type="button" onClick={() => setShowBookingForm(false)} className="btn-pin-secondary !rounded-full flex-1 !py-3">Hủy</button>
-                <button type="submit" disabled={bookingLoading} className="btn-pin-primary !rounded-full flex-1 !py-3">
-                  {bookingLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {bookingLoading ? 'Đang gửi…' : 'Gửi yêu cầu'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </>
   );
 }

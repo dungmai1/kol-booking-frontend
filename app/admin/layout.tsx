@@ -3,12 +3,17 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldCheck, UserCheck, Loader2 } from 'lucide-react';
+import { ShieldCheck, UserCheck, Building2, Loader2, LayoutDashboard, FolderTree, Users } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Header } from '@/components/header';
 import { useAuth } from '@/contexts/AuthContext';
 
-const NAV: Array<{ href: string; label: string }> = [
-  { href: '/admin/kols/review', label: 'Duyệt KOL' },
+const NAV: Array<{ href: string; label: string; icon: LucideIcon; exact?: boolean }> = [
+  { href: '/admin', label: 'Tổng quan', icon: LayoutDashboard, exact: true },
+  { href: '/admin/users', label: 'Người dùng', icon: Users },
+  { href: '/admin/kols/review', label: 'Duyệt KOL', icon: UserCheck },
+  { href: '/admin/brands/review', label: 'Duyệt Brand', icon: Building2 },
+  { href: '/admin/categories', label: 'Danh mục', icon: FolderTree },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -62,7 +67,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           <nav className="flex items-center gap-2 mb-6 border-b border-hairline">
             {NAV.map((item) => {
-              const active = pathname?.startsWith(item.href);
+              const active = item.exact
+                ? pathname === item.href
+                : pathname?.startsWith(item.href);
+              const Icon = item.icon;
               return (
                 <Link
                   key={item.href}
@@ -73,7 +81,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       : 'text-ink hover:text-pin-red'
                   }`}
                 >
-                  <UserCheck className="w-4 h-4" />
+                  <Icon className="w-4 h-4" />
                   {item.label}
                   {active && (
                     <span className="absolute left-0 right-0 -bottom-px h-[3px] bg-pin-red rounded-t-full" />

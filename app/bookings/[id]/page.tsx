@@ -12,21 +12,28 @@ import {
   Loader2,
   MessageSquare,
   Paperclip,
+  PenSquare,
   Receipt,
   RefreshCw,
   Send,
   Sparkles,
+  Star,
+  Upload,
   AlertTriangle,
   XCircle,
 } from 'lucide-react';
 import { Header } from '@/components/header';
 import { BookingStatusPill } from '@/components/booking-status-pill';
 import { BookingTimeline } from '@/components/booking-timeline';
+import { ReviewFormDialog } from '@/components/review-form-dialog';
 import { bookingsApi } from '@/lib/api/bookings';
+import { reviewsApi } from '@/lib/api/reviews';
 import { useAuth } from '@/contexts/AuthContext';
 import type {
   BookingMessageResponse,
   BookingResponse,
+  ReviewDirection,
+  ReviewResponse,
 } from '@/lib/api/types';
 import {
   BOOKING_STATUS_COLORS,
@@ -88,6 +95,21 @@ export default function BookingDetailPage({
   const [tab, setTab] = useState<Tab>('detail');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Deliverable submission modal (KOL only, when status === 'IN_PROGRESS').
+  const [deliverableForm, setDeliverableForm] = useState<{
+    open: boolean;
+    submittedUrl: string;
+    note: string;
+    deliverableId: string;
+    error: string;
+  }>({ open: false, submittedUrl: '', note: '', deliverableId: '0', error: '' });
+
+  // Reviews — populated only when booking is COMPLETED.
+  // myReview = review I authored about the other party.
+  // otherReview = review the other party authored about me.
+  const [myReview, setMyReview] = useState<ReviewResponse | null>(null);
+  const [otherReview, setOtherReview] = useState<ReviewResponse | null>(null);
+
   const fetchBooking = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -114,6 +136,45 @@ export default function BookingDetailPage({
 
   const isBrand = user?.role === 'BRAND';
   const isKol = user?.role === 'KOL';
+
+  // Fetch existing reviews for this booking once it's COMPLETED.
+  // Strategy: reviewsApi.getByUser(userId) returns reviews ABOUT that user.
+  //   1. Fetch reviews about me → filter by bookingId → otherReview (the other side's review of me)
+  //   2. If otherReview exists, we know their userId (otherReview.authorId).
+  //      Fetch reviews about them → filter by bookingId + authorId === me → myReview.
+  useEffect(() => {
+    if (!booking || !user) return;
+    if (booking.status !== 'COMPLETED') {
+      setMyReview(null);
+      setOtherReview(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const aboutMe = await reviewsApi.getByUser(user.userId, 0, 100);
+        const fromOther = aboutMe.content.find((r) => r.bookingId === booking.id) ?? null;
+        if (cancelled) return;
+        setOtherReview(fromOther);
+        if (fromOther) {
+          const aboutOther = await reviewsApi.getByUser(fromOther.authorId, 0, 100);
+          if (cancelled) return;
+          const mine =
+            aboutOther.content.find(
+              (r) => r.bookingId === booking.id && r.authorId === user.userId,
+            ) ?? null;
+          setMyReview(mine);
+        } else {
+          setMyReview(null);
+        }
+      } catch {
+        // Silent — review section just won't render past data.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [booking, user]);
 
   // ─── Actions ────────────────────────────────────────────────────────────────
 
@@ -189,6 +250,58 @@ export default function BookingDetailPage({
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Từ chối thất bại.';
       window.alert(message);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  function openDeliverableForm() {
+    setDeliverableForm({
+      open: true,
+      submittedUrl: '',
+      note: '',
+      deliverableId: '0',
+      error: '',
+    });
+  }
+
+  function closeDeliverableForm() {
+    if (actionLoading === 'submit-deliverable') return;
+    setDeliverableForm((prev) => ({ ...prev, open: false, error: '' }));
+  }
+
+  async function handleSubmitDeliverable() {
+    if (!booking) return;
+    const url = deliverableForm.submittedUrl.trim();
+    const idRaw = deliverableForm.deliverableId.trim();
+    if (!url) {
+      setDeliverableForm((prev) => ({ ...prev, error: 'Vui lòng nhập đường dẫn nội dung.' }));
+      return;
+    }
+    const deliverableId = Number(idRaw);
+    if (!Number.isFinite(deliverableId) || deliverableId < 0) {
+      setDeliverableForm((prev) => ({ ...prev, error: 'Mã deliverable không hợp lệ.' }));
+      return;
+    }
+    setActionLoading('submit-deliverable');
+    setDeliverableForm((prev) => ({ ...prev, error: '' }));
+    try {
+      await bookingsApi.submitDeliverable(booking.id, {
+        deliverableId,
+        submittedUrl: url,
+        note: deliverableForm.note.trim() || undefined,
+      });
+      setDeliverableForm({
+        open: false,
+        submittedUrl: '',
+        note: '',
+        deliverableId: '0',
+        error: '',
+      });
+      await fetchBooking();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Nộp deliverable thất bại.';
+      setDeliverableForm((prev) => ({ ...prev, error: message }));
     } finally {
       setActionLoading(null);
     }
@@ -366,11 +479,163 @@ export default function BookingDetailPage({
             onDispute={handleDispute}
             onAccept={handleAccept}
             onReject={handleReject}
+            onSubmitDeliverable={openDeliverableForm}
+            myReview={myReview}
+            otherReview={otherReview}
+            onReviewSuccess={setMyReview}
           />
         ) : (
           <ChatTab bookingId={booking.id} currentUserId={user?.userId ?? -1} />
         )}
       </main>
+
+      {/* Deliverable submission modal — KOL flow when booking is IN_PROGRESS */}
+      {deliverableForm.open && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-ink/40 backdrop-blur-sm px-4"
+          onClick={closeDeliverableForm}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="submit-deliverable-title"
+        >
+          <div
+            className="pin-card w-full max-w-[520px] p-5 md:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <h2
+                  id="submit-deliverable-title"
+                  className="font-display font-extrabold text-xl text-ink"
+                >
+                  Nộp deliverable
+                </h2>
+                <p className="text-sm text-mute mt-1">
+                  Gửi nội dung đã hoàn thiện để brand kiểm duyệt và thanh toán.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeDeliverableForm}
+                disabled={actionLoading === 'submit-deliverable'}
+                className="grid place-items-center w-8 h-8 rounded-full text-mute hover:text-ink hover:bg-surface-card transition-colors disabled:opacity-40"
+                aria-label="Đóng"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleSubmitDeliverable();
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="text-xs uppercase tracking-wide text-mute font-bold mb-1.5 block">
+                  Đường dẫn nội dung <span className="text-pin-red">*</span>
+                </label>
+                <input
+                  type="url"
+                  required
+                  autoFocus
+                  placeholder="https://..."
+                  value={deliverableForm.submittedUrl}
+                  onChange={(e) =>
+                    setDeliverableForm((prev) => ({
+                      ...prev,
+                      submittedUrl: e.target.value,
+                      error: '',
+                    }))
+                  }
+                  disabled={actionLoading === 'submit-deliverable'}
+                  className="pin-input w-full disabled:opacity-50"
+                />
+                <p className="text-xs text-mute mt-1">
+                  Link bài đăng, video, story hoặc tài liệu Drive/Dropbox.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs uppercase tracking-wide text-mute font-bold mb-1.5 block">
+                  Mã deliverable
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={deliverableForm.deliverableId}
+                  onChange={(e) =>
+                    setDeliverableForm((prev) => ({
+                      ...prev,
+                      deliverableId: e.target.value,
+                      error: '',
+                    }))
+                  }
+                  disabled={actionLoading === 'submit-deliverable'}
+                  className="pin-input w-full disabled:opacity-50"
+                />
+                <p className="text-xs text-mute mt-1">
+                  Để 0 nếu đơn chỉ có một deliverable.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs uppercase tracking-wide text-mute font-bold mb-1.5 block">
+                  Ghi chú (tuỳ chọn)
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Mô tả ngắn về nội dung đã nộp, hoặc lưu ý cho brand..."
+                  value={deliverableForm.note}
+                  onChange={(e) =>
+                    setDeliverableForm((prev) => ({
+                      ...prev,
+                      note: e.target.value,
+                      error: '',
+                    }))
+                  }
+                  disabled={actionLoading === 'submit-deliverable'}
+                  className="pin-input w-full resize-none disabled:opacity-50"
+                />
+              </div>
+
+              {deliverableForm.error && (
+                <p className="text-sm text-pin-red bg-pin-red/10 border border-pin-red/30 rounded-xl px-3 py-2">
+                  {deliverableForm.error}
+                </p>
+              )}
+
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={closeDeliverableForm}
+                  disabled={actionLoading === 'submit-deliverable'}
+                  className="btn-pin-secondary disabled:opacity-50"
+                >
+                  Huỷ
+                </button>
+                <button
+                  type="submit"
+                  disabled={
+                    actionLoading === 'submit-deliverable' ||
+                    !deliverableForm.submittedUrl.trim()
+                  }
+                  className="btn-pin-primary disabled:opacity-50"
+                >
+                  {actionLoading === 'submit-deliverable' ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4" />
+                  )}
+                  Gửi nội dung
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -387,6 +652,10 @@ interface DetailTabProps {
   onDispute: () => void;
   onAccept: () => void;
   onReject: () => void;
+  onSubmitDeliverable: () => void;
+  myReview: ReviewResponse | null;
+  otherReview: ReviewResponse | null;
+  onReviewSuccess: (review: ReviewResponse) => void;
 }
 
 function DetailTab({
@@ -399,6 +668,10 @@ function DetailTab({
   onDispute,
   onAccept,
   onReject,
+  onSubmitDeliverable,
+  myReview,
+  otherReview,
+  onReviewSuccess,
 }: DetailTabProps) {
   const payout = kolPayout(booking.budget);
   const fee = platformFee(booking.budget);
@@ -537,10 +810,37 @@ function DetailTab({
         </button>,
       );
     }
+    if (booking.status === 'IN_PROGRESS') {
+      kolActions.push(
+        <button
+          key="submit-deliverable"
+          type="button"
+          onClick={onSubmitDeliverable}
+          disabled={actionLoading !== null}
+          className="btn-pin-primary disabled:opacity-50"
+        >
+          {actionLoading === 'submit-deliverable' ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Upload className="w-4 h-4" />
+          )}
+          Nộp deliverable
+        </button>,
+      );
+    }
   }
 
   const actions = isBrand ? brandActions : kolActions;
   const branched = isBranchState(booking.status);
+
+  // ─── Review section (only visible when booking is COMPLETED) ───────────────
+  const showReviewSection =
+    booking.status === 'COMPLETED' && (isBrand || isKol);
+  const reviewDirection: ReviewDirection = isBrand ? 'TO_KOL' : 'TO_BRAND';
+  const targetName = isBrand
+    ? `KOL #${booking.kolProfileId}`
+    : `Brand #${booking.brandProfileId}`;
+  const otherSideLabel = isBrand ? 'KOL' : 'Brand';
 
   return (
     <div className="grid lg:grid-cols-[1fr_360px] gap-6">
@@ -571,6 +871,88 @@ function DetailTab({
             </div>
           </div>
         </section>
+
+        {/* Reviews — only when booking is COMPLETED */}
+        {showReviewSection && (
+          <section className="pin-card p-5 md:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Star className="w-5 h-5 text-ink fill-ink" />
+              <h2 className="font-display font-bold text-lg text-ink">Đánh giá</h2>
+            </div>
+
+            {/* My review (or CTA to write one) */}
+            <div className="mb-5">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-mute mb-2">
+                Đánh giá của bạn
+              </h3>
+              {myReview ? (
+                <div className="rounded-2xl border border-hairline bg-canvas p-4">
+                  <ReviewStars rating={myReview.rating} />
+                  <p className="text-body whitespace-pre-wrap leading-relaxed mt-2">
+                    {myReview.comment}
+                  </p>
+                  <div className="mt-3 flex items-center justify-between">
+                    <p className="text-xs text-mute">
+                      {formatDateTime(myReview.updatedAt || myReview.createdAt)}
+                    </p>
+                    <ReviewFormDialog
+                      bookingId={booking.id}
+                      direction={reviewDirection}
+                      targetName={targetName}
+                      existingReview={myReview}
+                      onSuccess={onReviewSuccess}
+                    >
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold bg-surface-card text-ink hover:bg-secondary-bg transition-colors"
+                      >
+                        <PenSquare className="w-3.5 h-3.5" />
+                        Sửa đánh giá
+                      </button>
+                    </ReviewFormDialog>
+                  </div>
+                </div>
+              ) : (
+                <ReviewFormDialog
+                  bookingId={booking.id}
+                  direction={reviewDirection}
+                  targetName={targetName}
+                  onSuccess={onReviewSuccess}
+                >
+                  <button
+                    type="button"
+                    className="btn-pin-primary !rounded-full w-full justify-center"
+                  >
+                    <Star className="w-4 h-4" />
+                    Viết đánh giá cho {targetName}
+                  </button>
+                </ReviewFormDialog>
+              )}
+            </div>
+
+            {/* Other side's review (read-only) */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-mute mb-2">
+                Đánh giá từ {otherSideLabel}
+              </h3>
+              {otherReview ? (
+                <div className="rounded-2xl border border-hairline bg-canvas p-4">
+                  <ReviewStars rating={otherReview.rating} />
+                  <p className="text-body whitespace-pre-wrap leading-relaxed mt-2">
+                    {otherReview.comment}
+                  </p>
+                  <p className="text-xs text-mute mt-3">
+                    {formatDateTime(otherReview.updatedAt || otherReview.createdAt)}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-mute italic">
+                  {otherSideLabel} chưa để lại đánh giá.
+                </p>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Action panel (mobile shows above sidebar) */}
         {actions.length > 0 && (
@@ -640,6 +1022,22 @@ function DetailRow({
         {label}
       </p>
       {children}
+    </div>
+  );
+}
+
+function ReviewStars({ rating }: { rating: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <Star
+          key={i}
+          className={`w-4 h-4 ${i < rating ? 'fill-ink text-ink' : 'text-stone'}`}
+        />
+      ))}
+      <span className="ml-2 text-sm font-bold text-ink tabular-nums">
+        {rating}/5
+      </span>
     </div>
   );
 }

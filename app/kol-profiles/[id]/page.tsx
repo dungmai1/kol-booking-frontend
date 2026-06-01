@@ -12,7 +12,7 @@ import { brandApi } from '@/lib/api/brand';
 import { reviewsApi } from '@/lib/api/reviews';
 import { useAuth } from '@/contexts/AuthContext';
 import type { KolPublicResponse, ReviewResponse } from '@/lib/api/types';
-import { BookingForm } from '@/components/booking-form';
+import { BookingFormDialog } from '@/components/booking-form';
 
 const tabLabels: Record<string, string> = {
   overview: 'Tổng quan',
@@ -30,7 +30,6 @@ export default function KOLProfileDetailPage({ params }: { params: Promise<{ id:
   const [notFound, setNotFound] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
-  const [showBookingForm, setShowBookingForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'portfolio'>('overview');
 
   useEffect(() => {
@@ -343,12 +342,12 @@ export default function KOLProfileDetailPage({ params }: { params: Promise<{ id:
               {/* Actions */}
               <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-3">
                 {isAuthenticated && user?.role === 'BRAND' && (
-                  <button
-                    onClick={() => setShowBookingForm(true)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors"
-                  >
-                    Đặt ngay
-                  </button>
+                  <BookingFormDialog
+                    kolProfileId={profile.id}
+                    kolName={profile.displayName}
+                    defaultBudget={minPrice}
+                    triggerLabel="Đặt ngay"
+                  />
                 )}
                 <button className="w-full border-2 border-gray-200 text-gray-700 hover:bg-gray-50 font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
                   <MessageSquare className="w-5 h-5" />
@@ -360,13 +359,6 @@ export default function KOLProfileDetailPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
-      {showBookingForm && (
-        <BookingForm
-          kol={{ id: profile.id, displayName: profile.displayName, minPrice }}
-          onClose={() => setShowBookingForm(false)}
-          onSuccess={() => setShowBookingForm(false)}
-        />
-      )}
     </>
   );
 }

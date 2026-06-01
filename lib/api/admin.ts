@@ -18,7 +18,15 @@ import type {
 export const adminApi = {
   // ─── Users ───────────────────────────────────────────────────────────────────
 
-  getUsers(params: { q?: string; role?: string; page?: number; size?: number } = {}): Promise<PageResponse<AdminUserResponse>> {
+  getUsers(
+    params: {
+      search?: string;
+      role?: string;
+      status?: string;
+      page?: number;
+      size?: number;
+    } = {},
+  ): Promise<PageResponse<AdminUserResponse>> {
     const q = api.buildQuery(params as Record<string, unknown>);
     return api.get(`/admin/users${q}`);
   },
@@ -88,19 +96,23 @@ export const adminApi = {
 
   // ─── Stats ───────────────────────────────────────────────────────────────────
 
-  getOverview(): Promise<AdminStatsOverview> {
-    return api.get('/admin/stats/overview');
+  getStatsOverview(params: { from?: string; to?: string } = {}): Promise<AdminStatsOverview> {
+    const q = api.buildQuery(params as Record<string, unknown>);
+    return api.get(`/admin/stats/overview${q}`);
   },
 
-  getBookingStats(): Promise<AdminBookingStats[]> {
-    return api.get('/admin/stats/bookings');
+  getBookingStats(params: { from?: string; to?: string } = {}): Promise<AdminBookingStats[]> {
+    const q = api.buildQuery(params as Record<string, unknown>);
+    return api.get(`/admin/stats/bookings${q}`);
   },
 
-  getTopKols(): Promise<AdminTopKol[]> {
-    return api.get('/admin/stats/top-kols');
+  getTopKols(params: { from?: string; to?: string; limit?: number } = {}): Promise<AdminTopKol[]> {
+    const q = api.buildQuery(params as Record<string, unknown>);
+    return api.get(`/admin/stats/top-kols${q}`);
   },
 
-  getRevenueStats(): Promise<AdminRevenueStats[]> {
-    return api.get('/admin/stats/revenue');
+  getRevenueStats(params: { from?: string; to?: string } = {}): Promise<AdminRevenueStats[]> {
+    const q = api.buildQuery(params as Record<string, unknown>);
+    return api.get(`/admin/stats/revenue${q}`);
   },
 };
