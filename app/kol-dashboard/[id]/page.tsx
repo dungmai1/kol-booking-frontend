@@ -149,11 +149,17 @@ export default function KOLDashboardPage() {
               </div>
               <div className="flex gap-2">
                 <Link
-                  href={`/kol/${profile.slug}`}
+                  href="/kol-dashboard/profile"
                   className="bg-white text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
                 >
                   <Edit2 className="w-4 h-4" />
-                  Xem hồ sơ
+                  Chỉnh sửa hồ sơ
+                </Link>
+                <Link
+                  href={`/kol/${profile.slug}`}
+                  className="bg-white/20 text-white hover:bg-white/30 px-4 py-2 rounded-lg font-semibold transition-colors"
+                >
+                  {profile.status === 'APPROVED' ? 'Xem hồ sơ công khai' : 'Xem trước hồ sơ'}
                 </Link>
               </div>
             </div>
@@ -381,12 +387,20 @@ export default function KOLDashboardPage() {
               {/* Settings */}
               {activeTab === 'settings' && (
                 <div className="space-y-4 max-w-lg">
-                  <p className="text-gray-600 text-sm">Để chỉnh sửa hồ sơ, vui lòng truy cập trang hồ sơ của bạn.</p>
+                  <p className="text-gray-600 text-sm">
+                    Cập nhật thông tin, kênh mạng xã hội và bảng giá để hồ sơ sẵn sàng nhận đơn đặt.
+                  </p>
                   <Link
-                    href={`/kol/${profile.slug}`}
+                    href="/kol-dashboard/profile"
                     className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
                   >
-                    Xem & Chỉnh sửa hồ sơ
+                    Chỉnh sửa hồ sơ
+                  </Link>
+                  <Link
+                    href={`/kol/${profile.slug}`}
+                    className="inline-block ml-3 border border-blue-600 text-blue-600 hover:bg-blue-50 px-6 py-2 rounded-lg font-semibold transition-colors"
+                  >
+                    {profile.status === 'APPROVED' ? 'Xem hồ sơ công khai' : 'Xem trước hồ sơ'}
                   </Link>
                   <div className="pt-6 border-t border-gray-200">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">Vùng nguy hiểm</h4>

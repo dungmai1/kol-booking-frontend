@@ -3,6 +3,7 @@
 import { Star } from 'lucide-react';
 import Link from 'next/link';
 import type { KolSummaryResponse } from '@/lib/api/types';
+import { formatMinPrice } from '@/lib/utils';
 
 /**
  * Pin-card adaptation for the KOL discovery grid.
@@ -24,7 +25,7 @@ export function KOLCard({ kol }: { kol: KolSummaryResponse }) {
         ? `${(kol.maxFollowerCount / 1_000).toFixed(0)}K`
         : `${kol.maxFollowerCount}`;
 
-  const priceLabel = 'Liên hệ';
+  const priceLabel = formatMinPrice(kol.minPrice);
 
   return (
     <Link

@@ -8,8 +8,7 @@ import { Search, Loader2, ChevronLeft, ChevronRight, Eye, Star } from 'lucide-re
 import { useState, useEffect, useCallback } from 'react';
 import { KOLDetailModal } from '@/components/kol-detail-modal';
 import { KOLCard } from '@/components/kol-card';
-
-const vnd = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
+import { formatMinPrice } from '@/lib/utils';
 
 export default function KOLProfilesPage() {
   const [kols, setKols] = useState<KolSummaryResponse[]>([]);
@@ -184,7 +183,7 @@ export default function KOLProfilesPage() {
                           <span className="text-sm font-bold text-ink">{kol.avgRating > 0 ? kol.avgRating.toFixed(1) : '—'}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm font-bold text-ink">{kol.minPrice > 0 ? vnd.format(kol.minPrice) : '—'}</td>
+                      <td className="px-6 py-4 text-sm font-bold text-ink">{formatMinPrice(kol.minPrice)}</td>
                       <td className="px-6 py-4 text-right">
                         <button
                           onClick={() => setSelectedKOL(kol)}

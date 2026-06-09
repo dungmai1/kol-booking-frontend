@@ -41,6 +41,7 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
   const [reviews, setReviews] = useState<ReviewResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isOwnerPreview, setIsOwnerPreview] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
 
@@ -48,9 +49,11 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
     async function load() {
       setIsLoading(true);
       setError('');
+      setIsOwnerPreview(false);
       try {
         const profile = await kolApi.getPublicProfile(slug);
         setKol(profile);
+        setIsOwnerPreview(profile.status !== 'APPROVED');
         if (profile.userId) {
           const reviewsRes = await reviewsApi.getByUser(profile.userId, 0, 10);
           setReviews(reviewsRes.content);
@@ -62,7 +65,7 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
       }
     }
     load();
-  }, [slug]);
+  }, [slug, isAuthenticated, user]);
 
   const handleFavorite = useCallback(async () => {
     if (!isAuthenticated || !kol) return;
@@ -107,6 +110,16 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
     <>
       <Header />
       <main className="min-h-screen bg-surface-soft">
+        {isOwnerPreview && (
+          <div className="mx-auto max-w-[1280px] px-4 sm:px-6 pt-6">
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Hồ sơ của bạn chưa được công khai hoặc chưa được phê duyệt.{' '}
+              <Link href="/kol-dashboard/profile" className="font-bold underline hover:text-pin-red">
+                Hoàn thiện hồ sơ tại đây
+              </Link>
+            </div>
+          </div>
+        )}
         {/* Hero — pin-card-large treatment with attribution chip */}
         <section className="mx-auto max-w-[1280px] px-4 sm:px-6 pt-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

@@ -24,6 +24,11 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    if (!email.trim()) return setError('Vui lòng nhập email.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return setError('Email không đúng định dạng.');
+    }
+    if (!password) return setError('Vui lòng nhập mật khẩu.');
     setIsLoading(true);
     try {
       const tokens = await login({ email, password });

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Header } from '@/components/header';
 import { KOLCard } from '@/components/kol-card';
 import { kolApi } from '@/lib/api/kol';
@@ -10,13 +11,41 @@ import { Search, Loader2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 const PLATFORMS: Platform[] = ['TIKTOK', 'INSTAGRAM', 'YOUTUBE', 'FACEBOOK'];
 
+const SORT_VALUES = ['featured', 'rating', 'price_asc', 'price_desc', 'followers'] as const;
+type SortValue = (typeof SORT_VALUES)[number];
+
+function parseSort(param: string | null): SortValue {
+  if (param && (SORT_VALUES as readonly string[]).includes(param)) {
+    return param as SortValue;
+  }
+  return 'featured';
+}
+
+function DiscoverFallback() {
+  return (
+    <>
+      <Header />
+      <main className="min-h-screen bg-surface-soft">
+        <div className="flex items-center justify-center py-32">
+          <Loader2 className="w-10 h-10 text-pin-red animate-spin" />
+        </div>
+      </main>
+    </>
+  );
+}
+
 /**
  * Discover — Pinterest search-results page (DESIGN.md §Layout):
  *   • Compact filter-chip strip at the top (no hero, no big banner)
  *   • Masonry pin grid with 8px gutters and mixed aspect ratios
  *   • Inverted chip = active filter
  */
-export default function DiscoverPage() {
+function DiscoverPageContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const sort = parseSort(searchParams.get('sort'));
+
   const [kols, setKols] = useState<KolSummaryResponse[]>([]);
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,7 +55,6 @@ export default function DiscoverPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | ''>('');
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | ''>('');
   const [minRating, setMinRating] = useState(0);
-  const [sort, setSort] = useState<'featured' | 'rating' | 'price_asc' | 'price_desc' | 'followers'>('featured');
 
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -35,6 +63,20 @@ export default function DiscoverPage() {
   useEffect(() => {
     categoriesApi.getAll().then(setCategories).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    setKols([]);
+    setIsLoading(true);
+    setPage(0);
+  }, [sort]);
+
+  function handleSortChange(next: SortValue) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === 'featured') params.delete('sort');
+    else params.set('sort', next);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
 
   const fetchKols = useCallback(async (currentPage = 0) => {
     setIsLoading(true);
@@ -149,7 +191,7 @@ export default function DiscoverPage() {
               )}
               <select
                 value={sort}
-                onChange={(e) => setSort(e.target.value as typeof sort)}
+                onChange={(e) => handleSortChange(e.target.value as SortValue)}
                 className="bg-surface-card text-ink rounded-full px-4 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-focus-outer cursor-pointer"
               >
                 <option value="featured">Nổi bật</option>
@@ -199,6 +241,14 @@ export default function DiscoverPage() {
         </div>
       </main>
     </>
+  );
+}
+
+export default function DiscoverPage() {
+  return (
+    <Suspense fallback={<DiscoverFallback />}>
+      <DiscoverPageContent />
+    </Suspense>
   );
 }
 

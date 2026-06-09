@@ -91,7 +91,7 @@ export default function HomePage() {
             eyebrow="Cho nhà sáng tạo"
             heading="Để hồ sơ của bạn được đặt trước"
             body="Nhận đơn đặt phù hợp với phong cách sáng tạo của bạn. Quản lý hợp đồng, deliverables và thanh toán an toàn — tất cả trong một bảng điều khiển dành riêng cho KOL."
-            cta={{ href: '/auth/register', label: 'Mở hồ sơ KOL' }}
+            cta={{ href: '/kol-profiles', label: 'Mở hồ sơ KOL' }}
             image="right"
             tilePalette={['#dde6df', '#c8d6cc', '#a3b9ac']}
             pillLabel="Editorial vibe"

@@ -12,7 +12,7 @@ import { notificationsApi } from '@/lib/api/notifications';
  * right cluster of ghost links + always-red "Đăng ký" CTA.
  */
 export function Header() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -100,7 +100,12 @@ export function Header() {
 
         {/* Right cluster */}
         <div className="flex items-center gap-2 shrink-0">
-          {isAuthenticated ? (
+          {isLoading ? (
+            <div className="flex items-center gap-2" aria-hidden>
+              <div className="hidden sm:block w-[88px] h-10 rounded-full bg-surface-card animate-pulse" />
+              <div className="w-10 h-10 rounded-full bg-surface-card animate-pulse" />
+            </div>
+          ) : isAuthenticated ? (
             <>
               {/* Bookings + Dashboard quick links */}
               <Link href="/bookings" className="hidden md:inline-flex px-3 py-2 text-ink font-semibold text-[15px] hover:bg-surface-card rounded-full transition-colors">

@@ -29,6 +29,11 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    if (!email.trim()) return setError('Vui lòng nhập email.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return setError('Email không đúng định dạng.');
+    }
+    if (!password) return setError('Vui lòng nhập mật khẩu.');
     if (password !== confirmPassword) return setError('Mật khẩu xác nhận không khớp.');
     if (password.length < 8) return setError('Mật khẩu phải có ít nhất 8 ký tự.');
     setIsLoading(true);

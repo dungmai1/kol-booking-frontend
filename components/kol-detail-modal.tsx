@@ -8,13 +8,12 @@ import { brandApi } from '@/lib/api/brand';
 import { useAuth } from '@/contexts/AuthContext';
 import type { KolSummaryResponse, KolPublicResponse } from '@/lib/api/types';
 import { BookingFormDialog } from './booking-form';
+import { formatMinPrice } from '@/lib/utils';
 
 interface KOLDetailModalProps {
   kol: KolSummaryResponse;
   onClose: () => void;
 }
-
-const vnd = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
 
 function formatFollowers(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -47,9 +46,10 @@ export function KOLDetailModal({ kol, onClose }: KOLDetailModalProps) {
     finally { setFavoriteLoading(false); }
   }
 
-  const minPrice = profile?.pricingPackages.length
+  const rawMinPrice = profile?.pricingPackages.length
     ? Math.min(...profile.pricingPackages.map((p) => p.price))
     : kol.minPrice;
+  const minPriceLabel = formatMinPrice(rawMinPrice);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" role="dialog" aria-modal="true">
@@ -118,7 +118,7 @@ export function KOLDetailModal({ kol, onClose }: KOLDetailModalProps) {
               <p className="text-[11px] text-mute font-bold uppercase tracking-wider mt-1">Followers</p>
             </div>
             <div className="bg-surface-card rounded-md px-3 py-3 text-center">
-              <p className="font-display font-bold text-ink text-[18px]">{vnd.format(minPrice)}</p>
+              <p className="font-display font-bold text-ink text-[18px]">{minPriceLabel}</p>
               <p className="text-[11px] text-mute font-bold uppercase tracking-wider mt-1">Từ</p>
             </div>
             <div className="bg-surface-card rounded-md px-3 py-3 text-center">
@@ -160,7 +160,7 @@ export function KOLDetailModal({ kol, onClose }: KOLDetailModalProps) {
               <BookingFormDialog
                 kolProfileId={kol.id}
                 kolName={kol.displayName}
-                defaultBudget={minPrice}
+                defaultBudget={rawMinPrice > 0 ? rawMinPrice : undefined}
                 triggerLabel="Đặt ngay"
                 triggerClassName="btn-pin-primary !rounded-full w-full !py-3"
                 onSuccess={() => onClose()}
