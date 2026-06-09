@@ -64,6 +64,11 @@ function DiscoverPageContent() {
     categoriesApi.getAll().then(setCategories).catch(() => {});
   }, []);
 
+  // Pull ?q= from URL when navigating here (e.g. header search bar)
+  useEffect(() => {
+    setSearchQuery(searchParams.get('q') ?? '');
+  }, [searchParams]);
+
   useEffect(() => {
     setKols([]);
     setIsLoading(true);
@@ -114,6 +119,15 @@ function DiscoverPageContent() {
     setSelectedCategoryId('');
     setSelectedPlatform('');
     setMinRating(0);
+  }
+
+  function resetAll() {
+    clearFilters();
+    setSearchQuery('');
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('q');
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
   return (
@@ -221,7 +235,7 @@ function DiscoverPageContent() {
             <div className="bg-canvas rounded-md border border-hairline p-12 text-center">
               <p className="text-ink text-lg font-bold mb-2">Không tìm thấy KOL phù hợp</p>
               <p className="text-mute mb-6">Thử bỏ bớt bộ lọc hoặc đổi từ khóa tìm kiếm</p>
-              <button onClick={() => { clearFilters(); setSearchQuery(''); }} className="btn-pin-primary !rounded-full">
+              <button onClick={resetAll} className="btn-pin-primary !rounded-full">
                 Đặt lại tất cả
               </button>
             </div>

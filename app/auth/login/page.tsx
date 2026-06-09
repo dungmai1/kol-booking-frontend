@@ -43,7 +43,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-soft flex items-center justify-center p-4">
+    <div className="relative min-h-screen bg-surface-soft flex items-center justify-center p-4">
       {/* Decorative pin-board scrim — adds Pinterest atmosphere without an image */}
       <div className="pointer-events-none absolute inset-0 grid grid-cols-6 gap-2 p-4 opacity-50">
         {DECOR_TILES.map((t, i) => (

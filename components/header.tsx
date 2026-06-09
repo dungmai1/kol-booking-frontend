@@ -14,10 +14,16 @@ import { notificationsApi } from '@/lib/api/notifications';
 export function Header() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Defer auth-dependent UI until after mount to avoid SSR/client hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -100,7 +106,7 @@ export function Header() {
 
         {/* Right cluster */}
         <div className="flex items-center gap-2 shrink-0">
-          {isLoading ? (
+          {!mounted || isLoading ? (
             <div className="flex items-center gap-2" aria-hidden>
               <div className="hidden sm:block w-[88px] h-10 rounded-full bg-surface-card animate-pulse" />
               <div className="w-10 h-10 rounded-full bg-surface-card animate-pulse" />
@@ -193,7 +199,7 @@ export function Header() {
             <Link href="/kol-profiles" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
               Hồ sơ KOL
             </Link>
-            {isAuthenticated ? (
+            {!mounted || isLoading ? null : isAuthenticated ? (
               <>
                 <Link href="/bookings" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
                   Đơn đặt
