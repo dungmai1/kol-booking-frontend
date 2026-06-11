@@ -332,6 +332,10 @@ export default function AdminUsersPage() {
                 {items.map((u) => {
                   const isRowPending = pendingId === u.id;
                   const isSelf = currentUser?.userId === u.id;
+                  // Self can't be PENDING — the current session proves the email is verified.
+                  // Defensively map self-row to ACTIVE even if the backend response is stale.
+                  const displayStatus: UserStatus =
+                    isSelf && u.status === 'PENDING_VERIFICATION' ? 'ACTIVE' : u.status;
                   return (
                     <tr
                       key={u.id}
@@ -346,8 +350,8 @@ export default function AdminUsersPage() {
                             {u.email}
                           </span>
                           {isSelf && (
-                            <span className="text-[10px] font-bold uppercase tracking-wide text-mute bg-surface-card border border-hairline rounded-full px-2 py-0.5">
-                              bạn
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-pin-red bg-pin-red/10 border border-pin-red/30 rounded-full px-2 py-0.5">
+                              BẠN
                             </span>
                           )}
                         </div>
@@ -361,9 +365,9 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-4 py-3 align-middle">
                         <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_PILL[u.status]}`}
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_PILL[displayStatus]}`}
                         >
-                          {STATUS_LABEL[u.status]}
+                          {STATUS_LABEL[displayStatus]}
                         </span>
                       </td>
                       <td className="px-4 py-3 align-middle text-mute text-xs whitespace-nowrap">
@@ -371,49 +375,52 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-4 py-3 align-middle">
                         <div className="flex items-center justify-end gap-2">
-                          {u.status === 'ACTIVE' && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setConfirmTarget({ user: u, action: 'ban' })
-                              }
-                              disabled={isRowPending || isSelf}
-                              title={
-                                isSelf
-                                  ? 'Bạn không thể tự cấm tài khoản của mình'
-                                  : undefined
-                              }
-                              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold bg-pin-red text-on-dark hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                              {isRowPending ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <Ban className="w-3.5 h-3.5" />
-                              )}
-                              Cấm
-                            </button>
-                          )}
-                          {u.status === 'BANNED' && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setConfirmTarget({ user: u, action: 'unban' })
-                              }
-                              disabled={isRowPending}
-                              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                              {isRowPending ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <ShieldCheck className="w-3.5 h-3.5" />
-                              )}
-                              Mở khóa
-                            </button>
-                          )}
-                          {u.status === 'PENDING_VERIFICATION' && (
+                          {isSelf ? (
                             <span className="text-xs text-mute italic">
-                              Chờ người dùng xác minh
+                              Tài khoản hiện tại
                             </span>
+                          ) : (
+                            <>
+                              {u.status === 'ACTIVE' && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setConfirmTarget({ user: u, action: 'ban' })
+                                  }
+                                  disabled={isRowPending}
+                                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold bg-pin-red text-on-dark hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  {isRowPending ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <Ban className="w-3.5 h-3.5" />
+                                  )}
+                                  Cấm
+                                </button>
+                              )}
+                              {u.status === 'BANNED' && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setConfirmTarget({ user: u, action: 'unban' })
+                                  }
+                                  disabled={isRowPending}
+                                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  {isRowPending ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <ShieldCheck className="w-3.5 h-3.5" />
+                                  )}
+                                  Mở khóa
+                                </button>
+                              )}
+                              {u.status === 'PENDING_VERIFICATION' && (
+                                <span className="text-xs text-mute italic">
+                                  Chờ người dùng xác minh
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
                       </td>

@@ -203,14 +203,28 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
                 {minPrice !== null && (
                   <p className="font-display font-bold text-ink text-[24px] tracking-tight mb-4">{vnd.format(minPrice)}</p>
                 )}
-                {isAuthenticated && user?.role === 'BRAND' && kol.status === 'APPROVED' ? (
-                  <BookingFormDialog
-                    kolProfileId={kol.id}
-                    kolName={kol.displayName}
-                    defaultBudget={minPrice ?? undefined}
-                    triggerLabel="Đặt ngay"
-                    triggerClassName="btn-pin-primary !rounded-full w-full !py-3"
-                  />
+                {isAuthenticated && user?.role === 'BRAND' ? (
+                  kol.status === 'APPROVED' ? (
+                    <BookingFormDialog
+                      kolProfileId={kol.id}
+                      kolName={kol.displayName}
+                      defaultBudget={minPrice ?? undefined}
+                      triggerLabel="Đặt ngay"
+                      triggerClassName="btn-pin-primary !rounded-full w-full !py-3"
+                    />
+                  ) : (
+                    <p className="text-center text-xs font-bold text-pin-red bg-surface-card rounded-md p-3">
+                      KOL chưa được phê duyệt
+                    </p>
+                  )
+                ) : isAuthenticated && user?.role === 'KOL' && user?.userId === kol.userId ? (
+                  <Link href="/kol-dashboard/profile" className="btn-pin-secondary !rounded-full w-full !py-3 justify-center">
+                    Chỉnh sửa bảng giá
+                  </Link>
+                ) : isAuthenticated && user?.role === 'KOL' ? (
+                  <p className="text-center text-xs text-mute bg-surface-card rounded-md p-3">
+                    Chỉ tài khoản Brand mới có thể đặt lịch
+                  </p>
                 ) : !isAuthenticated ? (
                   <Link href="/auth/login" className="btn-pin-primary !rounded-full w-full !py-3 justify-center">
                     Đăng nhập để đặt
@@ -342,6 +356,14 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
                       KOL chưa được phê duyệt
                     </p>
                   )
+                ) : isAuthenticated && user?.role === 'KOL' && user?.userId === kol.userId ? (
+                  <Link href="/kol-dashboard/profile" className="btn-pin-secondary !rounded-full w-full !py-3 justify-center">
+                    Chỉnh sửa bảng giá
+                  </Link>
+                ) : isAuthenticated && user?.role === 'KOL' ? (
+                  <p className="text-center text-xs text-mute bg-surface-card rounded-md p-3">
+                    Chỉ tài khoản Brand mới có thể đặt lịch
+                  </p>
                 ) : !isAuthenticated ? (
                   <Link href="/auth/login" className="btn-pin-primary !rounded-full w-full !py-3 justify-center">
                     Đăng nhập để đặt

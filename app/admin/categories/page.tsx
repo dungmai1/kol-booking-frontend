@@ -217,12 +217,26 @@ export default function AdminCategoriesPage() {
     }
   }
 
-  const dialogTitle =
-    dialog?.kind === 'edit'
-      ? 'Sửa danh mục'
-      : dialog?.parent
-        ? `Thêm danh mục con của "${dialog.parent.name}"`
-        : 'Thêm danh mục gốc';
+  // Stable title/kind that retain their last value during the dialog's close
+  // animation. Why: when `dialog` flips to null, deriving the title inline
+  // falls through to "Thêm danh mục gốc", which read as "auto-opening the
+  // root-create dialog" in QA right after an edit.
+  const [stableDialogTitle, setStableDialogTitle] = useState('Thêm danh mục gốc');
+  const [stableDialogKind, setStableDialogKind] = useState<'create' | 'edit'>(
+    'create',
+  );
+  useEffect(() => {
+    if (!dialog) return;
+    setStableDialogKind(dialog.kind);
+    if (dialog.kind === 'edit') {
+      setStableDialogTitle('Sửa danh mục');
+    } else if (dialog.parent) {
+      setStableDialogTitle(`Thêm danh mục con của "${dialog.parent.name}"`);
+    } else {
+      setStableDialogTitle('Thêm danh mục gốc');
+    }
+  }, [dialog]);
+  const dialogTitle = stableDialogTitle;
 
   return (
     <>
@@ -314,7 +328,7 @@ export default function AdminCategoriesPage() {
           <DialogHeader>
             <DialogTitle>{dialogTitle}</DialogTitle>
             <DialogDescription>
-              {dialog?.kind === 'edit'
+              {stableDialogKind === 'edit'
                 ? 'Cập nhật tên hiển thị và slug. Slug được dùng trong URL công khai.'
                 : 'Slug được tự động tạo từ tên — bạn vẫn có thể chỉnh sửa.'}
             </DialogDescription>
@@ -390,7 +404,7 @@ export default function AdminCategoriesPage() {
               className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold bg-pin-red text-on-dark hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {dialog?.kind === 'edit' ? 'Lưu thay đổi' : 'Tạo danh mục'}
+              {stableDialogKind === 'edit' ? 'Lưu thay đổi' : 'Tạo danh mục'}
             </button>
           </DialogFooter>
         </DialogContent>
@@ -473,23 +487,23 @@ function CategoryNode({
         className="flex items-center gap-2 px-4 py-2.5 hover:bg-surface-card/40 transition-colors"
         style={{ paddingLeft: `${16 + depth * 24}px` }}
       >
-        <button
-          type="button"
-          onClick={() => hasChildren && onToggle(node.id)}
-          className={`grid place-items-center w-6 h-6 rounded ${
-            hasChildren
-              ? 'text-ink hover:bg-secondary-bg cursor-pointer'
-              : 'text-transparent cursor-default'
-          }`}
-          aria-label={isOpen ? 'Thu gọn' : 'Mở rộng'}
-          tabIndex={hasChildren ? 0 : -1}
-        >
-          {hasChildren && isOpen ? (
-            <ChevronDown className="w-4 h-4" />
-          ) : (
-            <ChevronRight className="w-4 h-4" />
-          )}
-        </button>
+        {hasChildren ? (
+          <button
+            type="button"
+            onClick={() => onToggle(node.id)}
+            className="grid place-items-center w-6 h-6 rounded text-ink hover:bg-secondary-bg cursor-pointer"
+            aria-label={isOpen ? 'Thu gọn' : 'Mở rộng'}
+            aria-expanded={isOpen}
+          >
+            {isOpen ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronRight className="w-4 h-4" />
+            )}
+          </button>
+        ) : (
+          <span className="w-6 h-6 shrink-0" aria-hidden />
+        )}
 
         <FolderTree className="w-4 h-4 text-mute shrink-0" />
 

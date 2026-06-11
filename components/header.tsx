@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Menu, X, Search, LogOut, User, LayoutDashboard, Settings, Bell } from 'lucide-react';
+import { Menu, X, Search, LogOut, User, LayoutDashboard, Settings } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { notificationsApi } from '@/lib/api/notifications';
+import { NotificationBell } from '@/components/notification-bell';
 
 /**
  * Pinterest primary-nav: red wordmark left, centered pill search bar,
@@ -17,21 +17,12 @@ export function Header() {
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Defer auth-dependent UI until after mount to avoid SSR/client hydration mismatch
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    notificationsApi
-      .getUnreadCount()
-      .then((res) => setUnreadCount(res.count))
-      .catch(() => {});
-  }, [isAuthenticated]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -119,18 +110,7 @@ export function Header() {
               </Link>
 
               {/* Notifications */}
-              <Link
-                href="/notifications"
-                className="relative grid place-items-center w-10 h-10 rounded-full bg-surface-card text-ink hover:bg-secondary-bg transition-colors"
-                aria-label="Thông báo"
-              >
-                <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-pin-red text-on-dark text-[10px] font-bold">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </Link>
+              <NotificationBell />
 
               {/* Avatar + menu */}
               <div className="relative" ref={userMenuRef}>

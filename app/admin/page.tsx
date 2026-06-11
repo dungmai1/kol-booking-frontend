@@ -109,15 +109,17 @@ const fmtMonthLabel = (raw: string) => {
   return `T${Number(parts[1])}/${parts[0].slice(-2)}`;
 };
 
-const toIsoDate = (d: Date) => {
+// Backend expects ISO 8601 Instant (e.g. "2026-06-10T00:00:00Z"), not date-only.
+const toIsoDateTime = (d: Date, endOfDay = false): string => {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  const time = endOfDay ? 'T23:59:59.999Z' : 'T00:00:00.000Z';
+  return `${y}-${m}-${day}${time}`;
 };
 
 const fmtDateLabel = (iso: string) => {
-  const [y, m, d] = iso.split('-');
+  const [y, m, d] = iso.slice(0, 10).split('-');
   return `${d}/${m}/${y}`;
 };
 
@@ -132,7 +134,7 @@ function computePresetRange(preset: Exclude<Preset, 'custom'>): {
   if (preset === '30d') from.setDate(to.getDate() - 30);
   else if (preset === '90d') from.setDate(to.getDate() - 90);
   else if (preset === '1y') from.setFullYear(to.getFullYear() - 1);
-  return { from: toIsoDate(from), to: toIsoDate(to) };
+  return { from: toIsoDateTime(from), to: toIsoDateTime(to, true) };
 }
 
 function deltaInfo(curr: number, prev?: number) {
@@ -158,8 +160,8 @@ export default function AdminDashboardPage() {
   const range = useMemo<{ from?: string; to?: string }>(() => {
     if (preset === 'custom') {
       return {
-        from: customRange?.from ? toIsoDate(customRange.from) : undefined,
-        to: customRange?.to ? toIsoDate(customRange.to) : undefined,
+        from: customRange?.from ? toIsoDateTime(customRange.from) : undefined,
+        to: customRange?.to ? toIsoDateTime(customRange.to, true) : undefined,
       };
     }
     return computePresetRange(preset);
@@ -358,7 +360,7 @@ export default function AdminDashboardPage() {
               >
                 <CalendarRange className="w-4 h-4" />
                 {preset === 'custom' && customRange?.from && customRange?.to
-                  ? `${fmtDateLabel(toIsoDate(customRange.from))} → ${fmtDateLabel(toIsoDate(customRange.to))}`
+                  ? `${fmtDateLabel(toIsoDateTime(customRange.from))} → ${fmtDateLabel(toIsoDateTime(customRange.to, true))}`
                   : 'Tùy chọn'}
               </button>
             </PopoverTrigger>
@@ -624,24 +626,27 @@ export default function AdminDashboardPage() {
                     {topKols.slice(0, 10).map((kol, idx) => {
                       const rank = idx + 1;
                       const avatarUrl = (kol as AdminTopKol & { avatarUrl?: string | null }).avatarUrl ?? null;
+                      const trimmedName = kol.displayName?.trim() ?? '';
+                      const avatarInitials = trimmedName.slice(0, 2).toUpperCase();
+                      const hasId = typeof kol.id === 'number' && kol.id > 0;
                       return (
-                        <TableRow key={kol.id} className="border-hairline">
+                        <TableRow key={kol.id ?? `idx-${idx}`} className="border-hairline">
                           <TableCell>
                             <RankBadge rank={rank} />
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <Avatar className="w-9 h-9 ring-1 ring-hairline">
-                                {avatarUrl && <AvatarImage src={avatarUrl} alt={kol.displayName} />}
+                                {avatarUrl && <AvatarImage src={avatarUrl} alt={trimmedName || 'KOL'} />}
                                 <AvatarFallback className="bg-surface-soft text-ink text-xs font-bold">
-                                  {kol.displayName?.slice(0, 2).toUpperCase() ?? 'K'}
+                                  {avatarInitials || '—'}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="min-w-0">
                                 <div className="text-ink font-semibold text-sm truncate">
-                                  {kol.displayName}
+                                  {trimmedName || <span className="text-mute italic">Chưa có tên</span>}
                                 </div>
-                                <div className="text-mute text-xs">ID #{kol.id}</div>
+                                {hasId && <div className="text-mute text-xs">ID #{kol.id}</div>}
                               </div>
                             </div>
                           </TableCell>

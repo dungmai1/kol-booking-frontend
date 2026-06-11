@@ -75,7 +75,12 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="rounded-md px-4 py-3 text-sm font-bold" style={{ background: 'var(--success-pale)', color: 'var(--error)' }}>
+              <div
+                role="alert"
+                aria-live="polite"
+                className="rounded-md px-4 py-3 text-sm font-bold"
+                style={{ background: '#FEE2E2', color: 'var(--error)', border: '1px solid #FCA5A5' }}
+              >
                 {error}
               </div>
             )}

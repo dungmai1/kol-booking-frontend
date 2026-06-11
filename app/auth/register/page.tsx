@@ -39,7 +39,7 @@ export default function RegisterPage() {
     setIsLoading(true);
     try {
       await register({ email, password, role });
-      router.push(role === 'KOL' ? '/kol-dashboard/me' : '/dashboard');
+      router.push('/auth/check-email');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Đã xảy ra lỗi. Vui lòng thử lại.');
     } finally {

@@ -72,6 +72,13 @@ export default function AdminBrandReviewPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [reasonError, setReasonError] = useState<string | null>(null);
 
+  // Retain the last target's name during the dialog's close animation so the
+  // body content does not blank out mid-fade (QA reads that as a flicker).
+  const [stableRejectName, setStableRejectName] = useState<string>('');
+  useEffect(() => {
+    if (rejectTarget) setStableRejectName(rejectTarget.companyName);
+  }, [rejectTarget]);
+
   const fetchList = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -463,12 +470,8 @@ export default function AdminBrandReviewPage() {
           <DialogHeader>
             <DialogTitle>Từ chối Brand</DialogTitle>
             <DialogDescription>
-              {rejectTarget && (
-                <>
-                  Hồ sơ <span className="font-bold text-ink">{rejectTarget.companyName}</span>{' '}
-                  sẽ được đánh dấu là từ chối. Brand sẽ nhận thông báo cùng lý do.
-                </>
-              )}
+              Hồ sơ <span className="font-bold text-ink">{stableRejectName}</span>{' '}
+              sẽ được đánh dấu là từ chối. Brand sẽ nhận thông báo cùng lý do.
             </DialogDescription>
           </DialogHeader>
 
