@@ -1,12 +1,55 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { Mail, ArrowRight } from 'lucide-react';
+import { Mail, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { authApi } from '@/lib/api/auth';
+import { ApiError } from '@/lib/api/client';
+
+const RESEND_COOLDOWN_SECONDS = 60;
 
 export default function CheckEmailPage() {
   const { user } = useAuth();
   const dashboardHref = user?.role === 'KOL' ? '/kol-dashboard/me' : '/dashboard';
+
+  // The email is known after register/login; allow manual entry as a fallback
+  // (e.g. when the page is opened in a fresh tab without a session).
+  const [email, setEmail] = useState(user?.email ?? '');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+  const [cooldown, setCooldown] = useState(0);
+
+  async function handleResend(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    const target = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target)) {
+      setError('Vui lòng nhập email hợp lệ.');
+      return;
+    }
+    setSending(true);
+    try {
+      await authApi.resendVerification({ email: target });
+      // Backend always returns success (it never leaks whether the email exists).
+      setSent(true);
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+      const timer = setInterval(() => {
+        setCooldown((c) => {
+          if (c <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return c - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Không gửi được email. Vui lòng thử lại.');
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-surface-soft flex items-center justify-center p-4">
@@ -39,8 +82,41 @@ export default function CheckEmailPage() {
 
           <div className="p-4 rounded-xl bg-surface-card text-xs text-mute leading-relaxed mb-6">
             Không thấy email? Hãy kiểm tra thư mục <span className="font-bold text-ink">Spam</span> hoặc{' '}
-            <span className="font-bold text-ink">Junk Mail</span>.
+            <span className="font-bold text-ink">Junk Mail</span>, hoặc gửi lại bên dưới.
           </div>
+
+          {/* Resend block */}
+          {sent ? (
+            <div className="mb-5 flex items-center justify-center gap-2 text-sm font-semibold text-[color:var(--success-deep)]">
+              <CheckCircle2 className="w-4 h-4" />
+              Đã gửi lại email xác nhận.
+            </div>
+          ) : null}
+
+          <form onSubmit={handleResend} className="space-y-3 mb-5 text-left">
+            {!user?.email && (
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError('');
+                }}
+                placeholder="ban@email.com"
+                className="pin-input"
+                aria-label="Email"
+              />
+            )}
+            {error && <p className="text-sm font-semibold text-pin-red">{error}</p>}
+            <button
+              type="submit"
+              disabled={sending || cooldown > 0}
+              className="btn-pin-secondary !rounded-full w-full justify-center disabled:opacity-50"
+            >
+              {sending && <Loader2 className="w-4 h-4 animate-spin" />}
+              {cooldown > 0 ? `Gửi lại sau ${cooldown}s` : 'Gửi lại email xác nhận'}
+            </button>
+          </form>
 
           <Link
             href={dashboardHref}

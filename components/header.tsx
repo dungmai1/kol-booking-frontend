@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Menu, X, Search, LogOut, User, LayoutDashboard, Settings } from 'lucide-react';
+import { Menu, X, Search, LogOut, User, LayoutDashboard, Settings, Megaphone, ClipboardList } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { NotificationBell } from '@/components/notification-bell';
@@ -63,6 +63,9 @@ export function Header() {
           </Link>
           <Link href="/kol-profiles" className="px-3 py-2 text-ink font-semibold text-[15px] hover:bg-surface-card rounded-full transition-colors">
             Hồ sơ KOL
+          </Link>
+          <Link href="/products" className="px-3 py-2 text-ink font-semibold text-[15px] hover:bg-surface-card rounded-full transition-colors">
+            Chiến dịch
           </Link>
         </nav>
 
@@ -133,10 +136,20 @@ export function Header() {
                     <Link href="/dashboard" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
                       <LayoutDashboard className="w-4 h-4" /> Bảng điều khiển
                     </Link>
-                    {user?.role === 'KOL' && (
-                      <Link href="/kol-dashboard/me" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
-                        <Settings className="w-4 h-4" /> Trang quản lý KOL
+                    {user?.role === 'BRAND' && (
+                      <Link href="/products/manage" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
+                        <Megaphone className="w-4 h-4" /> Tin đăng của tôi
                       </Link>
+                    )}
+                    {user?.role === 'KOL' && (
+                      <>
+                        <Link href="/applications/mine" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
+                          <ClipboardList className="w-4 h-4" /> Ứng tuyển của tôi
+                        </Link>
+                        <Link href="/kol-dashboard/me" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
+                          <Settings className="w-4 h-4" /> Trang quản lý KOL
+                        </Link>
+                      </>
                     )}
                     <div className="border-t border-hairline-soft mt-1 pt-1">
                       <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold text-left">
@@ -178,6 +191,9 @@ export function Header() {
             </Link>
             <Link href="/kol-profiles" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
               Hồ sơ KOL
+            </Link>
+            <Link href="/products" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
+              Chiến dịch
             </Link>
             {!mounted || isLoading ? null : isAuthenticated ? (
               <>

@@ -39,8 +39,7 @@ import {
   BOOKING_STATUS_COLORS,
   BOOKING_STATUS_DESCRIPTION,
   isBranchState,
-  kolPayout,
-  platformFee,
+  bookingCommission,
 } from '@/lib/bookings/status';
 
 const vnd = new Intl.NumberFormat('vi-VN', {
@@ -673,8 +672,8 @@ function DetailTab({
   otherReview,
   onReviewSuccess,
 }: DetailTabProps) {
-  const payout = kolPayout(booking.budget);
-  const fee = platformFee(booking.budget);
+  const { feePercent, feeAmount: fee, netAmount: payout } = bookingCommission(booking);
+  const kolPercent = Math.max(0, 100 - feePercent);
 
   // ─── BRAND action panel ────────────────────────────────────────────────────
   const brandActions: React.ReactNode[] = [];
@@ -975,11 +974,11 @@ function DetailTab({
               <span className="font-bold text-ink">{vnd.format(booking.budget)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-mute">KOL nhận (90%)</span>
+              <span className="text-mute">KOL nhận ({kolPercent}%)</span>
               <span className="font-bold text-ink">{vnd.format(payout)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-mute">Phí nền tảng (10%)</span>
+              <span className="text-mute">Phí nền tảng ({feePercent}%)</span>
               <span className="text-body">{vnd.format(fee)}</span>
             </div>
             <div className="pt-3 mt-3 border-t border-hairline-soft">

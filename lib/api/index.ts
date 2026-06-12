@@ -4,6 +4,8 @@ export { authApi } from './auth';
 export { kolApi } from './kol';
 export { brandApi } from './brand';
 export { bookingsApi } from './bookings';
+export { productsApi } from './products';
+export { applicationsApi } from './applications';
 export { reviewsApi } from './reviews';
 export { paymentsApi } from './payments';
 export { walletApi } from './wallet';

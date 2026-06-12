@@ -5,6 +5,7 @@ import type {
   AdminBookingStats,
   AdminTopKol,
   AdminRevenueStats,
+  AdminCommissionSummary,
   AdminRejectRequest,
   AdminResolveDisputeRequest,
   KolProfileResponse,
@@ -14,6 +15,54 @@ import type {
   CreateCategoryRequest,
   PageResponse,
 } from './types';
+
+// ─── Stats response adapters ───────────────────────────────────────────────────
+// The backend returns user counts keyed by role plus `platformRevenue`/`activeBookings`
+// (see AdminStatsService.overview). Map that raw shape onto the flat `AdminStatsOverview`
+// the dashboard consumes, so the page component needs no knowledge of the wire format.
+
+type Role = 'SYSTEM' | 'KOL' | 'ADMIN' | 'BRAND';
+
+interface AdminStatsOverviewRaw {
+  users?: Partial<Record<Role, number>>;
+  totalBookings?: number | string;
+  totalGmv?: number | string;
+  platformRevenue?: number | string;
+  activeBookings?: number | string;
+}
+
+const num = (v: unknown): number => Number(v ?? 0);
+
+function mapStatsOverview(raw: AdminStatsOverviewRaw): AdminStatsOverview {
+  const u = raw.users ?? {};
+  // "Total users" = real accounts (excludes the synthetic SYSTEM platform-wallet user).
+  return {
+    totalUsers: num(u.KOL) + num(u.BRAND) + num(u.ADMIN),
+    totalKols: num(u.KOL),
+    totalBrands: num(u.BRAND),
+    totalBookings: num(raw.totalBookings),
+    totalRevenue: num(raw.platformRevenue),
+    activeBookings: num(raw.activeBookings),
+  };
+}
+
+interface AdminTopKolRaw {
+  kolProfileId?: number | string;
+  revenue?: number | string;
+  bookings?: number | string;
+  displayName?: string | null;
+  avgRating?: number | string | null;
+}
+
+function mapTopKol(r: AdminTopKolRaw): AdminTopKol {
+  return {
+    id: num(r.kolProfileId),
+    displayName: r.displayName ?? '',
+    earnings: num(r.revenue),
+    bookingCount: num(r.bookings),
+    avgRating: num(r.avgRating),
+  };
+}
 
 export const adminApi = {
   // ─── Users ───────────────────────────────────────────────────────────────────
@@ -98,7 +147,7 @@ export const adminApi = {
 
   getStatsOverview(params: { from?: string; to?: string } = {}): Promise<AdminStatsOverview> {
     const q = api.buildQuery(params as Record<string, unknown>);
-    return api.get(`/admin/stats/overview${q}`);
+    return api.get<AdminStatsOverviewRaw>(`/admin/stats/overview${q}`).then(mapStatsOverview);
   },
 
   getBookingStats(params: { from?: string; to?: string } = {}): Promise<AdminBookingStats[]> {
@@ -108,11 +157,18 @@ export const adminApi = {
 
   getTopKols(params: { from?: string; to?: string; limit?: number } = {}): Promise<AdminTopKol[]> {
     const q = api.buildQuery(params as Record<string, unknown>);
-    return api.get(`/admin/stats/top-kols${q}`);
+    return api
+      .get<AdminTopKolRaw[]>(`/admin/stats/top-kols${q}`)
+      .then((rows) => (rows ?? []).map(mapTopKol));
   },
 
   getRevenueStats(params: { from?: string; to?: string } = {}): Promise<AdminRevenueStats[]> {
     const q = api.buildQuery(params as Record<string, unknown>);
     return api.get(`/admin/stats/revenue${q}`);
+  },
+
+  /** Platform commission overview: current rate, accumulated fees, platform wallet. */
+  getCommissionSummary(): Promise<AdminCommissionSummary> {
+    return api.get('/admin/stats/commission');
   },
 };

@@ -22,7 +22,7 @@ import type {
   CheckoutResponse,
   PaymentProvider,
 } from '@/lib/api/types';
-import { kolPayout, platformFee } from '@/lib/bookings/status';
+import { bookingCommission } from '@/lib/bookings/status';
 
 const vnd = new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -187,8 +187,8 @@ export default function BookingPaymentPage({
   }
 
   const isAccepted = booking.status === 'ACCEPTED';
-  const payout = kolPayout(booking.budget);
-  const fee = platformFee(booking.budget);
+  const { feePercent, feeAmount: fee, netAmount: payout } = bookingCommission(booking);
+  const kolPercent = Math.max(0, 100 - feePercent);
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -247,11 +247,11 @@ export default function BookingPaymentPage({
                   <dd className="font-bold text-ink">{vnd.format(booking.budget)}</dd>
                 </div>
                 <div className="flex items-center justify-between">
-                  <dt className="text-mute">KOL nhận (90%)</dt>
+                  <dt className="text-mute">KOL nhận ({kolPercent}%)</dt>
                   <dd className="text-body">{vnd.format(payout)}</dd>
                 </div>
                 <div className="flex items-center justify-between">
-                  <dt className="text-mute">Phí nền tảng (10%)</dt>
+                  <dt className="text-mute">Phí nền tảng ({feePercent}%)</dt>
                   <dd className="text-body">{vnd.format(fee)}</dd>
                 </div>
                 <div className="pt-3 border-t border-hairline-soft flex items-center justify-between">

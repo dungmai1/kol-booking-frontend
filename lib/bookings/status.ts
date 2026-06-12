@@ -140,7 +140,7 @@ export const BOOKING_STEP_LABEL: Record<MainStep, string> = {
   COMPLETED: 'Hoàn tất',
 };
 
-/** 10% platform fee. */
+/** Fallback platform fee (10%) used only when a booking predates the snapshot columns. */
 export const PLATFORM_FEE_RATE = 0.1;
 
 export function kolPayout(budget: number): number {
@@ -149,4 +149,35 @@ export function kolPayout(budget: number): number {
 
 export function platformFee(budget: number): number {
   return budget - kolPayout(budget);
+}
+
+/** Minimal shape carrying the commission snapshot a booking exposes. */
+interface BookingFeeSnapshot {
+  budget: number;
+  platformFeePercent: number | null;
+  platformFeeAmount: number | null;
+  kolNetAmount: number | null;
+}
+
+/**
+ * Commission breakdown for a booking. Prefers the values the backend snapshotted
+ * onto the booking at creation (`platformFeePercent`/`platformFeeAmount`/`kolNetAmount`);
+ * falls back to the flat 10% rate for legacy bookings created before V26.
+ */
+export function bookingCommission(booking: BookingFeeSnapshot): {
+  feePercent: number;
+  feeAmount: number;
+  netAmount: number;
+} {
+  const feePercent =
+    booking.platformFeePercent != null
+      ? booking.platformFeePercent
+      : PLATFORM_FEE_RATE * 100;
+  const feeAmount =
+    booking.platformFeeAmount != null
+      ? booking.platformFeeAmount
+      : platformFee(booking.budget);
+  const netAmount =
+    booking.kolNetAmount != null ? booking.kolNetAmount : booking.budget - feeAmount;
+  return { feePercent, feeAmount, netAmount };
 }

@@ -52,14 +52,28 @@ export type Gender = 'MALE' | 'FEMALE' | 'OTHER';
 
 export type PaymentProvider = 'VNPAY' | 'MOMO' | 'STRIPE' | 'MOCK';
 
-export type PaymentOrderStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+export type PaymentOrderStatus = 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED';
 
+/**
+ * Wallet ledger entry types — mirrors backend `payment.domain.TransactionType`.
+ * DEPOSIT/RELEASE/REFUND credit the wallet; HOLD/WITHDRAW/FEE debit it.
+ */
 export type TransactionType =
   | 'DEPOSIT'
-  | 'WITHDRAWAL'
-  | 'BOOKING_PAYMENT'
+  | 'HOLD'
+  | 'RELEASE'
+  | 'WITHDRAW'
   | 'REFUND'
-  | 'PLATFORM_FEE';
+  | 'FEE';
+
+export type ProductStatus = 'OPEN' | 'CLOSED';
+
+export type ApplicationStatus =
+  | 'PENDING'
+  | 'SHORTLISTED'
+  | 'ACCEPTED'
+  | 'REJECTED'
+  | 'WITHDRAWN';
 
 export type WithdrawStatus = 'PENDING' | 'APPROVED' | 'PAID' | 'REJECTED';
 
@@ -80,7 +94,11 @@ export type NotificationType =
   | 'WITHDRAW_REJECTED'
   | 'PROFILE_APPROVED'
   | 'PROFILE_REJECTED'
-  | 'NEW_MESSAGE';
+  | 'NEW_MESSAGE'
+  | 'PRODUCT_APPLICATION_RECEIVED'
+  | 'APPLICATION_SHORTLISTED'
+  | 'APPLICATION_ACCEPTED'
+  | 'APPLICATION_REJECTED';
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -114,6 +132,10 @@ export interface LogoutRequest {
 
 export interface VerifyEmailRequest {
   token: string;
+}
+
+export interface ResendVerificationRequest {
+  email: string;
 }
 
 export interface ForgotPasswordRequest {
@@ -303,6 +325,12 @@ export interface BookingResponse {
   campaignBrief: string;
   deliverables: string;
   budget: number;
+  /** Commission rate snapshotted onto the booking at creation (e.g. 10). Null for legacy bookings. */
+  platformFeePercent: number | null;
+  /** Absolute platform fee = budget * platformFeePercent%. Null for legacy bookings. */
+  platformFeeAmount: number | null;
+  /** Net amount the KOL receives = budget − platformFeeAmount. Null for legacy bookings. */
+  kolNetAmount: number | null;
   startDate: string;
   endDate: string;
   status: BookingStatus;
@@ -386,8 +414,6 @@ export interface WalletResponse {
   balanceAvailable: number;
   balanceHeld: number;
   currency: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface WalletTransactionResponse {
@@ -424,6 +450,87 @@ export interface CreateWithdrawRequest {
   bankAccount: string;
   accountName: string;
 }
+
+// ─── Products (brand postings) & Applications ─────────────────────────────────
+
+export interface ProductResponse {
+  id: number;
+  brandProfileId: number;
+  brandCompanyName: string | null;
+  title: string;
+  description: string | null;
+  imageUrl: string | null;
+  budget: number | null;
+  categoryId: number | null;
+  categoryName: string | null;
+  requiredPlatform: Platform | null;
+  minFollowers: number | null;
+  slots: number | null;
+  status: ProductStatus;
+  deadline: string | null;
+  applicationCount: number;
+  /** True when the current KOL has already applied (only meaningful for KOL viewers). */
+  hasApplied: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductCreateRequest {
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  budget?: number;
+  categoryId?: number;
+  requiredPlatform?: Platform;
+  minFollowers?: number;
+  slots?: number;
+  deadline?: string;
+}
+
+/** Partial update — only provided (non-undefined) fields are applied. */
+export type ProductUpdateRequest = Partial<ProductCreateRequest>;
+
+export interface ProductBrowseParams {
+  q?: string;
+  categoryId?: number;
+  platform?: Platform;
+  minBudget?: number;
+  maxBudget?: number;
+  page?: number;
+  size?: number;
+}
+
+/** Application enriched with the KOL's denormalized stats so the brand can rank candidates. */
+export interface ProductApplicationResponse {
+  id: number;
+  productId: number;
+  kolProfileId: number;
+  kolDisplayName: string | null;
+  kolSlug: string | null;
+  kolAvatarUrl: string | null;
+  kolAvgRating: number | null;
+  kolReviewCount: number | null;
+  kolMaxFollowerCount: number | null;
+  kolMinPrice: number | null;
+  message: string | null;
+  proposedPrice: number | null;
+  status: ApplicationStatus;
+  bookingId: number | null;
+  rejectReason: string | null;
+  createdAt: string;
+}
+
+export interface ProductApplicationCreateRequest {
+  message?: string;
+  proposedPrice?: number;
+}
+
+export interface RejectApplicationRequest {
+  reason?: string;
+}
+
+/** Metric for the brand's "top N applicants" filter. */
+export type TopApplicantsBy = 'rating' | 'reviews' | 'followers';
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 
@@ -503,14 +610,28 @@ export interface AdminTopKol {
   avgRating: number;
 }
 
+/** GET /admin/stats/revenue — monthly platform commission (FE-mapped from `{month, fee}`). */
 export interface AdminRevenueStats {
+  /** "YYYY-MM" */
   month: string;
-  platformFee: number;
-  totalPayments: number;
+  /** Total platform fee collected that month. */
+  fee: number;
 }
 
 export interface AdminRejectRequest {
   reason: string;
+}
+
+/** GET /admin/stats/commission — platform commission overview. */
+export interface AdminCommissionSummary {
+  /** Current default fee rate as a whole-number percent (e.g. 10). */
+  defaultFeePercent: number;
+  /** Available balance of the system platform wallet (user_id = 0). */
+  platformWalletAvailable: number;
+  /** Sum of all FEE ledger entries ever booked. */
+  totalCommission: number;
+  /** Number of FEE ledger entries. */
+  commissionTransactions: number;
 }
 
 export interface AdminResolveDisputeRequest {

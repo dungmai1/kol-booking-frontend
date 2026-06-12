@@ -258,8 +258,7 @@ export default function AdminDashboardPage() {
   // ─── Chart configs ──────────────────────────────────────────────────────────
 
   const revenueConfig: ChartConfig = {
-    totalPayments: { label: 'Doanh thu', color: 'var(--chart-1)' },
-    platformFee:   { label: 'Phí nền tảng', color: 'var(--chart-2)' },
+    fee: { label: 'Phí nền tảng', color: 'var(--chart-2)' },
   };
   const bookingConfig: ChartConfig = {
     count: { label: 'Số booking', color: 'var(--chart-4)' },
@@ -269,8 +268,7 @@ export default function AdminDashboardPage() {
     () =>
       (revenue ?? []).map((r) => ({
         month: fmtMonthLabel(r.month),
-        totalPayments: r.totalPayments,
-        platformFee: r.platformFee,
+        fee: r.fee,
       })),
     [revenue],
   );
@@ -447,10 +445,10 @@ export default function AdminDashboardPage() {
         <Card className="bg-surface-card border-hairline shadow-none rounded-2xl">
           <CardHeader>
             <CardTitle className="text-ink font-display text-base">
-              Doanh thu &amp; phí nền tảng theo tháng
+              Phí nền tảng theo tháng
             </CardTitle>
             <CardDescription className="text-mute text-xs">
-              Tổng giá trị giao dịch và phí thu được từ nền tảng.
+              Hoa hồng nền tảng thu được từ các đơn hoàn tất.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -492,17 +490,9 @@ export default function AdminDashboardPage() {
                   />
                   <ChartLegend content={<ChartLegendContent />} />
                   <Line
-                    dataKey="totalPayments"
+                    dataKey="fee"
                     type="monotone"
-                    stroke="var(--color-totalPayments)"
-                    strokeWidth={2.5}
-                    dot={false}
-                    activeDot={{ r: 5 }}
-                  />
-                  <Line
-                    dataKey="platformFee"
-                    type="monotone"
-                    stroke="var(--color-platformFee)"
+                    stroke="var(--color-fee)"
                     strokeWidth={2.5}
                     dot={false}
                     activeDot={{ r: 5 }}

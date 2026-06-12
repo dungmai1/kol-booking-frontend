@@ -1,7 +1,7 @@
 'use client';
 
 import { Header } from '@/components/header';
-import { BarChart3, BookOpen, Star, DollarSign, Loader2, ArrowRight } from 'lucide-react';
+import { BarChart3, BookOpen, Star, DollarSign, Loader2, ArrowRight, Megaphone, ClipboardList, Compass, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { bookingsApi } from '@/lib/api/bookings';
@@ -80,6 +80,25 @@ export default function DashboardPage() {
                 <StatTile icon={<DollarSign className="w-5 h-5" />} label="Ví của bạn" value={wallet ? vnd.format(wallet.balanceAvailable) : '—'} sub={wallet ? `Giữ: ${vnd.format(wallet.balanceHeld)}` : 'Chưa có dữ liệu'} />
                 <StatTile icon={<BarChart3 className="w-5 h-5" />} label="Tổng ngân sách" value={vnd.format(totalBudget)} sub="Toàn bộ chiến dịch" />
                 <StatTile icon={<Star className="w-5 h-5" />} label="Đánh giá trung bình" value={avgRating ? `${avgRating}★` : '—'} sub={`Từ ${reviews.length} nhận xét`} />
+              </div>
+
+              {/* Role-aware quick actions */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+                {user?.role === 'BRAND' ? (
+                  <>
+                    <QuickAction href="/products/new" icon={<Megaphone className="w-5 h-5" />} title="Đăng sản phẩm" desc="Tạo tin tuyển KOL mới" primary />
+                    <QuickAction href="/products/manage" icon={<ClipboardList className="w-5 h-5" />} title="Tin đăng của tôi" desc="Quản lý & duyệt ứng viên" />
+                    <QuickAction href="/discover" icon={<Compass className="w-5 h-5" />} title="Khám phá KOL" desc="Tìm nhà sáng tạo phù hợp" />
+                    <QuickAction href="/bookings" icon={<BookOpen className="w-5 h-5" />} title="Đơn đặt" desc="Theo dõi chiến dịch" />
+                  </>
+                ) : user?.role === 'KOL' ? (
+                  <>
+                    <QuickAction href="/products" icon={<Compass className="w-5 h-5" />} title="Khám phá chiến dịch" desc="Tìm tin đăng để ứng tuyển" primary />
+                    <QuickAction href="/applications/mine" icon={<ClipboardList className="w-5 h-5" />} title="Ứng tuyển của tôi" desc="Theo dõi trạng thái hồ sơ" />
+                    <QuickAction href="/kol-dashboard/wallet" icon={<Wallet className="w-5 h-5" />} title="Ví của tôi" desc="Số dư & rút tiền" />
+                    <QuickAction href="/kol-dashboard/me" icon={<Star className="w-5 h-5" />} title="Hồ sơ KOL" desc="Cập nhật trang cá nhân" />
+                  </>
+                ) : null}
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -168,6 +187,41 @@ export default function DashboardPage() {
         </div>
       </main>
     </>
+  );
+}
+
+function QuickAction({
+  href,
+  icon,
+  title,
+  desc,
+  primary,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+  primary?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`group rounded-md border p-5 transition-colors ${
+        primary
+          ? 'bg-ink text-on-dark border-ink hover:bg-charcoal'
+          : 'bg-canvas border-hairline hover:border-ink'
+      }`}
+    >
+      <span
+        className={`grid place-items-center w-9 h-9 rounded-full mb-3 ${
+          primary ? 'bg-canvas/15 text-on-dark' : 'bg-surface-card text-ink'
+        }`}
+      >
+        {icon}
+      </span>
+      <p className={`font-bold text-[15px] ${primary ? 'text-on-dark' : 'text-ink'}`}>{title}</p>
+      <p className={`text-xs mt-1 ${primary ? 'text-stone' : 'text-mute'}`}>{desc}</p>
+    </Link>
   );
 }
 

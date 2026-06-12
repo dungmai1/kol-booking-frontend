@@ -13,6 +13,10 @@ import {
   BadgeCheck,
   BadgeX,
   MessageSquare,
+  Megaphone,
+  ListChecks,
+  UserCheck,
+  UserX,
   type LucideIcon,
 } from 'lucide-react';
 import type { NotificationType } from '@/lib/api/types';
@@ -35,6 +39,10 @@ export function notificationIcon(type: NotificationType): LucideIcon {
     case 'PROFILE_APPROVED': return BadgeCheck;
     case 'PROFILE_REJECTED': return BadgeX;
     case 'NEW_MESSAGE': return MessageSquare;
+    case 'PRODUCT_APPLICATION_RECEIVED': return Megaphone;
+    case 'APPLICATION_SHORTLISTED': return ListChecks;
+    case 'APPLICATION_ACCEPTED': return UserCheck;
+    case 'APPLICATION_REJECTED': return UserX;
     default: return Bell;
   }
 }
@@ -50,13 +58,18 @@ export function notificationAccent(type: NotificationType): string {
     case 'BOOKING_COMPLETED':
     case 'PROFILE_APPROVED':
     case 'WITHDRAW_APPROVED':
+    case 'APPLICATION_ACCEPTED':
       return 'bg-[color:var(--success-pale)] text-[color:var(--success-deep)]';
     case 'BOOKING_REJECTED':
     case 'BOOKING_CANCELLED':
     case 'BOOKING_DISPUTED':
     case 'PROFILE_REJECTED':
     case 'WITHDRAW_REJECTED':
+    case 'APPLICATION_REJECTED':
       return 'bg-pin-red/10 text-pin-red';
+    case 'PRODUCT_APPLICATION_RECEIVED':
+    case 'APPLICATION_SHORTLISTED':
+      return 'bg-[color:var(--accent-purple)]/10 text-[color:var(--accent-purple)]';
     case 'PAYMENT_SUCCESS':
       return 'bg-[color:var(--success-pale)] text-[color:var(--success-deep)]';
     case 'REVIEW_RECEIVED':
@@ -86,6 +99,10 @@ export function notificationTypeLabel(type: NotificationType): string {
     case 'PROFILE_APPROVED': return 'Hồ sơ duyệt';
     case 'PROFILE_REJECTED': return 'Hồ sơ bị từ chối';
     case 'NEW_MESSAGE': return 'Tin nhắn mới';
+    case 'PRODUCT_APPLICATION_RECEIVED': return 'Ứng tuyển mới';
+    case 'APPLICATION_SHORTLISTED': return 'Vào shortlist';
+    case 'APPLICATION_ACCEPTED': return 'Ứng tuyển được duyệt';
+    case 'APPLICATION_REJECTED': return 'Ứng tuyển bị từ chối';
     default: return 'Thông báo';
   }
 }

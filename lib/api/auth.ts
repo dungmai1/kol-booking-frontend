@@ -7,6 +7,7 @@ import type {
   RefreshTokenRequest,
   LogoutRequest,
   VerifyEmailRequest,
+  ResendVerificationRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
 } from './types';
@@ -39,6 +40,14 @@ export const authApi = {
 
   verifyEmail(data: VerifyEmailRequest): Promise<void> {
     return api.post('/auth/verify-email', data);
+  },
+
+  /**
+   * Re-sends the verification link. The backend always returns success (to avoid
+   * leaking which emails exist), so the UI should show a neutral confirmation.
+   */
+  resendVerification(data: ResendVerificationRequest): Promise<void> {
+    return api.post('/auth/resend-verification', data);
   },
 
   forgotPassword(data: ForgotPasswordRequest): Promise<void> {

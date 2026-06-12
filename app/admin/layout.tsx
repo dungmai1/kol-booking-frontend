@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldCheck, UserCheck, Building2, Loader2, LayoutDashboard, FolderTree, Users } from 'lucide-react';
+import { ShieldCheck, UserCheck, Building2, Loader2, LayoutDashboard, FolderTree, Users, Coins, Banknote } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Header } from '@/components/header';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,6 +14,8 @@ const NAV: Array<{ href: string; label: string; icon: LucideIcon; exact?: boolea
   { href: '/admin/kols/review', label: 'Duyệt KOL', icon: UserCheck },
   { href: '/admin/brands/review', label: 'Duyệt Brand', icon: Building2 },
   { href: '/admin/categories', label: 'Danh mục', icon: FolderTree },
+  { href: '/admin/commission', label: 'Hoa hồng', icon: Coins },
+  { href: '/admin/withdrawals', label: 'Rút tiền', icon: Banknote },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

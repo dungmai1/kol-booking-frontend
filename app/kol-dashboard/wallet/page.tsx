@@ -35,19 +35,28 @@ const vnd = new Intl.NumberFormat('vi-VN', {
 
 const txTypeLabel: Record<TransactionType, string> = {
   DEPOSIT: 'Nạp tiền',
-  WITHDRAWAL: 'Rút tiền',
-  BOOKING_PAYMENT: 'Thanh toán đơn',
+  HOLD: 'Tạm giữ',
+  RELEASE: 'Giải ngân',
+  WITHDRAW: 'Rút tiền',
   REFUND: 'Hoàn tiền',
-  PLATFORM_FEE: 'Phí nền tảng',
+  FEE: 'Phí nền tảng',
 };
 
 const txTypeColor: Record<TransactionType, string> = {
   DEPOSIT: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  WITHDRAWAL: 'bg-orange-50 text-orange-700 border-orange-200',
-  BOOKING_PAYMENT: 'bg-blue-50 text-blue-700 border-blue-200',
+  RELEASE: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   REFUND: 'bg-purple-50 text-purple-700 border-purple-200',
-  PLATFORM_FEE: 'bg-gray-50 text-gray-700 border-gray-200',
+  HOLD: 'bg-amber-50 text-amber-700 border-amber-200',
+  WITHDRAW: 'bg-orange-50 text-orange-700 border-orange-200',
+  FEE: 'bg-gray-50 text-gray-700 border-gray-200',
 };
+
+/** Credits add to the wallet (shown green, +); the rest are debits (−). */
+const CREDIT_TYPES: ReadonlySet<TransactionType> = new Set<TransactionType>([
+  'DEPOSIT',
+  'RELEASE',
+  'REFUND',
+]);
 
 const withdrawStatusMeta: Record<
   WithdrawStatus,
@@ -392,10 +401,7 @@ export default function KolWalletPage() {
               ) : (
                 <ul className="divide-y divide-gray-100">
                   {transactions.map((tx) => {
-                    const isCredit =
-                      tx.type === 'DEPOSIT' ||
-                      tx.type === 'BOOKING_PAYMENT' ||
-                      tx.type === 'REFUND';
+                    const isCredit = CREDIT_TYPES.has(tx.type);
                     return (
                       <li
                         key={tx.id}
