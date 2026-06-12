@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
   Bot,
@@ -17,6 +18,7 @@ import {
   Trash2,
   UserRound,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Header } from '@/components/header';
 import {
   Sheet,
@@ -49,6 +51,7 @@ type SortKey = 'matchScore' | 'followers' | 'price' | 'rating';
 const STORAGE_KEY = 'kol_ai_assistant_conversation_id';
 const HISTORY_STORAGE_KEY = 'kol_ai_assistant_conversation_history';
 const MAX_HISTORY_ITEMS = 20;
+const LOGIN_REDIRECT_URL = `/auth/login?redirect=${encodeURIComponent('/ai-assistant')}`;
 
 type ConversationHistoryItem = {
   conversationId: string;
@@ -82,7 +85,8 @@ const PROMPT_EXAMPLES = [
 const QUICK_PLATFORM_REPLIES = ['TikTok', 'Instagram', 'YouTube', 'Facebook'];
 
 export default function AiAssistantPage() {
-  const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [criteria, setCriteria] = useState<KolSearchCriteria>(EMPTY_CRITERIA);
@@ -161,6 +165,12 @@ export default function AiAssistantPage() {
   async function sendMessage(text = input.trim()) {
     const message = text.trim();
     if (!message || isLoading) return;
+    if (isAuthLoading) return;
+    if (!isAuthenticated) {
+      toast.error('Vui lòng đăng nhập để gửi tin nhắn cho AI.');
+      router.push(LOGIN_REDIRECT_URL);
+      return;
+    }
 
     const userMessage: Message = { id: crypto.randomUUID(), role: 'user', content: message };
     const nextMessages = [...messagesRef.current, userMessage];
@@ -311,6 +321,8 @@ export default function AiAssistantPage() {
       onPromptClick={setInput}
       onQuickReply={sendMessage}
       messagesEndRef={messagesEndRef}
+      canSendChat={isAuthenticated}
+      isAuthLoading={isAuthLoading}
     />
   );
 
@@ -573,6 +585,8 @@ function ChatPanel({
   onPromptClick,
   onQuickReply,
   messagesEndRef,
+  canSendChat,
+  isAuthLoading,
 }: {
   messages: Message[];
   input: string;
@@ -584,6 +598,8 @@ function ChatPanel({
   onPromptClick: (value: string) => void;
   onQuickReply: (value: string) => void;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
+  canSendChat: boolean;
+  isAuthLoading: boolean;
 }) {
   return (
     <div className="flex h-full min-h-[calc(100vh-194px)] flex-col bg-canvas">
@@ -658,8 +674,11 @@ function ChatPanel({
           />
           <button
             onClick={onSend}
-            disabled={!input.trim() || isLoading}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-pin-red text-on-dark transition-colors hover:bg-pin-red-pressed disabled:cursor-not-allowed disabled:bg-surface-card disabled:text-ash"
+            disabled={!input.trim() || isLoading || isAuthLoading}
+            aria-disabled={!canSendChat}
+            className={`grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:bg-surface-card disabled:text-ash ${
+              canSendChat ? 'bg-pin-red text-on-dark hover:bg-pin-red-pressed' : 'bg-surface-card text-ash hover:bg-secondary-bg'
+            }`}
             aria-label="Gửi"
           >
             {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <SendHorizontal className="h-5 w-5" />}
