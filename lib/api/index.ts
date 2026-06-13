@@ -14,3 +14,11 @@ export { notificationsApi } from './notifications';
 export { categoriesApi } from './categories';
 export { filesApi } from './files';
 export { adminApi } from './admin';
+export { aiAssistantApi } from './ai-assistant';
+export type {
+  AiChatRequest,
+  AiChatResponse,
+  KolRecommendationItem,
+  KolRecommendationPlatform,
+  KolSearchCriteria,
+} from './ai-assistant';

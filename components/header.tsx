@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Menu, X, Search, LogOut, User, LayoutDashboard, Settings, Megaphone, ClipboardList } from 'lucide-react';
+import { Bot, Menu, X, Search, LogOut, User, LayoutDashboard, Settings, Megaphone, ClipboardList } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { NotificationBell } from '@/components/notification-bell';
@@ -66,6 +66,9 @@ export function Header() {
           </Link>
           <Link href="/products" className="px-3 py-2 text-ink font-semibold text-[15px] hover:bg-surface-card rounded-full transition-colors">
             Chiến dịch
+          </Link>
+          <Link href="/ai-assistant" className="px-3 py-2 text-ink font-semibold text-[15px] hover:bg-surface-card rounded-full transition-colors">
+            AI KOL
           </Link>
         </nav>
 
@@ -194,6 +197,9 @@ export function Header() {
             </Link>
             <Link href="/products" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
               Chiến dịch
+            </Link>
+            <Link href="/ai-assistant" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card flex items-center gap-2">
+              <Bot className="w-4 h-4" /> AI KOL
             </Link>
             {!mounted || isLoading ? null : isAuthenticated ? (
               <>
