@@ -129,7 +129,7 @@ export default function AdminUsersPage() {
     setError(null);
     try {
       const res = await adminApi.getUsers({
-        search: debouncedSearch || undefined,
+        q: debouncedSearch || undefined,
         role: roleFilter === 'ALL' ? undefined : roleFilter,
         status: statusFilter === 'ALL' ? undefined : statusFilter,
         page,

@@ -223,69 +223,77 @@ function unsplash(id: string, w: number, h: number): string {
 }
 
 /* ─────────────────────────────── Category tile ─────────────────────────────── */
-const CATEGORIES: Array<{ label: string; bg: string; pill: string; img: string; alt: string }> = [
+const CATEGORIES: Array<{ id: number; label: string; bg: string; pill: string; img: string; alt: string }> = [
   {
-    label: 'Làm đẹp & Mỹ phẩm',
+    id: 1,
+    label: 'Beauty',
     bg: 'linear-gradient(150deg, #f6dccb 0%, #c47a55 100%)',
-    img: unsplash('1596462502278-27bfdc403348', 600, 600),
-    alt: 'Lipstick and makeup brushes',
-    pill: 'Cherry red',
+    img: unsplash('1522335789203-aabd1fc54bc9', 600, 600),
+    alt: 'Beauty makeup model',
+    pill: 'Beauty',
   },
   {
-    label: 'Thời trang',
+    id: 2,
+    label: 'Fashion',
     bg: 'linear-gradient(150deg, #e9d5e6 0%, #8a5e8e 100%)',
-    img: unsplash('1490481651871-ab68de25d43d', 600, 600),
-    alt: 'Fashion editorial',
-    pill: 'Preppy look',
+    img: unsplash('1539109136881-3be0616acf4b', 600, 600),
+    alt: 'Fashion style outfit',
+    pill: 'Fashion',
   },
   {
-    label: 'Du lịch',
-    bg: 'linear-gradient(150deg, #c8dcd6 0%, #4f7a72 100%)',
-    img: unsplash('1507525428034-b723cf961d3e', 600, 600),
-    alt: 'Beach travel',
-    pill: 'Coastal',
-  },
-  {
-    label: 'Ẩm thực',
-    bg: 'linear-gradient(150deg, #f0d0b1 0%, #a05a2c 100%)',
-    img: unsplash('1565299624946-b28f40a0ae38', 600, 600),
-    alt: 'Food plate',
-    pill: 'Earthy',
-  },
-  {
-    label: 'Công nghệ',
+    id: 3,
+    label: 'Tech',
     bg: 'linear-gradient(150deg, #d8e1ee 0%, #4a5d7e 100%)',
-    img: unsplash('1518770660439-4636190af475', 600, 600),
-    alt: 'Tech circuit',
-    pill: 'Minimal',
+    img: unsplash('1488590528505-98d2b5aba04b', 600, 600),
+    alt: 'Tech laptop and devices',
+    pill: 'Tech',
   },
   {
-    label: 'Thể hình',
+    id: 4,
+    label: 'Food',
+    bg: 'linear-gradient(150deg, #f0d0b1 0%, #a05a2c 100%)',
+    img: unsplash('1504674900247-0877df9cc836', 600, 600),
+    alt: 'Food spread dishes',
+    pill: 'Food',
+  },
+  {
+    id: 5,
+    label: 'Lifestyle',
+    bg: 'linear-gradient(150deg, #fde8d8 0%, #d4845a 100%)',
+    img: unsplash('1506126613408-eca07ce68773', 600, 600),
+    alt: 'Lifestyle morning routine',
+    pill: 'Lifestyle',
+  },
+  {
+    id: 6,
+    label: 'Travel',
+    bg: 'linear-gradient(150deg, #c8dcd6 0%, #4f7a72 100%)',
+    img: unsplash('1476514525535-07fb3b4ae5f1', 600, 600),
+    alt: 'Travel scenic landscape',
+    pill: 'Travel',
+  },
+  {
+    id: 7,
+    label: 'Fitness',
     bg: 'linear-gradient(150deg, #ddebd5 0%, #5b7d3f 100%)',
-    img: unsplash('1571019614242-c5c5dee9f50b', 600, 600),
-    alt: 'Gym workout',
-    pill: 'Active',
+    img: unsplash('1526506118085-60ce8714f8c5', 600, 600),
+    alt: 'Fitness running workout',
+    pill: 'Fitness',
   },
   {
-    label: 'Gaming',
+    id: 12,
+    label: 'Entertainment',
     bg: 'linear-gradient(150deg, #d8c9eb 0%, #5a3f8e 100%)',
-    img: unsplash('1542751371-adc38448a05e', 600, 600),
-    alt: 'Gaming setup',
-    pill: 'Streamer',
-  },
-  {
-    label: 'Nghệ thuật',
-    bg: 'linear-gradient(150deg, #efddc7 0%, #a5762a 100%)',
-    img: unsplash('1513475382585-d06e58bcb0e0', 600, 600),
-    alt: 'Art supplies',
-    pill: 'Studio',
+    img: unsplash('1514320291840-2e0a9bf2a9ae', 600, 600),
+    alt: 'Entertainment music concert',
+    pill: 'Entertainment',
   },
 ];
 
-function CategoryTile({ label, bg, pill, img, alt }: { label: string; bg: string; pill: string; img: string; alt: string }) {
+function CategoryTile({ id, label, bg, pill, img, alt }: { id: number; label: string; bg: string; pill: string; img: string; alt: string }) {
   return (
     <Link
-      href={`/discover?category=${encodeURIComponent(label)}`}
+      href={`/discover?categoryId=${id}`}
       className="group block"
     >
       <div

@@ -2,6 +2,20 @@ import type { ApiResponse, AuthTokens } from './types';
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1';
 
+/** Turn backend-relative upload paths (`/uploads/...`) into absolute URLs for display. */
+export function resolveMediaUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith('/')) {
+    try {
+      return `${new URL(API_BASE_URL).origin}${url}`;
+    } catch {
+      return url;
+    }
+  }
+  return url;
+}
+
 const TOKEN_KEY = 'kol_access_token';
 const REFRESH_KEY = 'kol_refresh_token';
 
@@ -151,8 +165,11 @@ export const api = {
     });
   },
 
-  delete<T>(path: string): Promise<T> {
-    return request<T>(path, { method: 'DELETE' });
+  delete<T>(path: string, body?: unknown): Promise<T> {
+    return request<T>(path, {
+      method: 'DELETE',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
   },
 
   /** multipart/form-data upload — skips Content-Type so browser sets boundary */

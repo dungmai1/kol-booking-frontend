@@ -11,7 +11,8 @@ const RESEND_COOLDOWN_SECONDS = 60;
 
 export default function CheckEmailPage() {
   const { user } = useAuth();
-  const dashboardHref = user?.role === 'KOL' ? '/kol-dashboard/me' : '/dashboard';
+  const dashboardHref =
+    user?.role === 'ADMIN' ? '/admin' : user?.role === 'KOL' ? '/kol-dashboard/me' : '/dashboard';
 
   // The email is known after register/login; allow manual entry as a fallback
   // (e.g. when the page is opened in a fresh tab without a session).

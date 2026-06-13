@@ -32,7 +32,8 @@ function VerifyEmailContent() {
         // Redirect after 2 seconds
         const role = user?.role;
         setTimeout(() => {
-          if (role === 'KOL') router.push('/kol-dashboard/me');
+          if (role === 'ADMIN') router.push('/admin');
+          else if (role === 'KOL') router.push('/kol-dashboard/me');
           else router.push('/dashboard');
         }, 2000);
       })

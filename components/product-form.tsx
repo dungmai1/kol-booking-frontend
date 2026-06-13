@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, ImagePlus, X } from 'lucide-react';
 import { categoriesApi } from '@/lib/api/categories';
+import { resolveMediaUrl } from '@/lib/api/client';
 import { filesApi } from '@/lib/api/files';
 import type { CategoryResponse, Platform, ProductResponse, ProductCreateRequest } from '@/lib/api/types';
 import { PLATFORM_LABEL, PLATFORM_OPTIONS } from '@/lib/products/meta';
@@ -102,7 +103,7 @@ export function ProductForm({ initial, submitLabel, submitting, error, onSubmit,
         {imageUrl ? (
           <div className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden border border-hairline">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageUrl} alt="Xem trước" className="w-full h-full object-cover" />
+            <img src={resolveMediaUrl(imageUrl)} alt="Xem trước" className="w-full h-full object-cover" />
             <button
               type="button"
               onClick={() => setImageUrl('')}

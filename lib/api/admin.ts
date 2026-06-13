@@ -69,7 +69,7 @@ export const adminApi = {
 
   getUsers(
     params: {
-      search?: string;
+      q?: string;
       role?: string;
       status?: string;
       page?: number;

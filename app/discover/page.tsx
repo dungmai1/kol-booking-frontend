@@ -64,9 +64,14 @@ function DiscoverPageContent() {
     categoriesApi.getAll().then(setCategories).catch(() => {});
   }, []);
 
-  // Pull ?q= from URL when navigating here (e.g. header search bar)
+  // Pull ?q= and ?categoryId= from URL (e.g. homepage category tiles)
   useEffect(() => {
     setSearchQuery(searchParams.get('q') ?? '');
+    const catId = searchParams.get('categoryId');
+    if (catId) {
+      const parsed = parseInt(catId, 10);
+      if (!isNaN(parsed)) setSelectedCategoryId(parsed);
+    }
   }, [searchParams]);
 
   useEffect(() => {

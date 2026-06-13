@@ -298,6 +298,8 @@ export interface BrandProfileResponse {
   contactName: string | null;
   contactPhone: string | null;
   address: string | null;
+  bio: string | null;
+  country: string | null;
   status: ProfileStatus;
   rejectReason: string | null;
   createdAt: string;
@@ -313,6 +315,8 @@ export interface UpdateBrandProfileRequest {
   contactName?: string;
   contactPhone?: string;
   address?: string;
+  bio?: string;
+  country?: string;
 }
 
 // ─── Bookings ─────────────────────────────────────────────────────────────────

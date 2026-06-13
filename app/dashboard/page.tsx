@@ -3,6 +3,7 @@
 import { Header } from '@/components/header';
 import { BarChart3, BookOpen, Star, DollarSign, Loader2, ArrowRight, Megaphone, ClipboardList, Compass, Wallet } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { bookingsApi } from '@/lib/api/bookings';
 import { walletApi } from '@/lib/api/wallet';
@@ -33,13 +34,20 @@ const vnd = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND',
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [bookings, setBookings] = useState<BookingResponse[]>([]);
   const [reviews, setReviews] = useState<ReviewResponse[]>([]);
   const [wallet, setWallet] = useState<WalletResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (user?.role === 'ADMIN') {
+      router.replace('/admin');
+    }
+  }, [user, router]);
+
+  useEffect(() => {
+    if (!user || user.role === 'ADMIN') return;
     const role = user.role;
     Promise.allSettled([
       role === 'KOL' ? bookingsApi.getIncoming(0, 5) : bookingsApi.getMyBookings(0, 5),
@@ -55,6 +63,17 @@ export default function DashboardPage() {
   const activeCount = bookings.filter(b => b.status === 'ACCEPTED' || b.status === 'IN_PROGRESS').length;
   const totalBudget = bookings.reduce((s, b) => s + b.budget, 0);
   const avgRating = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null;
+
+  if (user?.role === 'ADMIN') {
+    return (
+      <>
+        <Header />
+        <main className="min-h-screen bg-surface-soft grid place-items-center">
+          <Loader2 className="w-10 h-10 text-pin-red animate-spin" />
+        </main>
+      </>
+    );
+  }
 
   return (
     <>

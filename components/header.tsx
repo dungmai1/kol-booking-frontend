@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bot, Menu, X, Search, LogOut, User, LayoutDashboard, Settings, Megaphone, ClipboardList } from 'lucide-react';
+import { Bot, Menu, X, Search, LogOut, User, LayoutDashboard, Settings, Megaphone, ClipboardList, ShieldCheck } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { NotificationBell } from '@/components/notification-bell';
@@ -41,6 +41,7 @@ export function Header() {
   }
 
   return (
+    <>
     <header className="bg-canvas border-b border-hairline sticky top-0 z-50">
       <div className="mx-auto max-w-[1280px] px-4 sm:px-6 h-16 flex items-center gap-4">
         {/* Brand wordmark — Pinterest red, the only red on chrome aside from the CTA */}
@@ -78,7 +79,7 @@ export function Header() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-mute pointer-events-none" />
             <input
               type="text"
-              placeholder="Tìm kiếm ý tưởng, KOL, chiến dịch…"
+              placeholder="Tìm kiếm KOL…"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   const v = (e.target as HTMLInputElement).value.trim();
@@ -110,13 +111,22 @@ export function Header() {
             </div>
           ) : isAuthenticated ? (
             <>
-              {/* Bookings + Dashboard quick links */}
-              <Link href="/bookings" className="hidden md:inline-flex px-3 py-2 text-ink font-semibold text-[15px] hover:bg-surface-card rounded-full transition-colors">
-                Đơn đặt
-              </Link>
+              {user?.role === 'ADMIN' ? (
+                <Link
+                  href="/admin"
+                  className="hidden md:inline-flex items-center gap-1.5 btn-pin-primary !rounded-full !py-2 !px-4 text-sm"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  Quản trị
+                </Link>
+              ) : (
+                <Link href="/bookings" className="hidden md:inline-flex px-3 py-2 text-ink font-semibold text-[15px] hover:bg-surface-card rounded-full transition-colors">
+                  Đơn đặt
+                </Link>
+              )}
 
-              {/* Notifications */}
-              <NotificationBell />
+              {/* Notifications — hidden for admin (admin area only) */}
+              {user?.role !== 'ADMIN' && <NotificationBell />}
 
               {/* Avatar + menu */}
               <div className="relative" ref={userMenuRef}>
@@ -136,9 +146,15 @@ export function Header() {
                     <Link href="/profile" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
                       <User className="w-4 h-4" /> Hồ sơ
                     </Link>
-                    <Link href="/dashboard" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
-                      <LayoutDashboard className="w-4 h-4" /> Bảng điều khiển
-                    </Link>
+                    {user?.role === 'ADMIN' ? (
+                      <Link href="/admin" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
+                        <ShieldCheck className="w-4 h-4" /> Khu vực quản trị
+                      </Link>
+                    ) : (
+                      <Link href="/dashboard" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
+                        <LayoutDashboard className="w-4 h-4" /> Bảng điều khiển
+                      </Link>
+                    )}
                     {user?.role === 'BRAND' && (
                       <Link href="/products/manage" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
                         <Megaphone className="w-4 h-4" /> Tin đăng của tôi
@@ -203,12 +219,20 @@ export function Header() {
             </Link>
             {!mounted || isLoading ? null : isAuthenticated ? (
               <>
-                <Link href="/bookings" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
-                  Đơn đặt
-                </Link>
-                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
-                  Bảng điều khiển
-                </Link>
+                {user?.role === 'ADMIN' ? (
+                  <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-on-dark font-semibold rounded-full bg-pin-red flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4" /> Khu vực quản trị
+                  </Link>
+                ) : (
+                  <>
+                    <Link href="/bookings" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
+                      Đơn đặt
+                    </Link>
+                    <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
+                      Bảng điều khiển
+                    </Link>
+                  </>
+                )}
                 <button onClick={handleLogout} className="text-left px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card flex items-center gap-2">
                   <LogOut className="w-4 h-4" /> Đăng xuất
                 </button>
@@ -227,5 +251,6 @@ export function Header() {
         </div>
       )}
     </header>
+    </>
   );
 }
