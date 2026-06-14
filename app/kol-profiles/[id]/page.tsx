@@ -13,6 +13,7 @@ import { reviewsApi } from '@/lib/api/reviews';
 import { useAuth } from '@/contexts/AuthContext';
 import type { KolPublicResponse, ReviewResponse } from '@/lib/api/types';
 import { BookingFormDialog } from '@/components/booking-form';
+import { PortfolioItemCard } from '@/components/portfolio-item-card';
 
 const tabLabels: Record<string, string> = {
   overview: 'Tổng quan',
@@ -278,19 +279,9 @@ export default function KOLProfileDetailPage({ params }: { params: Promise<{ id:
                   {activeTab === 'portfolio' && (
                     <div>
                       {profile.portfolio.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-4">
-                          {profile.portfolio.map(item => (
-                            <div key={item.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                              {item.mediaType === 'IMAGE' ? (
-                                <img src={item.mediaUrl} alt={item.title} className="w-full h-40 object-cover" />
-                              ) : (
-                                <video src={item.mediaUrl} className="w-full h-40 object-cover" />
-                              )}
-                              <div className="p-3">
-                                <p className="font-medium text-gray-900 text-sm">{item.title}</p>
-                                <p className="text-xs text-gray-500">{item.campaignName}</p>
-                              </div>
-                            </div>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          {profile.portfolio.map((item) => (
+                            <PortfolioItemCard key={item.id} item={item} variant="compact" />
                           ))}
                         </div>
                       ) : (

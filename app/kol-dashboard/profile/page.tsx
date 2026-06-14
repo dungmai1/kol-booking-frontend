@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 
 import { Header } from '@/components/header';
+import { PortfolioItemCard, PortfolioMediaPreview } from '@/components/portfolio-item-card';
 import { useAuth } from '@/contexts/AuthContext';
 import { kolApi, normalizePlatform } from '@/lib/api/kol';
 import { categoriesApi } from '@/lib/api/categories';
@@ -802,37 +803,25 @@ export default function KolProfileEditPage() {
                       <p>Chưa có mục portfolio. Nhấn "Thêm portfolio" để bắt đầu.</p>
                     </div>
                   ) : (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      {profile.portfolio.map(item => (
-                        <Card key={item.id} className="overflow-hidden border-hairline">
-                          <div className="relative aspect-video bg-surface-card grid place-items-center">
-                            {item.mediaType === 'VIDEO' ? (
-                              <video src={item.mediaUrl} className="w-full h-full object-cover" controls />
-                            ) : (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={item.mediaUrl} alt={item.title} className="w-full h-full object-cover" />
-                            )}
-                            <Badge className="absolute top-2 right-2" variant="secondary">
-                              {item.mediaType === 'VIDEO' ? <><Video className="w-3 h-3 mr-1" /> Video</> : <><ImageIcon className="w-3 h-3 mr-1" /> Ảnh</>}
-                            </Badge>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {profile.portfolio.map((item) => (
+                        <div key={item.id} className="relative">
+                          <PortfolioItemCard item={item} variant="editor" />
+                          <Badge className="absolute top-3 right-3" variant="secondary">
+                            {item.mediaType === 'VIDEO' ? <><Video className="w-3 h-3 mr-1" /> Video</> : <><ImageIcon className="w-3 h-3 mr-1" /> Ảnh</>}
+                          </Badge>
+                          <div className="mt-2 flex justify-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600"
+                              onClick={() => handleDeletePortfolio(item.id)}
+                              aria-label="Xoá mục"
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" /> Xoá
+                            </Button>
                           </div>
-                          <CardContent className="p-4 space-y-2">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <p className="font-bold text-ink truncate">{item.title}</p>
-                                <p className="text-xs text-mute truncate">{item.campaignName}</p>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeletePortfolio(item.id)}
-                                aria-label="Xoá mục"
-                              >
-                                <Trash2 className="w-4 h-4 text-red-600" />
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -1112,7 +1101,7 @@ function PortfolioDialog({ onSubmit }: { onSubmit: (data: CreatePortfolioItemReq
         <div>
           <Label htmlFor="po-url" className="mb-2 block">Media URL</Label>
           <div className="flex items-center gap-2">
-            <Input id="po-url" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} placeholder="https://…" />
+            <Input id="po-url" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} placeholder="https://www.tiktok.com/@user/video/… hoặc link ảnh/mp4" />
             <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-hairline bg-canvas hover:bg-surface-card cursor-pointer text-sm font-semibold whitespace-nowrap">
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               Tải lên
@@ -1121,13 +1110,8 @@ function PortfolioDialog({ onSubmit }: { onSubmit: (data: CreatePortfolioItemReq
             </label>
           </div>
           {mediaUrl && (
-            <div className="mt-3 rounded-md overflow-hidden border border-hairline aspect-video bg-surface-card">
-              {mediaType === 'VIDEO' ? (
-                <video src={mediaUrl} className="w-full h-full object-cover" controls />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={mediaUrl} alt="preview" className="w-full h-full object-cover" />
-              )}
+            <div className="mt-3 overflow-hidden rounded-md border border-hairline bg-surface-card">
+              <PortfolioMediaPreview mediaType={mediaType} mediaUrl={mediaUrl} />
             </div>
           )}
         </div>

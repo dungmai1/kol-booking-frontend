@@ -17,6 +17,7 @@ import {
 import { useState, use, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { BookingFormDialog } from '@/components/booking-form';
+import { PortfolioItemCard } from '@/components/portfolio-item-card';
 
 const PLATFORM_GLYPH: Record<string, string> = {
   TIKTOK: 'TT',
@@ -271,24 +272,9 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
               {kol.portfolio.length > 0 && (
                 <div className="bg-canvas rounded-md border border-hairline p-8">
                   <h2 className="font-display font-bold text-ink text-[22px] tracking-tight mb-5">Portfolio</h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {kol.portfolio.map((item) => (
-                      <div key={item.id} className="pin-card !mb-0">
-                        {item.mediaType === 'IMAGE' ? (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img src={item.mediaUrl} alt={item.title} className="w-full aspect-[3/4] object-cover" />
-                        ) : (
-                          <div className="aspect-[3/4] bg-surface-card grid place-items-center">
-                            <span className="grid place-items-center w-12 h-12 rounded-full bg-canvas">
-                              <span className="text-pin-red font-bold">▶</span>
-                            </span>
-                          </div>
-                        )}
-                        <div className="px-1 pt-2 pb-3">
-                          <p className="text-xs font-bold text-ink truncate">{item.title}</p>
-                          {item.campaignName && <p className="text-[11px] text-mute truncate">{item.campaignName}</p>}
-                        </div>
-                      </div>
+                      <PortfolioItemCard key={item.id} item={item} variant="grid" />
                     ))}
                   </div>
                 </div>
