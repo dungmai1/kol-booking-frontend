@@ -87,7 +87,7 @@ export function ReviewFormDialog({
 
   const displayed = hover || rating;
   const title =
-    direction === 'TO_KOL'
+    direction === 'BRAND_TO_KOL' || direction === 'TO_KOL'
       ? `Đánh giá KOL ${targetName}`
       : `Đánh giá Brand ${targetName}`;
 

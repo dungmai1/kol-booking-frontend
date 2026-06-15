@@ -2,22 +2,14 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import {
-  Briefcase,
-  Building2,
-  CheckCircle2,
-  ExternalLink,
-  Globe,
-  Loader2,
-  MapPin,
-  Star,
-} from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { ReviewListItem } from '@/components/review-list-item';
+import { BrandPublicHero } from '@/components/brand-public-hero';
 import { Header } from '@/components/header';
 import { ProductCard } from '@/components/product-card';
 import { brandApi } from '@/lib/api/brand';
 import { productsApi } from '@/lib/api/products';
 import { reviewsApi } from '@/lib/api/reviews';
-import { resolveMediaUrl } from '@/lib/api/client';
 import type { BrandPublicResponse, ProductResponse, ReviewResponse } from '@/lib/api/types';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -105,11 +97,7 @@ export default function BrandProfilePage({ params }: { params: Promise<{ id: str
     );
   }
 
-  const logoSrc = resolveMediaUrl(brand.logoUrl);
   const isOwner = user?.role === 'BRAND' && user.userId === brand.userId;
-  const websiteHref = brand.website?.trim()
-    ? /^https?:\/\//i.test(brand.website) ? brand.website : `https://${brand.website}`
-    : null;
 
   return (
     <>
@@ -127,95 +115,22 @@ export default function BrandProfilePage({ params }: { params: Promise<{ id: str
         )}
 
         <section className="mx-auto max-w-[1280px] px-4 sm:px-6 pt-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-4">
-              <div className="relative aspect-square rounded-[2rem] overflow-hidden bg-secondary-bg border border-hairline">
-                {logoSrc ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={logoSrc}
-                    alt={brand.companyName}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="absolute inset-0 grid place-items-center bg-surface-card">
-                    <Building2 className="w-20 h-20 text-mute" />
-                  </div>
-                )}
-                {brand.status === 'APPROVED' && (
-                  <span className="pin-overlay-pill top-4 left-4">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-pin-red mr-1.5" />
-                    Đã xác minh
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="lg:col-span-8 flex flex-col">
-              <p className="text-xs font-bold uppercase tracking-wider text-mute mb-2">Thương hiệu</p>
-              <h1 className="font-display font-extrabold text-ink text-[40px] lg:text-[52px] tracking-[-1.2px] leading-[1.05]">
-                {brand.companyName}
-              </h1>
-
-              <div className="flex flex-wrap items-center gap-3 mt-4 text-sm font-semibold text-mute">
-                {brand.industry && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-canvas border border-hairline text-ink">
-                    <Briefcase className="w-4 h-4" />
-                    {brand.industry}
-                  </span>
-                )}
-                {(brand.country || brand.address) && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4" />
-                    {[brand.address, brand.country].filter(Boolean).join(', ')}
-                  </span>
-                )}
-              </div>
-
-              {brand.bio && (
-                <p className="text-body text-base lg:text-lg leading-relaxed mt-5 max-w-2xl">
-                  {brand.bio}
-                </p>
-              )}
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-6 max-w-lg">
-                <div className="bg-canvas rounded-md border border-hairline p-4">
-                  <p className="text-xs text-mute font-bold uppercase tracking-wider mb-1">Đánh giá</p>
-                  <div className="flex items-baseline gap-1">
-                    <p className="font-display font-bold text-ink text-[22px] tracking-tight">
-                      {brand.avgRating > 0 ? brand.avgRating.toFixed(1) : '—'}
-                    </p>
-                    <Star className="w-4 h-4 fill-ink text-ink" />
-                  </div>
-                </div>
-                <div className="bg-canvas rounded-md border border-hairline p-4">
-                  <p className="text-xs text-mute font-bold uppercase tracking-wider mb-1">Nhận xét</p>
-                  <p className="font-display font-bold text-ink text-[22px] tracking-tight">
-                    {brand.reviewCount}
-                  </p>
-                </div>
-                <div className="bg-canvas rounded-md border border-hairline p-4">
-                  <p className="text-xs text-mute font-bold uppercase tracking-wider mb-1">Chiến dịch</p>
-                  <p className="font-display font-bold text-ink text-[22px] tracking-tight">
-                    {products.length}
-                  </p>
-                </div>
-              </div>
-
-              {websiteHref && (
-                <a
-                  href={websiteHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-ink hover:text-pin-red transition-colors w-fit"
-                >
-                  <Globe className="w-4 h-4" />
-                  {brand.website}
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              )}
-            </div>
-          </div>
+          <h1 className="sr-only">{brand.companyName}</h1>
+          <BrandPublicHero
+            brand={{
+              companyName: brand.companyName,
+              industry: brand.industry,
+              logoUrl: brand.logoUrl,
+              address: brand.address,
+              country: brand.country,
+              bio: brand.bio,
+              website: brand.website,
+              status: brand.status,
+              avgRating: brand.avgRating,
+              reviewCount: brand.reviewCount,
+              campaignCount: products.length,
+            }}
+          />
         </section>
 
         <section className="mx-auto max-w-[1280px] px-4 sm:px-6 py-12 lg:py-16">
@@ -243,22 +158,7 @@ export default function BrandProfilePage({ params }: { params: Promise<{ id: str
                 {reviews.length > 0 ? (
                   <ul className="divide-y divide-hairline-soft">
                     {reviews.map((review) => (
-                      <li key={review.id} className="py-5 first:pt-0 last:pb-0">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-1">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-4 h-4 ${i < review.rating ? 'fill-ink text-ink' : 'text-stone'}`}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-xs text-mute">
-                            {new Date(review.createdAt).toLocaleDateString('vi-VN')}
-                          </span>
-                        </div>
-                        <p className="text-sm text-body leading-relaxed">{review.comment}</p>
-                      </li>
+                      <ReviewListItem key={review.id} review={review} />
                     ))}
                   </ul>
                 ) : (

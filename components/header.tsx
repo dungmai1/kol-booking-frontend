@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bot, Menu, X, Search, LogOut, User, LayoutDashboard, Settings, Megaphone, ClipboardList, ShieldCheck } from 'lucide-react';
+import { Bot, Menu, X, Search, LogOut, User, LayoutDashboard, Settings, Megaphone, ClipboardList, ShieldCheck, Wallet } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { NotificationBell } from '@/components/notification-bell';
@@ -151,9 +151,16 @@ export function Header() {
                         <ShieldCheck className="w-4 h-4" /> Khu vực quản trị
                       </Link>
                     ) : (
-                      <Link href="/dashboard" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
-                        <LayoutDashboard className="w-4 h-4" /> Bảng điều khiển
-                      </Link>
+                      <>
+                        <Link href="/dashboard" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
+                          <LayoutDashboard className="w-4 h-4" /> Bảng điều khiển
+                        </Link>
+                        {(user?.role === 'BRAND' || user?.role === 'KOL') && (
+                          <Link href="/wallet" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
+                            <Wallet className="w-4 h-4" /> Ví của tôi
+                          </Link>
+                        )}
+                      </>
                     )}
                     {user?.role === 'BRAND' && (
                       <Link href="/products/manage" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
@@ -231,6 +238,11 @@ export function Header() {
                     <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card">
                       Bảng điều khiển
                     </Link>
+                    {(user?.role === 'BRAND' || user?.role === 'KOL') && (
+                      <Link href="/wallet" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card flex items-center gap-2">
+                        <Wallet className="w-4 h-4" /> Ví của tôi
+                      </Link>
+                    )}
                   </>
                 )}
                 <button onClick={handleLogout} className="text-left px-4 py-3 text-ink font-semibold rounded-full hover:bg-surface-card flex items-center gap-2">

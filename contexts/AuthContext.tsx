@@ -76,12 +76,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // to get authoritative email/role (JWT `sub` may be userId, not email).
   useEffect(() => {
     let cancelled = false;
-    const token = getAccessToken();
-    if (!token) {
+    const initialToken = getAccessToken();
+    if (!initialToken) {
       setIsLoading(false);
       return;
     }
-    const parsed = userFromToken(token);
+    const parsed = userFromToken(initialToken);
     if (parsed) setUser(parsed);
     authApi
       .getMe()
@@ -91,8 +91,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         if (cancelled) return;
-        clearTokens();
-        setUser(null);
+        // Ignore stale-session cleanup if the user logged in while validation was in flight.
+        if (getAccessToken() === initialToken) {
+          clearTokens();
+          setUser(null);
+        }
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);

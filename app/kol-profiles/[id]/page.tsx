@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { KolPublicResponse, ReviewResponse } from '@/lib/api/types';
 import { BookingFormDialog } from '@/components/booking-form';
 import { PortfolioItemCard } from '@/components/portfolio-item-card';
+import { ReviewAuthorLink } from '@/components/review-author-link';
 
 const tabLabels: Record<string, string> = {
   overview: 'Tổng quan',
@@ -257,7 +258,7 @@ export default function KOLProfileDetailPage({ params }: { params: Promise<{ id:
                         <div key={review.id} className="border border-gray-200 rounded-lg p-4">
                           <div className="flex items-start justify-between mb-2">
                             <div>
-                              <p className="font-semibold text-gray-900">Người dùng #{review.authorId}</p>
+                              <ReviewAuthorLink review={review} className="font-semibold text-gray-900 hover:text-pin-red transition-colors" />
                               <p className="text-xs text-gray-500">
                                 {new Date(review.createdAt).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })}
                               </p>

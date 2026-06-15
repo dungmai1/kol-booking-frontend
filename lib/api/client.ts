@@ -118,9 +118,19 @@ async function request<T>(
       return request<T>(path, options, false, skipContentType);
     }
 
-    // Refresh failed – redirect to login
+    // Refresh failed – redirect to login (skip if already on a public auth page)
     if (typeof window !== 'undefined') {
-      window.location.href = '/auth/login';
+      const path = window.location.pathname;
+      const isPublicAuthPage =
+        path.startsWith('/auth/login') ||
+        path.startsWith('/auth/register') ||
+        path.startsWith('/auth/check-email') ||
+        path.startsWith('/auth/verify-email') ||
+        path.startsWith('/auth/forgot-password') ||
+        path.startsWith('/reset-password');
+      if (!isPublicAuthPage) {
+        window.location.href = '/auth/login';
+      }
     }
     throw new ApiError(401, 'UNAUTHORIZED', 'Phiên đăng nhập hết hạn');
   }

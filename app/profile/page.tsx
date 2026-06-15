@@ -1,10 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import { Header } from '@/components/header';
 import { Badge } from '@/components/ui/badge';
+import { BrandPublicHero, type BrandPublicHeroData } from '@/components/brand-public-hero';
 import { useAuth } from '@/contexts/AuthContext';
 import { authApi, brandApi, filesApi } from '@/lib/api';
 import { ApiError, resolveMediaUrl } from '@/lib/api/client';
+import { brandProfilePath } from '@/lib/brands/display';
 import {
   canSubmitProfile,
   isPendingReview,
@@ -14,9 +17,9 @@ import {
   profileStatusDisplayLabel,
 } from '@/lib/profile-status';
 import type { NormalizedProfileStatus } from '@/lib/profile-status';
-import { AlertCircle, CheckCircle2, Loader2, Save, Send, Upload } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ExternalLink, Eye, Loader2, Save, Send, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
@@ -49,6 +52,18 @@ function errMsg(e: unknown, fallback: string): string {
   return e instanceof ApiError ? e.message : e instanceof Error ? e.message : fallback;
 }
 
+function isValidWebsite(website: string): boolean {
+  const trimmed = website.trim();
+  if (!trimmed) return true;
+  try {
+    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    const url = new URL(withProtocol);
+    return Boolean(url.hostname.includes('.'));
+  } catch {
+    return false;
+  }
+}
+
 function validateForm(data: ProfileForm): string | null {
   const name = data.fullName.trim();
   if (name.length > MAX_NAME_LENGTH) {
@@ -69,6 +84,9 @@ function validateForm(data: ProfileForm): string | null {
   }
   if (data.website.trim().length > MAX_WEBSITE_LENGTH) {
     return `Website tối đa ${MAX_WEBSITE_LENGTH} ký tự.`;
+  }
+  if (!isValidWebsite(data.website)) {
+    return 'Website không hợp lệ. Ví dụ: thecoffeehouse.com hoặc https://congty.com';
   }
   return null;
 }
@@ -104,6 +122,12 @@ function toUpdatePayload(formData: ProfileForm) {
   };
 }
 
+type PublicStats = {
+  avgRating: number;
+  reviewCount: number;
+  campaignCount: number;
+};
+
 export default function ProfilePage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
@@ -129,6 +153,12 @@ export default function ProfilePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [brandStatus, setBrandStatus] = useState<NormalizedProfileStatus | null>(null);
   const [rejectReason, setRejectReason] = useState<string | null>(null);
+  const [brandProfileId, setBrandProfileId] = useState<number | null>(null);
+  const [publicStats, setPublicStats] = useState<PublicStats>({
+    avgRating: 0,
+    reviewCount: 0,
+    campaignCount: 0,
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -156,6 +186,21 @@ export default function ProfilePage() {
           setSavedData(loaded);
           setBrandStatus(normalizeProfileStatus(brand.status));
           setRejectReason(brand.rejectReason);
+          setBrandProfileId(brand.id);
+
+          const [publicRes, productsRes] = await Promise.allSettled([
+            brandApi.getPublicProfile(brand.id),
+            brandApi.getPublicProducts(brand.id, 0, 1),
+          ]);
+          if (!mounted) return;
+          if (publicRes.status === 'fulfilled') {
+            setPublicStats({
+              avgRating: publicRes.value.avgRating,
+              reviewCount: publicRes.value.reviewCount,
+              campaignCount:
+                productsRes.status === 'fulfilled' ? productsRes.value.totalElements : 0,
+            });
+          }
           return;
         }
 
@@ -262,7 +307,7 @@ export default function ProfilePage() {
       return;
     }
     if (!formData.company.trim()) {
-      toast.error('Vui lòng nhập tên công ty trước khi gửi duyệt.');
+      toast.error('Vui lòng nhập tên thương hiệu trước khi gửi duyệt.');
       return;
     }
     if (!formData.fullName.trim()) {
@@ -292,10 +337,24 @@ export default function ProfilePage() {
     }
   }
 
+  const previewBrand = useMemo<BrandPublicHeroData>(
+    () => ({
+      companyName: formData.company,
+      industry: formData.industry || null,
+      logoUrl: formData.logoUrl || null,
+      address: formData.address || null,
+      country: formData.country || null,
+      bio: formData.bio || null,
+      website: formData.website || null,
+      status: isProfileApproved(brandStatus) ? 'APPROVED' : undefined,
+      avgRating: publicStats.avgRating,
+      reviewCount: publicStats.reviewCount,
+      campaignCount: publicStats.campaignCount,
+    }),
+    [formData, brandStatus, publicStats],
+  );
+
   const avatarSrc = resolveMediaUrl(formData.logoUrl);
-  const avatarInitial = formData.fullName
-    ? formData.fullName.charAt(0).toUpperCase()
-    : formData.email.charAt(0).toUpperCase();
 
   const showSubmitBrand = isBrand && brandStatus !== null && canSubmitProfile(brandStatus);
   const canSubmitBrand =
@@ -318,7 +377,7 @@ export default function ProfilePage() {
     <>
       <Header />
       <main className="min-h-screen bg-surface-soft">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 pt-10 pb-6">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6 pt-10 pb-6">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="font-display font-bold text-ink text-[28px] lg:text-[44px] tracking-[-0.8px]">
               {isBrand ? 'Hồ sơ Brand' : 'Hồ sơ của tôi'}
@@ -329,9 +388,9 @@ export default function ProfilePage() {
               </Badge>
             )}
           </div>
-          <p className="text-mute mt-2">
+          <p className="text-mute mt-2 max-w-2xl">
             {isBrand
-              ? 'Quản lý thông tin doanh nghiệp, lưu thay đổi và gửi hồ sơ để admin duyệt trước khi đặt KOL.'
+              ? 'Chỉnh sửa thông tin hiển thị công khai trên trang thương hiệu. Các trường bên dưới map trực tiếp với nội dung KOL và người dùng thấy trên hồ sơ công khai.'
               : 'Quản lý thông tin tài khoản của bạn.'}
           </p>
 
@@ -351,7 +410,7 @@ export default function ProfilePage() {
               <div className="text-sm">
                 <p className="font-bold text-amber-700">Hồ sơ chưa đủ điều kiện gửi duyệt</p>
                 <p className="text-amber-700 mt-1">
-                  Cần nhập <strong>Tên công ty</strong> và <strong>Họ và tên</strong> liên hệ trước khi gửi.
+                  Cần nhập <strong>Tên thương hiệu</strong> và <strong>Họ và tên</strong> liên hệ trước khi gửi.
                 </p>
               </div>
             </div>
@@ -380,193 +439,243 @@ export default function ProfilePage() {
           )}
         </div>
 
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 pb-16">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6 pb-16">
           {!isBrand ? (
-            <div className="bg-canvas rounded-md border border-hairline p-8 text-center">
+            <div className="bg-canvas rounded-md border border-hairline p-8 text-center max-w-3xl">
               <p className="text-mute mb-4">Trang này dành cho tài khoản Brand.</p>
               <p className="text-sm text-mute">Email: {formData.email || '—'}</p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <section className="bg-canvas rounded-md border border-hairline p-8">
-                <h2 className="font-display font-bold text-ink text-[18px] mb-6">Logo công ty</h2>
-                <div className="flex items-center gap-6">
-                  <div className="grid place-items-center w-24 h-24 rounded-full bg-ink text-on-dark font-display font-extrabold text-4xl overflow-hidden shrink-0">
-                    {avatarSrc ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={avatarSrc} alt="Logo công ty" className="w-full h-full object-cover" />
-                    ) : (
-                      avatarInitial
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+              <section className="xl:col-span-5 xl:sticky xl:top-24 xl:self-start space-y-4">
+                <div className="bg-canvas rounded-md border border-hairline p-6 lg:p-8">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                    <div>
+                      <h2 className="font-display font-bold text-ink text-[18px]">Xem trước hồ sơ công khai</h2>
+                      <p className="text-xs text-mute mt-1">
+                        Cập nhật theo thời gian thực khi bạn chỉnh sửa bên phải
+                      </p>
+                    </div>
+                    {brandProfileId != null && (
+                      <Link
+                        href={brandProfilePath(brandProfileId)}
+                        target="_blank"
+                        className="inline-flex items-center gap-1.5 text-sm font-bold text-ink hover:text-pin-red transition-colors"
+                      >
+                        <Eye className="w-4 h-4" />
+                        Xem trang công khai
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </Link>
                     )}
                   </div>
-                  <div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept={ACCEPTED_IMAGE_TYPES.join(',')}
-                      className="sr-only"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) void handleAvatarUpload(file);
-                      }}
-                    />
+                  <BrandPublicHero brand={previewBrand} />
+                </div>
+                <p className="text-xs text-mute px-1">
+                  Đánh giá, nhận xét và số chiến dịch lấy từ dữ liệu thực tế trên{' '}
+                  {brandProfileId != null ? (
+                    <Link href={brandProfilePath(brandProfileId)} className="font-bold underline hover:text-pin-red">
+                      /brand/{brandProfileId}
+                    </Link>
+                  ) : (
+                    'trang công khai'
+                  )}
+                  . Các trường liên hệ không hiển thị công khai.
+                </p>
+              </section>
+
+              <form onSubmit={handleSubmit} className="xl:col-span-7 space-y-6">
+                <section className="bg-canvas rounded-md border border-hairline p-8">
+                  <SectionHeader
+                    title="Thông tin hiển thị công khai"
+                    description="Các trường này map trực tiếp với nội dung trên trang /brand/{id}."
+                  />
+                  <div className="space-y-5">
+                    <Field
+                      label="Logo thương hiệu"
+                      hint="Ảnh vuông hiển thị ở đầu hồ sơ công khai (logoUrl)."
+                    >
+                      <div className="flex items-center gap-6">
+                        <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-secondary-bg border border-hairline shrink-0">
+                          {avatarSrc ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={avatarSrc} alt="Logo thương hiệu" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full grid place-items-center text-mute text-xs font-bold">
+                              Chưa có logo
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept={ACCEPTED_IMAGE_TYPES.join(',')}
+                            className="sr-only"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) void handleAvatarUpload(file);
+                            }}
+                          />
+                          <button
+                            type="button"
+                            disabled={isUploading}
+                            onClick={() => fileInputRef.current?.click()}
+                            className="btn-pin-primary !rounded-full inline-flex items-center gap-2"
+                          >
+                            {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                            {isUploading ? 'Đang tải…' : 'Tải logo lên'}
+                          </button>
+                          <p className="text-xs text-mute mt-2">JPG, PNG, GIF hoặc WEBP (tối đa 5MB)</p>
+                        </div>
+                      </div>
+                    </Field>
+
+                    <Field
+                      label="Tên thương hiệu"
+                      required={showSubmitBrand}
+                      hint="Tiêu đề chính trên hồ sơ công khai (companyName)."
+                    >
+                      <input
+                        type="text"
+                        name="company"
+                        value={formData.company}
+                        onChange={handleChange}
+                        className="pin-input"
+                      />
+                    </Field>
+
+                    <Field label="Ngành nghề" hint="Hiển thị dạng nhãn bên cạnh tên thương hiệu (industry).">
+                      <select name="industry" value={formData.industry} onChange={handleChange} className="pin-input">
+                        <option value="">-- Chọn ngành nghề --</option>
+                        <option>Thương mại điện tử</option>
+                        <option>Thời trang</option>
+                        <option>Làm đẹp</option>
+                        <option>Thực phẩm & Đồ uống</option>
+                        <option>Công nghệ</option>
+                        <option>Khác</option>
+                      </select>
+                    </Field>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <Field label="Địa chỉ" hint="Hiển thị cùng quốc gia trên hồ sơ công khai (address).">
+                        <input
+                          type="text"
+                          name="address"
+                          value={formData.address}
+                          onChange={handleChange}
+                          maxLength={MAX_ADDRESS_LENGTH}
+                          className="pin-input"
+                        />
+                      </Field>
+                      <Field label="Quốc gia" hint="Bổ sung vị trí trên hồ sơ công khai (country).">
+                        <select name="country" value={formData.country} onChange={handleChange} className="pin-input">
+                          {COUNTRIES.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    </div>
+
+                    <Field label="Giới thiệu" hint="Đoạn mô tả ngắn dưới tên thương hiệu (bio).">
+                      <textarea
+                        name="bio"
+                        value={formData.bio}
+                        onChange={handleChange}
+                        maxLength={MAX_BIO_LENGTH}
+                        rows={4}
+                        className="pin-input"
+                      />
+                    </Field>
+
+                    <Field
+                      label="Website"
+                      hint="Liên kết website hiển thị trên hồ sơ công khai (website). Có thể nhập thecoffeehouse.com hoặc https://..."
+                    >
+                      <input
+                        type="text"
+                        name="website"
+                        value={formData.website}
+                        onChange={handleChange}
+                        maxLength={MAX_WEBSITE_LENGTH}
+                        placeholder="thecoffeehouse.com"
+                        className="pin-input"
+                      />
+                    </Field>
+                  </div>
+                </section>
+
+                <section className="bg-canvas rounded-md border border-hairline p-8">
+                  <SectionHeader
+                    title="Thông tin liên hệ riêng tư"
+                    description="Không hiển thị trên trang /brand/{id}. Dùng để admin và nền tảng liên hệ với bạn."
+                  />
+                  <div className="space-y-5">
+                    <Field label="Họ và tên liên hệ" required={showSubmitBrand} hint="contactName — chỉ dùng nội bộ.">
+                      <input
+                        type="text"
+                        name="fullName"
+                        value={formData.fullName}
+                        onChange={handleChange}
+                        maxLength={MAX_NAME_LENGTH}
+                        className="pin-input"
+                      />
+                    </Field>
+                    <Field label="Email" hint="Tài khoản đăng nhập, không hiển thị công khai.">
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        readOnly
+                        className="pin-input opacity-60 cursor-not-allowed"
+                      />
+                    </Field>
+                    <Field label="Số điện thoại" hint="contactPhone — chỉ dùng nội bộ.">
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        placeholder="0xxxxxxxxx"
+                        className="pin-input"
+                      />
+                    </Field>
+                  </div>
+                </section>
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="submit"
+                    disabled={isSaving || isUploading || isSubmitting}
+                    className="btn-pin-primary !rounded-full flex-1 min-w-[140px] !py-3 inline-flex items-center justify-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    {isSaving ? 'Đang lưu…' : 'Lưu thay đổi'}
+                  </button>
+                  {showSubmitBrand && (
                     <button
                       type="button"
-                      disabled={isUploading}
-                      onClick={() => fileInputRef.current?.click()}
-                      className="btn-pin-primary !rounded-full inline-flex items-center gap-2"
+                      onClick={() => void handleSubmitForReview()}
+                      disabled={isSubmitting || isSaving || isUploading || !canSubmitBrand}
+                      title={!canSubmitBrand ? 'Cần tên thương hiệu và họ tên liên hệ' : undefined}
+                      className="btn-pin-secondary !rounded-full flex-1 min-w-[140px] !py-3 inline-flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                      {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                      {isUploading ? 'Đang tải…' : 'Tải logo lên'}
+                      {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      {isSubmitting ? 'Đang gửi…' : 'Gửi duyệt'}
                     </button>
-                    <p className="text-xs text-mute mt-2">JPG, PNG, GIF hoặc WEBP (tối đa 5MB)</p>
-                  </div>
-                </div>
-              </section>
-
-              <section className="bg-canvas rounded-md border border-hairline p-8">
-                <h2 className="font-display font-bold text-ink text-[18px] mb-6">Người liên hệ</h2>
-                <div className="space-y-5">
-                  <Field label="Họ và tên" required={showSubmitBrand}>
-                    <input
-                      type="text"
-                      name="fullName"
-                      value={formData.fullName}
-                      onChange={handleChange}
-                      maxLength={MAX_NAME_LENGTH}
-                      className="pin-input"
-                    />
-                  </Field>
-                  <Field label="Email">
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      readOnly
-                      className="pin-input opacity-60 cursor-not-allowed"
-                    />
-                  </Field>
-                  <Field label="Số điện thoại">
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      placeholder="0xxxxxxxxx"
-                      className="pin-input"
-                    />
-                  </Field>
-                </div>
-              </section>
-
-              <section className="bg-canvas rounded-md border border-hairline p-8">
-                <h2 className="font-display font-bold text-ink text-[18px] mb-6">Thông tin doanh nghiệp</h2>
-                <div className="space-y-5">
-                  <Field label="Tên công ty" required={showSubmitBrand}>
-                    <input
-                      type="text"
-                      name="company"
-                      value={formData.company}
-                      onChange={handleChange}
-                      className="pin-input"
-                    />
-                  </Field>
-                  <Field label="Mã số thuế">
-                    <input
-                      type="text"
-                      name="taxCode"
-                      value={formData.taxCode}
-                      onChange={handleChange}
-                      maxLength={MAX_TAX_CODE_LENGTH}
-                      placeholder="0123456789"
-                      className="pin-input font-mono"
-                    />
-                  </Field>
-                  <Field label="Ngành nghề">
-                    <select name="industry" value={formData.industry} onChange={handleChange} className="pin-input">
-                      <option value="">-- Chọn ngành nghề --</option>
-                      <option>Thương mại điện tử</option>
-                      <option>Thời trang</option>
-                      <option>Làm đẹp</option>
-                      <option>Thực phẩm & Đồ uống</option>
-                      <option>Công nghệ</option>
-                      <option>Khác</option>
-                    </select>
-                  </Field>
-                  <Field label="Website">
-                    <input
-                      type="url"
-                      name="website"
-                      value={formData.website}
-                      onChange={handleChange}
-                      maxLength={MAX_WEBSITE_LENGTH}
-                      placeholder="https://congty.com"
-                      className="pin-input"
-                    />
-                  </Field>
-                  <Field label="Quốc gia">
-                    <select name="country" value={formData.country} onChange={handleChange} className="pin-input">
-                      {COUNTRIES.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="Địa chỉ">
-                    <input
-                      type="text"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleChange}
-                      maxLength={MAX_ADDRESS_LENGTH}
-                      className="pin-input"
-                    />
-                  </Field>
-                  <Field label="Giới thiệu công ty">
-                    <textarea
-                      name="bio"
-                      value={formData.bio}
-                      onChange={handleChange}
-                      maxLength={MAX_BIO_LENGTH}
-                      rows={4}
-                      className="pin-input"
-                    />
-                  </Field>
-                </div>
-              </section>
-
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="submit"
-                  disabled={isSaving || isUploading || isSubmitting}
-                  className="btn-pin-primary !rounded-full flex-1 min-w-[140px] !py-3 inline-flex items-center justify-center gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  {isSaving ? 'Đang lưu…' : 'Lưu thay đổi'}
-                </button>
-                {showSubmitBrand && (
+                  )}
                   <button
                     type="button"
-                    onClick={() => void handleSubmitForReview()}
-                    disabled={isSubmitting || isSaving || isUploading || !canSubmitBrand}
-                    title={!canSubmitBrand ? 'Cần tên công ty và họ tên liên hệ' : undefined}
-                    className="btn-pin-secondary !rounded-full flex-1 min-w-[140px] !py-3 inline-flex items-center justify-center gap-2 disabled:opacity-50"
+                    onClick={handleCancel}
+                    disabled={isSaving || isSubmitting}
+                    className="btn-pin-tertiary !rounded-full flex-1 min-w-[140px] !py-3"
                   >
-                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    {isSubmitting ? 'Đang gửi…' : 'Gửi duyệt'}
+                    Hủy
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  disabled={isSaving || isSubmitting}
-                  className="btn-pin-tertiary !rounded-full flex-1 min-w-[140px] !py-3"
-                >
-                  Hủy
-                </button>
-              </div>
-            </form>
+                </div>
+              </form>
+            </div>
           )}
         </div>
       </main>
@@ -574,21 +683,33 @@ export default function ProfilePage() {
   );
 }
 
+function SectionHeader({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="mb-6">
+      <h2 className="font-display font-bold text-ink text-[18px]">{title}</h2>
+      <p className="text-sm text-mute mt-1">{description}</p>
+    </div>
+  );
+}
+
 function Field({
   label,
   children,
   required = false,
+  hint,
 }: {
   label: string;
   children: React.ReactNode;
   required?: boolean;
+  hint?: string;
 }) {
   return (
     <div>
-      <label className="block text-sm font-bold text-ink mb-2">
+      <label className="block text-sm font-bold text-ink mb-1">
         {label}
         {required && <span className="text-pin-red"> *</span>}
       </label>
+      {hint && <p className="text-xs text-mute mb-2">{hint}</p>}
       {children}
     </div>
   );

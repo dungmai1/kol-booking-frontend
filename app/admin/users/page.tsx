@@ -10,7 +10,16 @@ import {
   RefreshCw,
   AlertCircle,
   X as XIcon,
+  ExternalLink,
+  Eye,
+  Mail,
+  User,
+  Shield,
+  Calendar,
+  Hash,
+  BadgeCheck,
 } from 'lucide-react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -20,6 +29,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { PaginationBar } from '@/components/pagination-bar';
 import { adminApi } from '@/lib/api/admin';
 import { ApiError } from '@/lib/api/client';
@@ -30,6 +46,7 @@ import type {
   Role,
   UserStatus,
 } from '@/lib/api/types';
+import { userProfileHref } from '@/lib/users/profile-link';
 
 const PAGE_SIZE = 20;
 
@@ -118,6 +135,7 @@ export default function AdminUsersPage() {
     user: AdminUserResponse;
     action: ConfirmAction;
   } | null>(null);
+  const [detailTarget, setDetailTarget] = useState<AdminUserResponse | null>(null);
 
   // Reset to first page whenever a filter changes
   useEffect(() => {
@@ -339,16 +357,32 @@ export default function AdminUsersPage() {
                   return (
                     <tr
                       key={u.id}
-                      className="border-t border-hairline-soft hover:bg-surface-card/40 transition-colors"
+                      onClick={() => setDetailTarget(u)}
+                      className="border-t border-hairline-soft hover:bg-surface-card/40 transition-colors cursor-pointer"
                     >
                       <td className="px-4 py-3 align-middle font-mono text-xs text-mute">
                         #{u.id}
                       </td>
                       <td className="px-4 py-3 align-middle">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="font-bold text-ink truncate">
-                            {u.email}
-                          </span>
+                          <div className="min-w-0">
+                            <span className="font-bold text-ink truncate block">{u.email}</span>
+                            {(() => {
+                              const profileHref = userProfileHref(u);
+                              if (!profileHref) return null;
+                              return (
+                                <Link
+                                  href={profileHref}
+                                  target="_blank"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-xs font-bold text-mute hover:text-pin-red transition-colors inline-flex items-center gap-1 mt-0.5"
+                                >
+                                  {u.profileDisplayName?.trim() || 'Xem hồ sơ công khai'}
+                                  <ExternalLink className="w-3 h-3 shrink-0" />
+                                </Link>
+                              );
+                            })()}
+                          </div>
                           {isSelf && (
                             <span className="text-[10px] font-bold uppercase tracking-wide text-pin-red bg-pin-red/10 border border-pin-red/30 rounded-full px-2 py-0.5">
                               BẠN
@@ -373,8 +407,19 @@ export default function AdminUsersPage() {
                       <td className="px-4 py-3 align-middle text-mute text-xs whitespace-nowrap">
                         {formatDate(u.createdAt)}
                       </td>
-                      <td className="px-4 py-3 align-middle">
+                      <td
+                        className="px-4 py-3 align-middle"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setDetailTarget(u)}
+                            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold bg-surface-card text-ink hover:bg-secondary-bg transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            Chi tiết
+                          </button>
                           {isSelf ? (
                             <span className="text-xs text-mute italic">
                               Tài khoản hiện tại
@@ -444,6 +489,171 @@ export default function AdminUsersPage() {
         }}
       />
 
+      {/* Detail Sheet */}
+      <Sheet
+        open={detailTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDetailTarget(null);
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-md p-0 bg-canvas overflow-y-auto"
+        >
+          {detailTarget && (() => {
+            const isSelf = currentUser?.userId === detailTarget.id;
+            const displayStatus: UserStatus =
+              isSelf && detailTarget.status === 'PENDING_VERIFICATION'
+                ? 'ACTIVE'
+                : detailTarget.status;
+            const profileHref = userProfileHref(detailTarget);
+            const isDetailPending = pendingId === detailTarget.id;
+
+            return (
+              <>
+                <SheetHeader className="border-b border-hairline-soft p-6">
+                  <div className="flex items-start gap-4">
+                    <span className="grid place-items-center w-14 h-14 rounded-full bg-ink text-on-dark font-bold text-lg shrink-0">
+                      {detailTarget.email?.[0]?.toUpperCase() ?? '?'}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <SheetTitle className="font-display text-ink text-[20px] tracking-tight leading-tight break-words">
+                        {detailTarget.email}
+                      </SheetTitle>
+                      <SheetDescription className="text-mute text-xs mt-1">
+                        User ID #{detailTarget.id}
+                        {isSelf ? ' • Tài khoản hiện tại' : ''}
+                      </SheetDescription>
+                      <div className="flex flex-wrap items-center gap-2 mt-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${ROLE_BADGE[detailTarget.role]}`}
+                        >
+                          {ROLE_LABEL[detailTarget.role]}
+                        </span>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_PILL[displayStatus]}`}
+                        >
+                          {STATUS_LABEL[displayStatus]}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </SheetHeader>
+
+                <div className="p-6 space-y-5">
+                  <DetailRow icon={Mail} label="Email" value={detailTarget.email} />
+                  <DetailRow
+                    icon={User}
+                    label="Tên hiển thị"
+                    value={detailTarget.profileDisplayName?.trim() || null}
+                  />
+                  <DetailRow
+                    icon={Shield}
+                    label="Vai trò"
+                    value={ROLE_LABEL[detailTarget.role]}
+                  />
+                  <DetailRow
+                    icon={BadgeCheck}
+                    label="Trạng thái tài khoản"
+                    value={STATUS_LABEL[displayStatus]}
+                  />
+                  <DetailRow
+                    icon={BadgeCheck}
+                    label="Email đã xác minh"
+                    value={
+                      detailTarget.emailVerified === undefined
+                        ? null
+                        : detailTarget.emailVerified
+                          ? 'Đã xác minh'
+                          : 'Chưa xác minh'
+                    }
+                  />
+                  <DetailRow
+                    icon={Calendar}
+                    label="Ngày tạo"
+                    value={formatDate(detailTarget.createdAt)}
+                  />
+                  {detailTarget.kolSlug && (
+                    <DetailRow
+                      icon={Hash}
+                      label="Slug KOL"
+                      value={detailTarget.kolSlug}
+                      mono
+                    />
+                  )}
+                  {detailTarget.brandProfileId != null && (
+                    <DetailRow
+                      icon={Hash}
+                      label="Brand profile ID"
+                      value={`#${detailTarget.brandProfileId}`}
+                      mono
+                    />
+                  )}
+                  {profileHref && (
+                    <div className="pt-1">
+                      <Link
+                        href={profileHref}
+                        target="_blank"
+                        className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold bg-surface-card text-ink hover:bg-secondary-bg transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Xem hồ sơ công khai
+                      </Link>
+                    </div>
+                  )}
+                </div>
+
+                {!isSelf && (
+                  <div className="border-t border-hairline-soft p-6 flex items-center gap-3">
+                    {detailTarget.status === 'ACTIVE' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDetailTarget(null);
+                          setConfirmTarget({ user: detailTarget, action: 'ban' });
+                        }}
+                        disabled={isDetailPending}
+                        className="flex-1 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold bg-pin-red text-on-dark hover:opacity-90 disabled:opacity-50 transition-colors"
+                      >
+                        {isDetailPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Ban className="w-4 h-4" />
+                        )}
+                        Cấm người dùng
+                      </button>
+                    )}
+                    {detailTarget.status === 'BANNED' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDetailTarget(null);
+                          setConfirmTarget({ user: detailTarget, action: 'unban' });
+                        }}
+                        disabled={isDetailPending}
+                        className="flex-1 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+                      >
+                        {isDetailPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <ShieldCheck className="w-4 h-4" />
+                        )}
+                        Mở khóa
+                      </button>
+                    )}
+                    {detailTarget.status === 'PENDING_VERIFICATION' && (
+                      <p className="text-sm text-mute italic text-center w-full">
+                        Chờ người dùng xác minh email trước khi thực hiện hành động.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
+
       {/* Confirm dialog */}
       <Dialog
         open={confirmTarget !== null}
@@ -511,6 +721,41 @@ export default function AdminUsersPage() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function DetailRow({
+  icon: Icon,
+  label,
+  value,
+  mono = false,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string | null | undefined;
+  mono?: boolean;
+}) {
+  const isEmpty = !value;
+  return (
+    <div className="flex items-start gap-3">
+      <span className="grid place-items-center w-8 h-8 rounded-full bg-surface-card text-ink shrink-0 mt-0.5">
+        <Icon className="w-4 h-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-mute">
+          {label}
+        </p>
+        {isEmpty ? (
+          <p className="text-sm text-mute mt-0.5 italic">Chưa cập nhật</p>
+        ) : (
+          <p
+            className={`text-sm text-ink mt-0.5 break-words ${mono ? 'font-mono' : ''}`}
+          >
+            {value}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
 

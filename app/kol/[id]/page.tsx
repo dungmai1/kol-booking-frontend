@@ -18,6 +18,7 @@ import { useState, use, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { BookingFormDialog } from '@/components/booking-form';
 import { PortfolioItemCard } from '@/components/portfolio-item-card';
+import { ReviewListItem } from '@/components/review-list-item';
 
 const PLATFORM_GLYPH: Record<string, string> = {
   TIKTOK: 'TT',
@@ -288,17 +289,7 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
                 {reviews.length > 0 ? (
                   <ul className="divide-y divide-hairline-soft">
                     {reviews.map((review) => (
-                      <li key={review.id} className="py-5 first:pt-0 last:pb-0">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-1">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <Star key={i} className={`w-4 h-4 ${i < review.rating ? 'fill-ink text-ink' : 'text-stone'}`} />
-                            ))}
-                          </div>
-                          <span className="text-xs text-mute">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</span>
-                        </div>
-                        <p className="text-sm text-body leading-relaxed">{review.comment}</p>
-                      </li>
+                      <ReviewListItem key={review.id} review={review} />
                     ))}
                   </ul>
                 ) : (

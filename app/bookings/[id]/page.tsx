@@ -31,6 +31,8 @@ import { brandProfilePath } from '@/lib/brands/display';
 import { useAuth } from '@/contexts/AuthContext';
 import type {
   BookingResponse,
+  Platform,
+  PricingPackageType,
   ReviewDirection,
   ReviewResponse,
 } from '@/lib/api/types';
@@ -40,6 +42,13 @@ import {
   isBranchState,
   bookingCommission,
 } from '@/lib/bookings/status';
+import {
+  detectPlatformFromUrl,
+  formatDeliverableSpec,
+  packageTypeLabel,
+  parseBookingDeliverables,
+  platformLabel,
+} from '@/lib/bookings/deliverables';
 
 const vnd = new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -99,8 +108,18 @@ export default function BookingDetailPage({
     submittedUrl: string;
     note: string;
     deliverableId: string;
+    type: PricingPackageType;
+    platform: Platform;
     error: string;
-  }>({ open: false, submittedUrl: '', note: '', deliverableId: '0', error: '' });
+  }>({
+    open: false,
+    submittedUrl: '',
+    note: '',
+    deliverableId: '1',
+    type: 'VIDEO',
+    platform: 'TIKTOK',
+    error: '',
+  });
 
   // Reviews — populated only when booking is COMPLETED.
   // myReview = review I authored about the other party.
@@ -261,11 +280,15 @@ export default function BookingDetailPage({
   }
 
   function openDeliverableForm() {
+    const specs = parseBookingDeliverables(booking?.deliverables);
+    const first = specs[0];
     setDeliverableForm({
       open: true,
       submittedUrl: '',
       note: '',
-      deliverableId: '0',
+      deliverableId: first ? '1' : '1',
+      type: first?.type ?? 'VIDEO',
+      platform: first?.platform ?? 'TIKTOK',
       error: '',
     });
   }
@@ -288,11 +311,15 @@ export default function BookingDetailPage({
       setDeliverableForm((prev) => ({ ...prev, error: 'Mã giao nội dung không hợp lệ.' }));
       return;
     }
+    const platform =
+      deliverableForm.platform || detectPlatformFromUrl(url) || 'TIKTOK';
     setActionLoading('submit-deliverable');
     setDeliverableForm((prev) => ({ ...prev, error: '' }));
     try {
       await bookingsApi.submitDeliverable(booking.id, {
         deliverableId,
+        type: deliverableForm.type,
+        platform,
         submittedUrl: url,
         note: deliverableForm.note.trim() || undefined,
       });
@@ -300,7 +327,9 @@ export default function BookingDetailPage({
         open: false,
         submittedUrl: '',
         note: '',
-        deliverableId: '0',
+        deliverableId: '1',
+        type: 'VIDEO',
+        platform: 'TIKTOK',
         error: '',
       });
       await fetchBooking();
@@ -364,6 +393,7 @@ export default function BookingDetailPage({
   }
 
   const colors = BOOKING_STATUS_COLORS[booking.status];
+  const deliverableSpecs = parseBookingDeliverables(booking.deliverables);
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -547,13 +577,21 @@ export default function BookingDetailPage({
                   autoFocus
                   placeholder="https://..."
                   value={deliverableForm.submittedUrl}
-                  onChange={(e) =>
-                    setDeliverableForm((prev) => ({
-                      ...prev,
-                      submittedUrl: e.target.value,
-                      error: '',
-                    }))
-                  }
+                  onChange={(e) => {
+                    const submittedUrl = e.target.value;
+                    setDeliverableForm((prev) => {
+                      const detected =
+                        deliverableSpecs.length === 0
+                          ? detectPlatformFromUrl(submittedUrl)
+                          : null;
+                      return {
+                        ...prev,
+                        submittedUrl,
+                        ...(detected ? { platform: detected } : {}),
+                        error: '',
+                      };
+                    });
+                  }}
                   disabled={actionLoading === 'submit-deliverable'}
                   className="pin-input w-full disabled:opacity-50"
                 />
@@ -564,25 +602,76 @@ export default function BookingDetailPage({
 
               <div>
                 <label className="text-xs uppercase tracking-wide text-mute font-bold mb-1.5 block">
-                  Mã giao nội dung
+                  Loại nội dung <span className="text-pin-red">*</span>
                 </label>
-                <input
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={deliverableForm.deliverableId}
-                  onChange={(e) =>
-                    setDeliverableForm((prev) => ({
-                      ...prev,
-                      deliverableId: e.target.value,
-                      error: '',
-                    }))
-                  }
-                  disabled={actionLoading === 'submit-deliverable'}
-                  className="pin-input w-full disabled:opacity-50"
-                />
+                {deliverableSpecs.length > 0 ? (
+                  <select
+                    value={deliverableForm.deliverableId}
+                    onChange={(e) => {
+                      const index = Number(e.target.value) - 1;
+                      const spec = deliverableSpecs[index];
+                      if (!spec) return;
+                      setDeliverableForm((prev) => ({
+                        ...prev,
+                        deliverableId: e.target.value,
+                        type: spec.type,
+                        platform: spec.platform,
+                        error: '',
+                      }));
+                    }}
+                    disabled={actionLoading === 'submit-deliverable'}
+                    className="pin-input w-full disabled:opacity-50"
+                  >
+                    {deliverableSpecs.map((spec, index) => (
+                      <option key={`${spec.type}-${spec.platform}-${index}`} value={String(index + 1)}>
+                        {formatDeliverableSpec(spec)}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <select
+                      value={deliverableForm.type}
+                      onChange={(e) =>
+                        setDeliverableForm((prev) => ({
+                          ...prev,
+                          type: e.target.value as PricingPackageType,
+                          error: '',
+                        }))
+                      }
+                      disabled={actionLoading === 'submit-deliverable'}
+                      className="pin-input w-full disabled:opacity-50"
+                    >
+                      {(Object.keys(packageTypeLabel) as PricingPackageType[]).map((key) => (
+                        <option key={key} value={key}>
+                          {packageTypeLabel[key]}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={deliverableForm.platform}
+                      onChange={(e) =>
+                        setDeliverableForm((prev) => ({
+                          ...prev,
+                          platform: e.target.value as Platform,
+                          error: '',
+                        }))
+                      }
+                      disabled={actionLoading === 'submit-deliverable'}
+                      className="pin-input w-full disabled:opacity-50"
+                    >
+                      {(Object.keys(platformLabel) as Platform[]).map((key) => (
+                        <option key={key} value={key}>
+                          {platformLabel[key]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <p className="text-xs text-mute mt-1">
-                  Để 0 nếu booking chỉ có một mục giao nội dung.
+                  {deliverableSpecs.length > 0
+                    ? 'Chọn mục giao nội dung tương ứng với yêu cầu trong booking.'
+                    : 'Chọn loại và nền tảng của nội dung bạn đang nộp.'}
                 </p>
               </div>
 
@@ -823,7 +912,7 @@ function DetailTab({
   // ─── Review section (only visible when booking is COMPLETED) ───────────────
   const showReviewSection =
     booking.status === 'COMPLETED' && (isBrand || isKol);
-  const reviewDirection: ReviewDirection = isBrand ? 'TO_KOL' : 'TO_BRAND';
+  const reviewDirection: ReviewDirection = isBrand ? 'BRAND_TO_KOL' : 'KOL_TO_BRAND';
   const targetName = isBrand
     ? bookingKolLabel(booking)
     : bookingBrandLabel(booking);

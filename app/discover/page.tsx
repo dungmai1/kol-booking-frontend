@@ -7,6 +7,8 @@ import { KOLCard } from '@/components/kol-card';
 import { kolApi } from '@/lib/api/kol';
 import { categoriesApi } from '@/lib/api/categories';
 import type { KolSummaryResponse, CategoryResponse, Platform } from '@/lib/api/types';
+import { categoryDisplayLabel } from '@/lib/categories/display';
+import { platformLabel } from '@/lib/bookings/deliverables';
 import { Search, Loader2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 const PLATFORMS: Platform[] = ['TIKTOK', 'INSTAGRAM', 'YOUTUBE', 'FACEBOOK'];
@@ -169,7 +171,7 @@ function DiscoverPageContent() {
                 active={selectedCategoryId === cat.id}
                 onClick={() => setSelectedCategoryId(selectedCategoryId === cat.id ? '' : cat.id)}
               >
-                {cat.name}
+                {categoryDisplayLabel(cat)}
               </Chip>
             ))}
 
@@ -183,7 +185,7 @@ function DiscoverPageContent() {
                 active={selectedPlatform === p}
                 onClick={() => setSelectedPlatform(selectedPlatform === p ? '' : p)}
               >
-                {p[0] + p.slice(1).toLowerCase()}
+                {platformLabel[p]}
               </Chip>
             ))}
           </div>

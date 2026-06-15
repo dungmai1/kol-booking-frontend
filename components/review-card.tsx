@@ -3,6 +3,8 @@
 import { Star, ThumbsUp } from 'lucide-react';
 import { useState } from 'react';
 import type { ReviewResponse } from '@/lib/api/types';
+import { ReviewAuthorLink } from '@/components/review-author-link';
+import { reviewDirectionLabel } from '@/lib/users/profile-link';
 
 interface ReviewCardProps {
   review: ReviewResponse & { helpfulCount?: number };
@@ -25,19 +27,12 @@ export function ReviewCard({ review }: ReviewCardProps) {
   return (
     <article className="bg-canvas rounded-md border border-hairline p-6">
       <header className="flex items-start justify-between gap-4 mb-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="grid place-items-center w-12 h-12 rounded-full bg-surface-card text-ink font-bold shrink-0">
-            #{review.authorId}
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-sm font-bold text-ink truncate">Người dùng #{review.authorId}</h3>
-            <p className="text-xs text-mute capitalize">
-              {review.direction === 'TO_KOL' ? 'Đánh giá KOL' : 'Đánh giá thương hiệu'}
-            </p>
-            <p className="text-xs text-mute">
-              {new Date(review.createdAt).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })}
-            </p>
-          </div>
+        <div className="min-w-0">
+          <ReviewAuthorLink review={review} />
+          <p className="text-xs text-mute capitalize mt-1">{reviewDirectionLabel(review.direction)}</p>
+          <p className="text-xs text-mute">
+            {new Date(review.createdAt).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {Array.from({ length: 5 }).map((_, i) => (

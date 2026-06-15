@@ -22,6 +22,7 @@ export const authApi = {
   },
 
   async login(data: LoginRequest): Promise<AuthTokens> {
+    clearTokens();
     const tokens = await api.post<AuthTokens>('/auth/login', data);
     saveTokens(tokens);
     return tokens;

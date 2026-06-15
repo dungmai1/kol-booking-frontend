@@ -79,7 +79,7 @@ export type ApplicationStatus =
 
 export type WithdrawStatus = 'PENDING' | 'APPROVED' | 'PAID' | 'REJECTED';
 
-export type ReviewDirection = 'TO_KOL' | 'TO_BRAND';
+export type ReviewDirection = 'BRAND_TO_KOL' | 'KOL_TO_BRAND' | 'TO_KOL' | 'TO_BRAND';
 
 export type NotificationType =
   | 'BOOKING_CREATED'
@@ -394,6 +394,8 @@ export interface SendMessageRequest {
 
 export interface SubmitDeliverableRequest {
   deliverableId: number;
+  type: PricingPackageType;
+  platform: Platform;
   submittedUrl: string;
   note?: string;
 }
@@ -410,6 +412,10 @@ export interface ReviewResponse {
   comment: string;
   createdAt: string;
   updatedAt: string;
+  authorDisplayName?: string | null;
+  authorAvatarUrl?: string | null;
+  authorKolSlug?: string | null;
+  authorBrandProfileId?: number | null;
 }
 
 export interface CreateReviewRequest {
@@ -605,7 +611,11 @@ export interface AdminUserResponse {
   email: string;
   role: Role;
   status: UserStatus;
+  emailVerified?: boolean;
   createdAt: string;
+  profileDisplayName?: string | null;
+  kolSlug?: string | null;
+  brandProfileId?: number | null;
 }
 
 export interface AdminStatsOverview {

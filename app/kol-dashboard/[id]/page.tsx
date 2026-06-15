@@ -13,6 +13,7 @@ import { bookingsApi } from '@/lib/api/bookings';
 import { walletApi } from '@/lib/api/wallet';
 import { reviewsApi } from '@/lib/api/reviews';
 import { useAuth } from '@/contexts/AuthContext';
+import { ReviewAuthorLink } from '@/components/review-author-link';
 import type { KolProfileResponse, BookingResponse, ReviewResponse, WalletResponse } from '@/lib/api/types';
 
 const tabLabels: Record<string, string> = {
@@ -366,7 +367,7 @@ export default function KOLDashboardPage() {
                         <div key={review.id} className="border border-gray-200 rounded-lg p-4">
                           <div className="flex items-start justify-between mb-2">
                             <div>
-                              <p className="font-semibold text-gray-900">Người dùng #{review.authorId}</p>
+                              <ReviewAuthorLink review={review} className="font-semibold text-gray-900 hover:text-pin-red transition-colors" />
                               <p className="text-gray-500 text-sm">
                                 {new Date(review.createdAt).toLocaleDateString('vi-VN')}
                               </p>
