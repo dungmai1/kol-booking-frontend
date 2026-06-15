@@ -10,6 +10,7 @@ export const BOOKING_STATUS_LABEL: Record<BookingStatus, string> = {
   COMPLETED: 'Hoàn thành',
   DISPUTED: 'Tranh chấp',
   CANCELLED_BY_ADMIN: 'Admin hủy',
+  DELIVERY_REJECTED: 'Từ chối nội dung',
 };
 
 export const BOOKING_STATUS_DESCRIPTION: Record<BookingStatus, string> = {
@@ -18,10 +19,11 @@ export const BOOKING_STATUS_DESCRIPTION: Record<BookingStatus, string> = {
   REJECTED: 'KOL đã từ chối yêu cầu này.',
   CANCELLED: 'Đơn đã bị hủy.',
   IN_PROGRESS: 'Đã thanh toán. KOL đang triển khai chiến dịch.',
-  DELIVERED: 'KOL đã giao nội dung. Vui lòng kiểm tra và phê duyệt.',
-  COMPLETED: 'Đơn đã hoàn tất, KOL đã được thanh toán.',
+  DELIVERED: 'KOL đã giao nội dung. Chấp nhận để giải ngân cho KOL, hoặc từ chối để hoàn tiền về ví. Nếu không phản hồi trong 3 ngày, hệ thống tự thanh toán cho KOL.',
+  COMPLETED: 'Đơn đã hoàn tất. KOL nhận tiền vào ví tự động; nền tảng trích phí.',
   DISPUTED: 'Đơn đang được khiếu nại, admin sẽ liên hệ.',
   CANCELLED_BY_ADMIN: 'Đơn đã bị quản trị viên hủy.',
+  DELIVERY_REJECTED: 'Brand đã từ chối nội dung. Ngân sách đã hoàn về ví Brand.',
 };
 
 /** Vivid color coding per booking status. Uses raw hex so it is consistent across themes. */
@@ -91,6 +93,12 @@ export const BOOKING_STATUS_COLORS: Record<BookingStatus, BookingStatusColors> =
     soft: '#ffedd5',
     border: '#fdba74',
   },
+  DELIVERY_REJECTED: {
+    bg: '#b45309', // amber-700
+    text: '#ffffff',
+    soft: '#fef3c7',
+    border: '#fcd34d',
+  },
 };
 
 /** Linear happy-path steps. Branch states (REJECTED/CANCELLED/DISPUTED) are not in here. */
@@ -109,6 +117,7 @@ export const BOOKING_BRANCH_STATES: BookingStatus[] = [
   'CANCELLED',
   'DISPUTED',
   'CANCELLED_BY_ADMIN',
+  'DELIVERY_REJECTED',
 ];
 
 export function isBranchState(status: BookingStatus): boolean {
@@ -127,7 +136,9 @@ export function isTerminalState(status: BookingStatus): boolean {
  *  - CANCELLED_BY_ADMIN                       → -1
  */
 export function currentStepIndex(status: BookingStatus): number {
-  if (status === 'DISPUTED') return BOOKING_MAIN_STEPS.indexOf('DELIVERED');
+  if (status === 'DISPUTED' || status === 'DELIVERY_REJECTED') {
+    return BOOKING_MAIN_STEPS.indexOf('DELIVERED');
+  }
   if (isBranchState(status)) return -1;
   return BOOKING_MAIN_STEPS.indexOf(status as MainStep);
 }

@@ -51,6 +51,10 @@ export const bookingsApi = {
     return api.post(`/bookings/${id}/approve-delivery`);
   },
 
+  rejectDelivery(id: number, reason?: string): Promise<BookingResponse> {
+    return api.post(`/bookings/${id}/reject-delivery`, reason ? { reason } : undefined);
+  },
+
   dispute(id: number, reason?: string): Promise<BookingResponse> {
     return api.post(`/bookings/${id}/dispute`, reason ? { reason } : undefined);
   },

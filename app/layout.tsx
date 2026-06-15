@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter, Manrope } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { EmailVerificationGate } from '@/components/email-verification-gate'
 import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
@@ -47,7 +48,9 @@ export default function RootLayout({
         style={{ fontFamily: 'var(--font-inter), -apple-system, system-ui, sans-serif' }}
         suppressHydrationWarning
       >
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <EmailVerificationGate>{children}</EmailVerificationGate>
+        </AuthProvider>
         <Toaster position="top-right" richColors />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

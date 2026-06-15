@@ -25,6 +25,7 @@ const ICON: Record<BookingStatus, LucideIcon> = {
   COMPLETED: Trophy,
   DISPUTED: AlertTriangle,
   CANCELLED_BY_ADMIN: ShieldX,
+  DELIVERY_REJECTED: XCircle,
 };
 
 interface BookingStatusPillProps {

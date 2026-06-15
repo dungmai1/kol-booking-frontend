@@ -28,7 +28,9 @@ export function BookingTimeline({ status, className = '' }: BookingTimelineProps
         ? Ban
         : status === 'DISPUTED'
           ? AlertTriangle
-          : ShieldX;
+          : status === 'DELIVERY_REJECTED'
+            ? X
+            : ShieldX;
 
   return (
     <div className={`w-full ${className}`}>

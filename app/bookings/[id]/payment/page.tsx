@@ -180,7 +180,8 @@ export default function BookingPaymentPage({
             <BookingStatusPill status={booking.status} size="md" />
           </div>
           <p className="text-sm text-mute">
-            Số tiền sẽ được giữ trong ví cho đến khi bạn duyệt nội dung KOL gửi.
+            Tiền được giữ trong escrow sau khi thanh toán. Khi bạn nghiệm thu nội dung KOL, hệ thống tự động
+            chuyển phần net cho KOL và trích phí nền tảng — không cần admin duyệt.
           </p>
         </header>
 

@@ -31,8 +31,8 @@ function PaymentResultBody() {
               Thanh toán thành công!
             </h1>
             <p className="text-sm text-mute leading-relaxed mb-7">
-              Giao dịch của bạn đã được ghi nhận. Số tiền được giữ trong ví cho đến khi bạn
-              duyệt nội dung KOL bàn giao.
+              Giao dịch đã được ghi nhận. Tiền giữ trong escrow; khi bạn nghiệm thu nội dung KOL, hệ thống tự
+              giải ngân cho KOL và trích phí nền tảng.
             </p>
           </>
         ) : (

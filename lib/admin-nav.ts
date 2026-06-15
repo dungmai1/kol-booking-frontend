@@ -18,5 +18,5 @@ export const ADMIN_NAV: Array<{ href: string; label: string; icon: LucideIcon; e
   { href: '/admin/bookings', label: 'Booking', icon: Briefcase },
   { href: '/admin/categories', label: 'Danh mục', icon: FolderTree },
   { href: '/admin/commission', label: 'Hoa hồng', icon: Coins },
-  { href: '/admin/withdrawals', label: 'Rút tiền', icon: Banknote },
+  { href: '/admin/withdrawals', label: 'Rút ngân hàng', icon: Banknote },
 ];

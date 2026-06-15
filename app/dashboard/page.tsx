@@ -21,6 +21,7 @@ const statusLabel: Record<string, string> = {
   CANCELLED: 'Đã hủy',
   DISPUTED: 'Tranh chấp',
   CANCELLED_BY_ADMIN: 'Admin hủy',
+  DELIVERY_REJECTED: 'Từ chối nội dung',
 };
 
 function statusPill(status: string): string {
@@ -109,12 +110,13 @@ export default function DashboardPage() {
                     <QuickAction href="/products/manage" icon={<ClipboardList className="w-5 h-5" />} title="Tin đăng của tôi" desc="Quản lý & duyệt ứng viên" />
                     <QuickAction href="/discover" icon={<Compass className="w-5 h-5" />} title="Khám phá KOL" desc="Tìm nhà sáng tạo phù hợp" />
                     <QuickAction href="/bookings" icon={<BookOpen className="w-5 h-5" />} title="Đơn đặt" desc="Theo dõi chiến dịch" />
+                    <QuickAction href="/wallet" icon={<Wallet className="w-5 h-5" />} title="Ví của tôi" desc="Số dư & rút tiền" />
                   </>
                 ) : user?.role === 'KOL' ? (
                   <>
                     <QuickAction href="/products" icon={<Compass className="w-5 h-5" />} title="Khám phá chiến dịch" desc="Tìm tin đăng để ứng tuyển" primary />
                     <QuickAction href="/applications/mine" icon={<ClipboardList className="w-5 h-5" />} title="Ứng tuyển của tôi" desc="Theo dõi trạng thái hồ sơ" />
-                    <QuickAction href="/kol-dashboard/wallet" icon={<Wallet className="w-5 h-5" />} title="Ví của tôi" desc="Số dư & rút tiền" />
+                    <QuickAction href="/wallet" icon={<Wallet className="w-5 h-5" />} title="Ví của tôi" desc="Số dư & rút tiền" />
                     <QuickAction href="/kol-dashboard/me" icon={<Star className="w-5 h-5" />} title="Hồ sơ KOL" desc="Cập nhật trang cá nhân" />
                   </>
                 ) : null}

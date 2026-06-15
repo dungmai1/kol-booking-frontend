@@ -152,7 +152,11 @@ export default function KolWalletPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!isAuthenticated || !user || user.role !== 'KOL') {
+    if (!isAuthenticated || !user) {
+      setIsLoading(false);
+      return;
+    }
+    if (user.role !== 'KOL' && user.role !== 'BRAND') {
       setIsLoading(false);
       return;
     }
@@ -261,17 +265,16 @@ export default function KolWalletPage() {
     );
   }
 
-  if (user.role !== 'KOL') {
+  if (user.role !== 'KOL' && user.role !== 'BRAND') {
     return (
       <>
         <Header />
         <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
           <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-md w-full text-center shadow-sm">
             <ShieldCheck className="w-10 h-10 text-blue-500 mx-auto mb-3" />
-            <h1 className="font-bold text-xl text-gray-900 mb-2">Chỉ dành cho KOL</h1>
+            <h1 className="font-bold text-xl text-gray-900 mb-2">Không có quyền truy cập</h1>
             <p className="text-sm text-gray-600 mb-5">
-              Trang ví chỉ dành cho người dùng có vai trò KOL. Tài khoản hiện tại của
-              bạn là {user.role}.
+              Trang ví chỉ dành cho Brand và KOL. Tài khoản hiện tại của bạn là {user.role}.
             </p>
             <Link
               href="/"
@@ -288,6 +291,7 @@ export default function KolWalletPage() {
   const available = wallet?.balanceAvailable ?? 0;
   const held = wallet?.balanceHeld ?? 0;
   const total = available + held;
+  const isBrand = user.role === 'BRAND';
 
   return (
     <>
@@ -298,10 +302,12 @@ export default function KolWalletPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
             <div>
               <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900">
-                Ví KOL
+                {isBrand ? 'Ví Brand' : 'Ví KOL'}
               </h1>
               <p className="text-sm text-gray-600 mt-1">
-                Theo dõi số dư, giao dịch và yêu cầu rút tiền của bạn.
+                {isBrand
+                  ? 'Tiền hoàn từ booking (từ chối nội dung, v.v.) nằm ở số dư khả dụng. Rút ra ngân hàng qua yêu cầu bên dưới — admin xác nhận chuyển khoản thủ công.'
+                  : 'Tiền từ booking hoàn tất được cộng vào ví tự động khi Brand nghiệm thu. Rút ra ngân hàng là bước riêng.'}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -349,7 +355,11 @@ export default function KolWalletPage() {
               <p className="text-2xl md:text-3xl font-extrabold">
                 {vnd.format(available)}
               </p>
-              <p className="text-xs opacity-80 mt-2">Có thể rút ngay</p>
+              <p className="text-xs text-gray-500 mt-2">
+                {isBrand
+                  ? 'Hoàn tiền và số dư có thể rút ra ngân hàng'
+                  : 'Từ booking đã hoàn tất — rút được ngay'}
+              </p>
             </div>
 
             <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
@@ -363,7 +373,9 @@ export default function KolWalletPage() {
                 {vnd.format(held)}
               </p>
               <p className="text-xs text-gray-500 mt-2">
-                Chờ brand duyệt đơn / chờ rút
+                {isBrand
+                  ? 'Escrow các booking đang chạy hoặc yêu cầu rút đang chờ'
+                  : 'Yêu cầu rút đang chờ admin chuyển khoản'}
               </p>
             </div>
 
@@ -642,7 +654,9 @@ export default function KolWalletPage() {
               )}
 
               <p className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
-                Yêu cầu rút tiền sẽ được admin duyệt và chi trả trong 1–3 ngày làm việc.
+                {isBrand
+                  ? 'Admin sẽ chuyển khoản thủ công sau khi nhận yêu cầu. Số tiền tạm giữ cho đến khi hoàn tất hoặc bị từ chối.'
+                  : 'Tiền booking vào ví ngay khi Brand nghiệm thu (không cần admin duyệt). Rút ra ngân hàng là yêu cầu riêng — số tiền sẽ tạm giữ cho đến khi chuyển khoản xong.'}
               </p>
 
               <div className="flex flex-wrap items-center justify-end gap-2 pt-1">

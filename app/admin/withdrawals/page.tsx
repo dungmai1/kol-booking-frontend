@@ -6,10 +6,11 @@ import {
   Loader2,
   AlertCircle,
   Banknote,
-  Check,
-  X,
   CircleDollarSign,
   Inbox,
+  Info,
+  RefreshCw,
+  X,
 } from 'lucide-react';
 import {
   Breadcrumb,
@@ -43,8 +44,7 @@ function fmtDateTime(iso: string | null): string {
 }
 
 const TABS: { value: WithdrawStatus; label: string }[] = [
-  { value: 'PENDING', label: 'Chờ duyệt' },
-  { value: 'APPROVED', label: 'Đã duyệt' },
+  { value: 'PENDING', label: 'Chờ chuyển khoản' },
   { value: 'PAID', label: 'Đã chi trả' },
   { value: 'REJECTED', label: 'Từ chối' },
 ];
@@ -57,11 +57,22 @@ const STATUS_CLASS: Record<WithdrawStatus, string> = {
 };
 
 const STATUS_LABEL: Record<WithdrawStatus, string> = {
-  PENDING: 'Chờ duyệt',
-  APPROVED: 'Đã duyệt',
+  PENDING: 'Chờ chuyển khoản',
+  APPROVED: 'Chờ chuyển khoản',
   PAID: 'Đã chi trả',
   REJECTED: 'Từ chối',
 };
+
+const ROLE_LABEL: Record<string, string> = {
+  KOL: 'KOL',
+  BRAND: 'Brand',
+  ADMIN: 'Admin',
+};
+
+function requesterLabel(w: WithdrawResponse): string {
+  const role = w.requesterRole ? ROLE_LABEL[w.requesterRole] ?? w.requesterRole : 'User';
+  return `${role} #${w.userId}`;
+}
 
 const PAGE_SIZE = 15;
 
@@ -98,25 +109,11 @@ export default function AdminWithdrawalsPage() {
   }, [fetchList]);
 
   function removeFromList(id: number) {
-    // After an action the item leaves the current status filter — drop it.
     setItems((list) => list.filter((x) => x.id !== id));
   }
 
-  async function doApprove(w: WithdrawResponse) {
-    setBusyId(w.id);
-    setError(null);
-    try {
-      await withdrawalsApi.adminApprove(w.id);
-      removeFromList(w.id);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Duyệt thất bại.');
-    } finally {
-      setBusyId(null);
-    }
-  }
-
   async function doPaid(w: WithdrawResponse) {
-    if (!window.confirm(`Xác nhận đã chi trả ${vnd(w.amount)} cho ${w.accountName}?`)) return;
+    if (!window.confirm(`Xác nhận đã chuyển khoản ${vnd(w.amount)} cho ${w.accountName}?`)) return;
     setBusyId(w.id);
     setError(null);
     try {
@@ -156,21 +153,35 @@ export default function AdminWithdrawalsPage() {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage className="text-ink font-semibold">Rút tiền</BreadcrumbPage>
+            <BreadcrumbPage className="text-ink font-semibold">Rút tiền ngân hàng</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
       <div>
         <h2 className="font-display font-bold text-ink text-[26px] tracking-tight leading-tight">
-          Yêu cầu rút tiền
+          Rút tiền ra ngân hàng (KOL & Brand)
         </h2>
         <p className="text-sm text-mute mt-1">
-          Duyệt và chi trả yêu cầu rút tiền của KOL. Số tiền đã được giữ trong ví khi tạo yêu cầu.
+          Theo dõi yêu cầu KOL và Brand chuyển số dư ví ra tài khoản ngân hàng. Bước riêng, không liên quan giải ngân booking.
         </p>
       </div>
 
-      {/* Status tabs */}
+      <div className="rounded-2xl border border-hairline bg-surface-card px-4 py-3.5 flex gap-3">
+        <Info className="w-5 h-5 text-pin-red shrink-0 mt-0.5" />
+        <div className="text-sm text-ink space-y-1.5">
+          <p className="font-semibold">Luồng tiền booking (tự động — không cần admin duyệt)</p>
+          <ol className="text-mute list-decimal list-inside space-y-0.5 leading-relaxed">
+            <li>Brand thanh toán → tiền giữ trong escrow</li>
+            <li>KOL giao nội dung → Brand nghiệm thu</li>
+            <li>Hệ thống tự giải ngân: KOL nhận net vào ví, nền tảng trích 10% phí</li>
+          </ol>
+          <p className="text-mute pt-1">
+            Trang này dùng khi KOL hoặc Brand muốn rút số dư ví ra ngân hàng — xác nhận sau khi đã chuyển khoản thủ công.
+          </p>
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-center gap-1.5">
         {TABS.map((t) => (
           <button
@@ -187,6 +198,15 @@ export default function AdminWithdrawalsPage() {
             {t.label}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => void fetchList()}
+          disabled={loading}
+          className="ml-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-semibold text-mute hover:text-pin-red disabled:opacity-50"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          Làm mới
+        </button>
       </div>
 
       {error && (
@@ -205,7 +225,7 @@ export default function AdminWithdrawalsPage() {
         <div className="py-16 text-center bg-surface-card rounded-2xl border border-hairline">
           <Inbox className="w-12 h-12 text-mute mx-auto mb-3" />
           <p className="font-bold text-ink mb-1">Không có yêu cầu</p>
-          <p className="text-mute text-sm">Không có yêu cầu rút tiền ở trạng thái “{STATUS_LABEL[tab]}”.</p>
+          <p className="text-mute text-sm">Không có yêu cầu ở trạng thái “{STATUS_LABEL[tab]}”.</p>
         </div>
       ) : (
         <>
@@ -230,48 +250,41 @@ export default function AdminWithdrawalsPage() {
                     <span className="font-semibold">{w.bankName}</span> • {w.bankAccount} • {w.accountName}
                   </p>
                   <p className="text-xs text-mute mt-0.5">
-                    KOL user #{w.kolUserId} • Tạo {fmtDateTime(w.createdAt)}
+                    {requesterLabel(w)} • Tạo {fmtDateTime(w.createdAt)}
                     {w.processedAt ? ` • Xử lý ${fmtDateTime(w.processedAt)}` : ''}
                   </p>
                   {w.rejectReason && <p className="text-xs text-pin-red mt-1">Lý do từ chối: {w.rejectReason}</p>}
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                  {w.status === 'PENDING' && (
-                    <button
-                      type="button"
-                      onClick={() => doApprove(w)}
-                      disabled={busyId === w.id}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors disabled:opacity-50"
-                    >
-                      {busyId === w.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                      Duyệt
-                    </button>
-                  )}
-                  {w.status === 'APPROVED' && (
-                    <button
-                      type="button"
-                      onClick={() => doPaid(w)}
-                      disabled={busyId === w.id}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-on-dark bg-ink hover:bg-charcoal transition-colors disabled:opacity-50"
-                    >
-                      {busyId === w.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CircleDollarSign className="w-4 h-4" />}
-                      Đã chi trả
-                    </button>
-                  )}
                   {(w.status === 'PENDING' || w.status === 'APPROVED') && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRejectReason('');
-                        setRejectFor(w);
-                      }}
-                      disabled={busyId === w.id}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-pin-red bg-pin-red/10 hover:bg-pin-red/20 transition-colors disabled:opacity-50"
-                    >
-                      <X className="w-4 h-4" />
-                      Từ chối
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => doPaid(w)}
+                        disabled={busyId === w.id}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-on-dark bg-ink hover:bg-charcoal transition-colors disabled:opacity-50"
+                      >
+                        {busyId === w.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <CircleDollarSign className="w-4 h-4" />
+                        )}
+                        Đã chuyển khoản
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRejectReason('');
+                          setRejectFor(w);
+                        }}
+                        disabled={busyId === w.id}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-pin-red bg-pin-red/10 hover:bg-pin-red/20 transition-colors disabled:opacity-50"
+                      >
+                        <X className="w-4 h-4" />
+                        Từ chối
+                      </button>
+                    </>
                   )}
                 </div>
               </li>
@@ -281,7 +294,6 @@ export default function AdminWithdrawalsPage() {
         </>
       )}
 
-      {/* Reject modal */}
       {rejectFor && (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm px-4"
@@ -292,7 +304,8 @@ export default function AdminWithdrawalsPage() {
           <div className="bg-canvas rounded-2xl shadow-xl w-full max-w-[440px] p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-display font-bold text-xl text-ink mb-1">Từ chối yêu cầu rút tiền</h3>
             <p className="text-sm text-mute mb-4">
-              Số tiền {vnd(rejectFor.amount)} sẽ được hoàn lại vào số dư khả dụng của KOL.
+              Số tiền {vnd(rejectFor.amount)} sẽ được hoàn lại vào số dư khả dụng của{' '}
+              {rejectFor.requesterRole === 'BRAND' ? 'Brand' : 'KOL'}.
             </p>
             <textarea
               value={rejectReason}

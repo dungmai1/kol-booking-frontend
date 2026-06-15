@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { authApi } from '@/lib/api/auth';
 import { ApiError } from '@/lib/api/client';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
@@ -32,6 +33,15 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const tokens = await login({ email, password });
+      if (!tokens.emailVerified) {
+        try {
+          await authApi.resendVerification({ email: email.trim() });
+        } catch {
+          /* User can resend manually on check-email */
+        }
+        router.push('/auth/check-email?resent=login');
+        return;
+      }
       if (tokens.role === 'ADMIN') router.push('/admin');
       else if (tokens.role === 'KOL') router.push('/kol-dashboard/me');
       else router.push('/dashboard');

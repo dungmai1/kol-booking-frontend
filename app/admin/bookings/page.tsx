@@ -70,6 +70,7 @@ const STATUS_TABS: Array<{ value: StatusFilter; label: string }> = [
   { value: 'REJECTED', label: 'Từ chối' },
   { value: 'CANCELLED', label: 'Đã hủy' },
   { value: 'CANCELLED_BY_ADMIN', label: 'Admin hủy' },
+  { value: 'DELIVERY_REJECTED', label: 'Từ chối nội dung' },
 ];
 
 type DisputeResolution = 'REFUND_TO_BRAND' | 'PAY_KOL' | 'PARTIAL_REFUND';

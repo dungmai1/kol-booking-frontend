@@ -32,6 +32,7 @@ const statusLabel: Record<string, string> = {
   CANCELLED: 'Đã hủy',
   DISPUTED: 'Đang tranh chấp',
   CANCELLED_BY_ADMIN: 'Đã hủy bởi admin',
+  DELIVERY_REJECTED: 'Brand từ chối nội dung',
 };
 
 const vnd = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });

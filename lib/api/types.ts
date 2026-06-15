@@ -35,7 +35,8 @@ export type BookingStatus =
   | 'DELIVERED'
   | 'COMPLETED'
   | 'DISPUTED'
-  | 'CANCELLED_BY_ADMIN';
+  | 'CANCELLED_BY_ADMIN'
+  | 'DELIVERY_REJECTED';
 
 export type Platform = 'TIKTOK' | 'INSTAGRAM' | 'YOUTUBE' | 'FACEBOOK';
 
@@ -442,7 +443,8 @@ export interface WalletTransactionResponse {
 
 export interface WithdrawResponse {
   id: number;
-  kolUserId: number;
+  userId: number;
+  requesterRole: 'KOL' | 'BRAND' | 'ADMIN' | null;
   amount: number;
   bankName: string;
   bankAccount: string;
@@ -641,6 +643,21 @@ export interface AdminCommissionSummary {
   totalCommission: number;
   /** Number of FEE ledger entries. */
   commissionTransactions: number;
+}
+
+/** GET /admin/stats/commission/transactions — one FEE ledger row with booking context. */
+export interface AdminCommissionTransaction {
+  id: number;
+  amount: number;
+  recordedAt: string;
+  bookingId: number | null;
+  campaignTitle: string | null;
+  bookingBudget: number | null;
+  feePercent: number | null;
+  brandCompanyName: string | null;
+  kolDisplayName: string | null;
+  bookingStatus: string | null;
+  note: string | null;
 }
 
 export interface AdminResolveDisputeRequest {

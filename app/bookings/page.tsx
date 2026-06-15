@@ -30,6 +30,7 @@ const statusLabels: Record<BookingStatus | 'all', string> = {
   COMPLETED: 'Hoàn thành',
   DISPUTED: 'Tranh chấp',
   CANCELLED_BY_ADMIN: 'Admin hủy',
+  DELIVERY_REJECTED: 'Từ chối nội dung',
 };
 
 const filterOptions: Array<BookingStatus | 'all'> = [
@@ -46,7 +47,8 @@ function statusPillStyle(status: BookingStatus): string {
     case 'DISPUTED':
     case 'REJECTED':
     case 'CANCELLED':
-    case 'CANCELLED_BY_ADMIN': return 'bg-pin-red text-on-dark';
+    case 'CANCELLED_BY_ADMIN':
+    case 'DELIVERY_REJECTED': return 'bg-pin-red text-on-dark';
     default: return 'bg-surface-card text-ink';
   }
 }

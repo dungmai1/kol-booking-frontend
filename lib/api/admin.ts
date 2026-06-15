@@ -6,6 +6,7 @@ import type {
   AdminTopKol,
   AdminRevenueStats,
   AdminCommissionSummary,
+  AdminCommissionTransaction,
   AdminRejectRequest,
   AdminResolveDisputeRequest,
   KolProfileResponse,
@@ -170,5 +171,13 @@ export const adminApi = {
   /** Platform commission overview: current rate, accumulated fees, platform wallet. */
   getCommissionSummary(): Promise<AdminCommissionSummary> {
     return api.get('/admin/stats/commission');
+  },
+
+  /** Paginated FEE ledger entries with linked booking details. */
+  getCommissionTransactions(params: { page?: number; size?: number } = {}): Promise<
+    PageResponse<AdminCommissionTransaction>
+  > {
+    const q = api.buildQuery(params as Record<string, unknown>);
+    return api.get(`/admin/stats/commission/transactions${q}`);
   },
 };
