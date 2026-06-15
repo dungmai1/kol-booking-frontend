@@ -27,6 +27,7 @@ import { BookingChatTab } from '@/components/booking-chat-tab';
 import { bookingsApi } from '@/lib/api/bookings';
 import { reviewsApi } from '@/lib/api/reviews';
 import { bookingBrandLabel, bookingKolLabel } from '@/lib/bookings/display';
+import { brandProfilePath } from '@/lib/brands/display';
 import { useAuth } from '@/contexts/AuthContext';
 import type {
   BookingResponse,
@@ -838,7 +839,16 @@ function DetailTab({
           </h2>
           <div className="space-y-4">
             <DetailRow label={isBrand ? 'KOL' : 'Brand'}>
-              <p className="text-ink font-bold">{targetName}</p>
+              {isBrand ? (
+                <p className="text-ink font-bold">{targetName}</p>
+              ) : (
+                <Link
+                  href={brandProfilePath(booking.brandProfileId)}
+                  className="text-ink font-bold hover:text-pin-red transition-colors"
+                >
+                  {targetName}
+                </Link>
+              )}
             </DetailRow>
             <DetailRow label="Mô tả chiến dịch">
               <p className="whitespace-pre-wrap text-body leading-relaxed">

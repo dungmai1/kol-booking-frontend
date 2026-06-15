@@ -30,6 +30,7 @@ import { kolApi } from '@/lib/api/kol';
 import { useAuth } from '@/contexts/AuthContext';
 import { ApiError } from '@/lib/api/client';
 import type { ProductResponse } from '@/lib/api/types';
+import { brandProfilePath } from '@/lib/brands/display';
 import { PLATFORM_LABEL, vnd, formatFollowers, formatDate, daysUntil } from '@/lib/products/meta';
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -215,10 +216,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               </div>
               <div className="p-6">
                 {product.brandCompanyName && (
-                  <p className="text-sm font-semibold text-mute mb-2 inline-flex items-center gap-1.5">
+                  <Link
+                    href={brandProfilePath(product.brandProfileId)}
+                    className="text-sm font-semibold text-mute mb-2 inline-flex items-center gap-1.5 hover:text-pin-red transition-colors w-fit"
+                  >
                     <Briefcase className="w-4 h-4" />
                     {product.brandCompanyName}
-                  </p>
+                  </Link>
                 )}
                 <h1 className="font-display font-extrabold text-2xl md:text-3xl text-ink leading-tight mb-4">
                   {product.title}

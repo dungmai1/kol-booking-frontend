@@ -321,6 +321,23 @@ export interface UpdateBrandProfileRequest {
   country?: string;
 }
 
+/** Public brand profile — excludes private contact/tax fields. */
+export interface BrandPublicResponse {
+  id: number;
+  userId: number;
+  companyName: string;
+  industry: string | null;
+  logoUrl: string | null;
+  website: string | null;
+  address: string | null;
+  bio: string | null;
+  country: string | null;
+  status: ProfileStatus;
+  avgRating: number;
+  reviewCount: number;
+  createdAt: string;
+}
+
 // ─── Bookings ─────────────────────────────────────────────────────────────────
 
 export interface BookingResponse {
@@ -505,6 +522,7 @@ export interface ProductBrowseParams {
   q?: string;
   categoryId?: number;
   platform?: Platform;
+  brandProfileId?: number;
   minBudget?: number;
   maxBudget?: number;
   page?: number;

@@ -1,14 +1,24 @@
 import { api } from './client';
 import type {
   BrandProfileResponse,
+  BrandPublicResponse,
   KolSummaryResponse,
   PageResponse,
+  ProductResponse,
   UpdateBrandProfileRequest,
 } from './types';
 
 export const brandApi = {
   getMyProfile(): Promise<BrandProfileResponse> {
     return api.get('/brands/me');
+  },
+
+  getPublicProfile(id: number): Promise<BrandPublicResponse> {
+    return api.get(`/brands/${id}`);
+  },
+
+  getPublicProducts(id: number, page = 0, size = 12): Promise<PageResponse<ProductResponse>> {
+    return api.get(`/brands/${id}/products?page=${page}&size=${size}`);
   },
 
   updateMyProfile(data: UpdateBrandProfileRequest): Promise<BrandProfileResponse> {

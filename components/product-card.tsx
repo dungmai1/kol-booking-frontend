@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Users, CalendarClock, Briefcase, ImageIcon } from 'lucide-react';
 import type { ProductResponse } from '@/lib/api/types';
 import { ProductStatusPill } from '@/components/product-status-pill';
+import { brandProfilePath } from '@/lib/brands/display';
 import {
   PLATFORM_LABEL,
   vnd,
@@ -19,11 +20,11 @@ export function ProductCard({ product }: { product: ProductResponse }) {
   const deadlineSoon = left != null && left >= 0 && left <= 3;
 
   return (
-    <Link
-      href={`/products/${product.id}`}
-      className="group flex flex-col bg-canvas rounded-2xl border border-hairline overflow-hidden hover:shadow-[0_12px_28px_-12px_rgba(0,0,0,0.22)] transition-shadow"
-    >
-      <div className="relative aspect-[16/10] bg-surface-card overflow-hidden">
+    <article className="group flex flex-col bg-canvas rounded-2xl border border-hairline overflow-hidden hover:shadow-[0_12px_28px_-12px_rgba(0,0,0,0.22)] transition-shadow">
+      <Link
+        href={`/products/${product.id}`}
+        className="block relative aspect-[16/10] bg-surface-card overflow-hidden"
+      >
         {product.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -45,18 +46,23 @@ export function ProductCard({ product }: { product: ProductResponse }) {
             {left === 0 ? 'Hết hạn hôm nay' : `Còn ${left} ngày`}
           </div>
         )}
-      </div>
+      </Link>
 
       <div className="flex flex-col flex-1 p-4">
         {product.brandCompanyName && (
-          <p className="text-xs font-semibold text-mute mb-1 truncate inline-flex items-center gap-1">
-            <Briefcase className="w-3 h-3" />
-            {product.brandCompanyName}
-          </p>
+          <Link
+            href={brandProfilePath(product.brandProfileId)}
+            className="text-xs font-semibold text-mute mb-1 truncate inline-flex items-center gap-1 hover:text-pin-red transition-colors w-fit max-w-full"
+          >
+            <Briefcase className="w-3 h-3 shrink-0" />
+            <span className="truncate">{product.brandCompanyName}</span>
+          </Link>
         )}
-        <h3 className="font-display font-bold text-ink text-[16px] leading-snug line-clamp-2 mb-2">
-          {product.title}
-        </h3>
+        <Link href={`/products/${product.id}`} className="block mb-2">
+          <h3 className="font-display font-bold text-ink text-[16px] leading-snug line-clamp-2 group-hover:text-pin-red transition-colors">
+            {product.title}
+          </h3>
+        </Link>
 
         <div className="flex flex-wrap items-center gap-1.5 mb-3">
           {product.requiredPlatform && (
@@ -97,6 +103,6 @@ export function ProductCard({ product }: { product: ProductResponse }) {
           </p>
         )}
       </div>
-    </Link>
+    </article>
   );
 }
