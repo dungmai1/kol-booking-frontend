@@ -115,7 +115,7 @@ export function KOLDetailModal({ kol, onClose }: KOLDetailModalProps) {
           <div className="grid grid-cols-3 gap-2 mb-6">
             <div className="bg-surface-card rounded-md px-3 py-3 text-center">
               <p className="font-display font-bold text-ink text-[18px]">{formatFollowers(kol.maxFollowerCount)}</p>
-              <p className="text-[11px] text-mute font-bold uppercase tracking-wider mt-1">Followers</p>
+              <p className="text-[11px] text-mute font-bold uppercase tracking-wider mt-1">Người theo dõi</p>
             </div>
             <div className="bg-surface-card rounded-md px-3 py-3 text-center">
               <p className="font-display font-bold text-ink text-[18px]">{minPriceLabel}</p>
@@ -123,7 +123,7 @@ export function KOLDetailModal({ kol, onClose }: KOLDetailModalProps) {
             </div>
             <div className="bg-surface-card rounded-md px-3 py-3 text-center">
               <p className="font-display font-bold text-ink text-[18px]">{kol.reviewCount}</p>
-              <p className="text-[11px] text-mute font-bold uppercase tracking-wider mt-1">Reviews</p>
+              <p className="text-[11px] text-mute font-bold uppercase tracking-wider mt-1">Nhận xét</p>
             </div>
           </div>
 

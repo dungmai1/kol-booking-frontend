@@ -25,8 +25,13 @@ import type {
   PricingPackageType,
   MediaType,
   Gender,
-  ProfileStatus,
 } from '@/lib/api/types';
+import {
+  canSubmitProfile,
+  isPendingReview,
+  profileStatusBadgeVariant,
+  profileStatusDisplayLabel,
+} from '@/lib/profile-status';
 
 import {
   Tabs, TabsList, TabsTrigger, TabsContent,
@@ -59,20 +64,6 @@ const vnd = new Intl.NumberFormat('vi-VN', {
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-const statusLabel: Record<ProfileStatus, string> = {
-  DRAFT: 'Bản nháp',
-  SUBMITTED: 'Chờ duyệt',
-  APPROVED: 'Đã duyệt',
-  REJECTED: 'Bị từ chối',
-};
-
-const statusVariant: Record<ProfileStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  DRAFT: 'outline',
-  SUBMITTED: 'secondary',
-  APPROVED: 'default',
-  REJECTED: 'destructive',
-};
-
 const platformLabel: Record<Platform, string> = {
   TIKTOK: 'TikTok',
   INSTAGRAM: 'Instagram',
@@ -84,8 +75,8 @@ const packageTypeLabel: Record<PricingPackageType, string> = {
   POST: 'Bài đăng',
   STORY: 'Story',
   VIDEO: 'Video',
-  SHOUTOUT: 'Shoutout',
-  LONG_FORM: 'Long-form',
+  SHOUTOUT: 'Nhắc tên',
+  LONG_FORM: 'Nội dung dài',
   CUSTOM: 'Tuỳ chỉnh',
 };
 
@@ -403,8 +394,8 @@ export default function KolProfileEditPage() {
   const hasPackage = profile.pricingPackages.length > 0;
   const hasPortfolio = profile.portfolio.length > 0;
   const isComplete = hasChannel && hasPackage && hasPortfolio;
-  const canSubmit = (profile.status === 'DRAFT' || profile.status === 'REJECTED') && isComplete;
-  const showSubmit = profile.status === 'DRAFT' || profile.status === 'REJECTED';
+  const canSubmit = canSubmitProfile(profile.status) && isComplete;
+  const showSubmit = canSubmitProfile(profile.status);
 
   return (
     <>
@@ -415,8 +406,8 @@ export default function KolProfileEditPage() {
             <h1 className="font-display font-bold text-ink text-[28px] lg:text-[36px] tracking-[-0.6px]">
               Hồ sơ KOL của tôi
             </h1>
-            <Badge variant={statusVariant[profile.status]} className="text-sm">
-              {statusLabel[profile.status]}
+            <Badge variant={profileStatusBadgeVariant(profile.status)} className="text-sm">
+              {profileStatusDisplayLabel(profile.status)}
             </Badge>
           </div>
           <p className="text-mute mt-2">Quản lý thông tin hiển thị, kênh mạng xã hội, gói giá và portfolio.</p>
@@ -431,7 +422,7 @@ export default function KolProfileEditPage() {
             </div>
           )}
 
-          {!isComplete && (profile.status === 'DRAFT' || profile.status === 'REJECTED') && (
+          {!isComplete && canSubmitProfile(profile.status) && (
             <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-4 flex gap-3">
               <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div className="text-sm">
@@ -686,7 +677,7 @@ export default function KolProfileEditPage() {
                         <thead>
                           <tr className="border-b border-hairline text-left text-mute">
                             <th className="py-3 pr-4 font-semibold">Nền tảng</th>
-                            <th className="py-3 pr-4 font-semibold">Username</th>
+                            <th className="py-3 pr-4 font-semibold">Tên đăng nhập</th>
                             <th className="py-3 pr-4 font-semibold">Người theo dõi</th>
                             <th className="py-3 pr-4 font-semibold">Tương tác</th>
                             <th className="py-3 pr-4 font-semibold">URL</th>
@@ -837,8 +828,8 @@ export default function KolProfileEditPage() {
         <div className="mx-auto max-w-5xl px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 text-sm">
             <span className="text-mute">Trạng thái:</span>
-            <Badge variant={statusVariant[profile.status]}>{statusLabel[profile.status]}</Badge>
-            {profile.status === 'SUBMITTED' && (
+            <Badge variant={profileStatusBadgeVariant(profile.status)}>{profileStatusDisplayLabel(profile.status)}</Badge>
+            {isPendingReview(profile.status) && (
               <span className="text-mute hidden sm:inline">Hồ sơ đang chờ quản trị viên duyệt.</span>
             )}
           </div>
@@ -923,7 +914,7 @@ function ChannelDialog({ onSubmit }: { onSubmit: (data: CreateChannelRequest) =>
           <Input id="ch-url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://tiktok.com/@username" />
         </div>
         <div>
-          <Label htmlFor="ch-username" className="mb-2 block">Username</Label>
+          <Label htmlFor="ch-username" className="mb-2 block">Tên đăng nhập</Label>
           <Input id="ch-username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="@username" />
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -1018,7 +1009,7 @@ function PackageDialog({ onSubmit }: { onSubmit: (data: CreatePackageRequest) =>
         </div>
         <div>
           <Label htmlFor="pk-desc" className="mb-2 block">Mô tả</Label>
-          <Textarea id="pk-desc" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả nội dung gói: số bài, thời lượng, deliverables…" />
+          <Textarea id="pk-desc" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả nội dung gói: số bài, thời lượng, yêu cầu giao nội dung…" />
         </div>
         <DialogFooter>
           <Button type="submit" disabled={busy}>
@@ -1099,7 +1090,7 @@ function PortfolioDialog({ onSubmit }: { onSubmit: (data: CreatePortfolioItemReq
           </Select>
         </div>
         <div>
-          <Label htmlFor="po-url" className="mb-2 block">Media URL</Label>
+          <Label htmlFor="po-url" className="mb-2 block">Liên kết media</Label>
           <div className="flex items-center gap-2">
             <Input id="po-url" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} placeholder="https://www.tiktok.com/@user/video/… hoặc link ảnh/mp4" />
             <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-hairline bg-canvas hover:bg-surface-card cursor-pointer text-sm font-semibold whitespace-nowrap">

@@ -256,7 +256,7 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="font-bold text-ink text-sm">{formatFollowers(ch.followerCount)} followers</p>
+                          <p className="font-bold text-ink text-sm">{formatFollowers(ch.followerCount)} người theo dõi</p>
                           <p className="text-xs text-mute">{ch.engagementRate}% engagement</p>
                         </div>
                         <a href={ch.url} target="_blank" rel="noopener noreferrer" className="grid place-items-center w-9 h-9 rounded-full text-mute hover:bg-surface-card hover:text-ink transition-colors shrink-0">

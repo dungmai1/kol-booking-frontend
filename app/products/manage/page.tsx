@@ -16,11 +16,13 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { Header } from '@/components/header';
+import { BrandProfileGateBanner } from '@/components/brand-profile-gate-banner';
 import { ProductStatusPill } from '@/components/product-status-pill';
 import { PaginationBar } from '@/components/pagination-bar';
 import { productsApi } from '@/lib/api/products';
 import { useAuth } from '@/contexts/AuthContext';
 import { ApiError } from '@/lib/api/client';
+import { useBrandProfileGate } from '@/lib/hooks/use-brand-profile-gate';
 import type { ProductResponse } from '@/lib/api/types';
 import { vnd, formatDate } from '@/lib/products/meta';
 
@@ -29,6 +31,9 @@ const PAGE_SIZE = 10;
 export default function ManageProductsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+  const { isReady, canProceed, status } = useBrandProfileGate({
+    loginRedirect: '/auth/login?redirect=/products/manage',
+  });
   const [products, setProducts] = useState<ProductResponse[]>([]);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -77,7 +82,7 @@ export default function ManageProductsPage() {
     }
   }
 
-  if (authLoading || user?.role !== 'BRAND') {
+  if (authLoading || !isReady || user?.role !== 'BRAND') {
     return (
       <div className="min-h-screen bg-surface-soft">
         <Header />
@@ -97,11 +102,16 @@ export default function ManageProductsPage() {
             <h1 className="font-display font-extrabold text-2xl md:text-3xl text-ink">Tin đăng của tôi</h1>
             <p className="text-mute mt-1">Quản lý các chiến dịch tuyển KOL bạn đã đăng.</p>
           </div>
-          <Link href="/products/new" className="btn-pin-primary !rounded-full">
+          <Link
+            href={canProceed ? '/products/new' : '/profile'}
+            className={`btn-pin-primary !rounded-full ${!canProceed ? 'opacity-80' : ''}`}
+          >
             <Plus className="w-4 h-4" />
-            Đăng sản phẩm
+            {canProceed ? 'Đăng sản phẩm' : 'Hoàn thiện hồ sơ'}
           </Link>
         </div>
+
+        <BrandProfileGateBanner status={status} />
 
         {error && (
           <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -120,9 +130,9 @@ export default function ManageProductsPage() {
             <PackageOpen className="w-12 h-12 text-mute mx-auto mb-4" />
             <h2 className="font-display font-bold text-xl text-ink mb-2">Chưa có tin đăng nào</h2>
             <p className="text-mute text-sm mb-6">Đăng chiến dịch đầu tiên để KOL có thể ứng tuyển.</p>
-            <Link href="/products/new" className="btn-pin-primary !rounded-full">
+            <Link href={canProceed ? '/products/new' : '/profile'} className="btn-pin-primary !rounded-full">
               <Plus className="w-4 h-4" />
-              Đăng sản phẩm
+              {canProceed ? 'Đăng sản phẩm' : 'Hoàn thiện hồ sơ Brand'}
             </Link>
           </div>
         ) : (

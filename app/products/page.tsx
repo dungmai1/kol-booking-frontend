@@ -177,7 +177,7 @@ export default function ProductsBrowsePage() {
                 min={0}
                 value={draft.minBudget}
                 onChange={(e) => setDraft((d) => ({ ...d, minBudget: e.target.value }))}
-                placeholder="NS từ"
+                placeholder="Ngân sách từ"
                 className="md:col-span-1 h-11 px-3 rounded-xl border border-hairline bg-surface-soft focus:border-ink focus:outline-none text-sm"
               />
               <input

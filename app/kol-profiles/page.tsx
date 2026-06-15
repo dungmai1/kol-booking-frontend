@@ -96,7 +96,7 @@ export default function KOLProfilesPage() {
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
               className="bg-surface-card text-ink rounded-full px-4 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-focus-outer cursor-pointer"
             >
-              <option value="followers">Nhiều follower</option>
+              <option value="followers">Nhiều người theo dõi</option>
               <option value="rating">Đánh giá cao</option>
               <option value="featured">Nổi bật</option>
               <option value="price_asc">Giá thấp</option>
@@ -150,7 +150,7 @@ export default function KOLProfilesPage() {
                 <thead>
                   <tr className="bg-surface-card">
                     <th className="px-6 py-3 text-left text-[11px] font-bold text-mute uppercase tracking-wider">Hồ sơ</th>
-                    <th className="px-6 py-3 text-left text-[11px] font-bold text-mute uppercase tracking-wider">Followers</th>
+                    <th className="px-6 py-3 text-left text-[11px] font-bold text-mute uppercase tracking-wider">Người theo dõi</th>
                     <th className="px-6 py-3 text-left text-[11px] font-bold text-mute uppercase tracking-wider">Đánh giá</th>
                     <th className="px-6 py-3 text-left text-[11px] font-bold text-mute uppercase tracking-wider">Từ</th>
                     <th className="px-6 py-3 text-right text-[11px] font-bold text-mute uppercase tracking-wider"></th>

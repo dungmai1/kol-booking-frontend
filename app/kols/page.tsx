@@ -455,7 +455,7 @@ function FilterPanel({
       </FilterSection>
 
       {/* Follower range */}
-      <FilterSection title="Số follower">
+      <FilterSection title="Số người theo dõi">
         <RangeRow
           minValue={filters.minFollower}
           maxValue={filters.maxFollower}

@@ -35,7 +35,7 @@ const PAGE_SIZE = 12;
 const STATUS_TABS: { value: ApplicationStatus | 'ALL'; label: string }[] = [
   { value: 'ALL', label: 'Tất cả' },
   { value: 'PENDING', label: 'Chờ duyệt' },
-  { value: 'SHORTLISTED', label: 'Shortlist' },
+  { value: 'SHORTLISTED', label: 'Danh sách rút gọn' },
   { value: 'ACCEPTED', label: 'Đã duyệt' },
   { value: 'REJECTED', label: 'Từ chối' },
 ];
@@ -117,7 +117,7 @@ export default function ProductApplicantsPage({ params }: { params: Promise<{ id
     try {
       patchItem(await applicationsApi.shortlist(a.id));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Không thể đưa vào shortlist.');
+      setError(err instanceof ApiError ? err.message : 'Không thể đưa vào danh sách rút gọn.');
     } finally {
       setBusyId(null);
     }
@@ -426,7 +426,7 @@ function ApplicantCard({
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 transition-colors disabled:opacity-50"
             >
               <ListChecks className="w-4 h-4" />
-              Shortlist
+              Danh sách rút gọn
             </button>
           )}
           {canReject && (

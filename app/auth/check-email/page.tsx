@@ -82,8 +82,7 @@ export default function CheckEmailPage() {
           </p>
 
           <div className="p-4 rounded-xl bg-surface-card text-xs text-mute leading-relaxed mb-6">
-            Không thấy email? Hãy kiểm tra thư mục <span className="font-bold text-ink">Spam</span> hoặc{' '}
-            <span className="font-bold text-ink">Junk Mail</span>, hoặc gửi lại bên dưới.
+            Không thấy email? Hãy kiểm tra thư mục <span className="font-bold text-ink">Thư rác</span>, hoặc gửi lại bên dưới.
           </div>
 
           {/* Resend block */}

@@ -13,6 +13,7 @@ interface ProductFormProps {
   submitLabel: string;
   submitting: boolean;
   error?: string;
+  disabled?: boolean;
   /** Emits a clean payload with only the fields the user set. */
   onSubmit: (payload: ProductCreateRequest) => void;
   onCancel?: () => void;
@@ -24,7 +25,7 @@ function toDateInput(iso: string | null | undefined): string {
   return iso.slice(0, 10);
 }
 
-export function ProductForm({ initial, submitLabel, submitting, error, onSubmit, onCancel }: ProductFormProps) {
+export function ProductForm({ initial, submitLabel, submitting, error, disabled = false, onSubmit, onCancel }: ProductFormProps) {
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
@@ -149,7 +150,7 @@ export function ProductForm({ initial, submitLabel, submitting, error, onSubmit,
           onChange={(e) => setDescription(e.target.value)}
           rows={5}
           maxLength={5000}
-          placeholder="Mô tả yêu cầu, deliverables, thông điệp thương hiệu…"
+          placeholder="Mô tả yêu cầu, nội dung giao, thông điệp thương hiệu…"
           className={`${inputClass} resize-none`}
         />
       </div>
@@ -200,7 +201,7 @@ export function ProductForm({ initial, submitLabel, submitting, error, onSubmit,
           </select>
         </div>
         <div>
-          <label className={labelClass}>Follower tối thiểu</label>
+          <label className={labelClass}>Người theo dõi tối thiểu</label>
           <input
             type="number"
             min={0}
@@ -238,7 +239,7 @@ export function ProductForm({ initial, submitLabel, submitting, error, onSubmit,
             Huỷ
           </button>
         )}
-        <button type="submit" disabled={submitting || uploading} className="btn-pin-primary !rounded-full disabled:opacity-50">
+        <button type="submit" disabled={disabled || submitting || uploading} className="btn-pin-primary !rounded-full disabled:opacity-50">
           {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
           {submitLabel}
         </button>

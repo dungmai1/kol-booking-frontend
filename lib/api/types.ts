@@ -23,7 +23,8 @@ export type Role = 'ADMIN' | 'BRAND' | 'KOL';
 
 export type UserStatus = 'PENDING_VERIFICATION' | 'ACTIVE' | 'BANNED';
 
-export type ProfileStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+/** After submit, backend returns `PENDING_REVIEW` (legacy alias: `SUBMITTED`). */
+export type ProfileStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
 
 export type BookingStatus =
   | 'PENDING'
@@ -324,7 +325,11 @@ export interface UpdateBrandProfileRequest {
 export interface BookingResponse {
   id: number;
   brandProfileId: number;
+  /** Denormalized for list/detail display (optional until backend embeds summary). */
+  brandCompanyName?: string | null;
   kolProfileId: number;
+  /** Denormalized KOL display name (optional until backend embeds summary). */
+  kolDisplayName?: string | null;
   campaignTitle: string;
   campaignBrief: string;
   deliverables: string;

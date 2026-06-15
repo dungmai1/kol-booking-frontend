@@ -79,7 +79,7 @@ export default function HomePage() {
             cta={{ href: '/discover', label: 'Khám phá KOL' }}
             image="left"
             tilePalette={['#f6e0d6', '#e9d5c6', '#dec0a3']}
-            pillLabel="Cherry red"
+            pillLabel="Đỏ cherry"
             tileImages={[
               unsplash('1596462502278-27bfdc403348', 700, 900),
               unsplash('1531746020798-e6953c6e8e04', 500, 500),
@@ -90,11 +90,11 @@ export default function HomePage() {
           <FeatureCard
             eyebrow="Cho nhà sáng tạo"
             heading="Để hồ sơ của bạn được đặt trước"
-            body="Nhận đơn đặt phù hợp với phong cách sáng tạo của bạn. Quản lý hợp đồng, deliverables và thanh toán an toàn — tất cả trong một bảng điều khiển dành riêng cho KOL."
+            body="Nhận đơn đặt phù hợp với phong cách sáng tạo của bạn. Quản lý hợp đồng, yêu cầu giao nội dung và thanh toán an toàn — tất cả trong một bảng điều khiển dành riêng cho KOL."
             cta={{ href: '/kol-profiles', label: 'Mở hồ sơ KOL' }}
             image="right"
             tilePalette={['#dde6df', '#c8d6cc', '#a3b9ac']}
-            pillLabel="Editorial vibe"
+            pillLabel="Phong cách tạp chí"
             tileImages={[
               unsplash('1524504388940-b1c1722653e1', 700, 900),
               unsplash('1438761681033-6461ffad8d80', 500, 500),
@@ -104,12 +104,12 @@ export default function HomePage() {
 
           <FeatureCard
             eyebrow="Đánh giá thật, kết quả thật"
-            heading="500+ chiến dịch đã hoàn thành — và mọi feedback đều ở đây"
+            heading="500+ chiến dịch đã hoàn thành — và mọi phản hồi đều ở đây"
             body="Mỗi đơn đặt được đánh giá cả hai chiều: thương hiệu chấm KOL, KOL chấm thương hiệu. Bạn đặt một KOL và biết rõ trước rằng họ giao đúng hạn, đúng concept."
             cta={{ href: '/reviews', label: 'Đọc nhận xét' }}
             image="left"
             tilePalette={['#efe1f2', '#dfc3e2', '#c69bcb']}
-            pillLabel="5.0 stars"
+            pillLabel="5.0 sao"
             tileImages={[
               unsplash('1494790108377-be9c29b29330', 700, 900),
               unsplash('1517673132405-a56a62b18caf', 500, 500),
@@ -156,8 +156,8 @@ function PinBoardPreview() {
       ratio: 'aspect-[3/4]',
       bg: 'linear-gradient(160deg, #f6dccb 0%, #d8a785 100%)',
       img: unsplash('1487412947147-5cebf100ffc2', 600, 800),
-      alt: 'Beauty close-up',
-      pill: 'Beauty',
+      alt: 'Chụp cận làm đẹp',
+      pill: 'Làm đẹp',
     },
     {
       ratio: 'aspect-[1/1]',
@@ -169,8 +169,8 @@ function PinBoardPreview() {
       ratio: 'aspect-[4/5]',
       bg: 'linear-gradient(150deg, #e9d5e6 0%, #b287b3 100%)',
       img: unsplash('1483985988355-763728e1935b', 600, 750),
-      alt: 'Fashion editorial',
-      pill: 'Fashion',
+      alt: 'Thời trang editorial',
+      pill: 'Thời trang',
     },
     {
       ratio: 'aspect-[2/3]',
@@ -182,8 +182,8 @@ function PinBoardPreview() {
       ratio: 'aspect-[3/4]',
       bg: 'linear-gradient(150deg, #f1d9c6 0%, #c5825a 100%)',
       img: unsplash('1488646953014-85cb44e25828', 600, 800),
-      alt: 'Travel atmosphere',
-      pill: 'Travel',
+      alt: 'Không khí du lịch',
+      pill: 'Du lịch',
     },
     {
       ratio: 'aspect-[1/1]',
@@ -226,67 +226,67 @@ function unsplash(id: string, w: number, h: number): string {
 const CATEGORIES: Array<{ id: number; label: string; bg: string; pill: string; img: string; alt: string }> = [
   {
     id: 1,
-    label: 'Beauty',
+    label: 'Làm đẹp',
     bg: 'linear-gradient(150deg, #f6dccb 0%, #c47a55 100%)',
     img: unsplash('1522335789203-aabd1fc54bc9', 600, 600),
-    alt: 'Beauty makeup model',
-    pill: 'Beauty',
+    alt: 'Người mẫu trang điểm làm đẹp',
+    pill: 'Làm đẹp',
   },
   {
     id: 2,
-    label: 'Fashion',
+    label: 'Thời trang',
     bg: 'linear-gradient(150deg, #e9d5e6 0%, #8a5e8e 100%)',
     img: unsplash('1539109136881-3be0616acf4b', 600, 600),
-    alt: 'Fashion style outfit',
-    pill: 'Fashion',
+    alt: 'Trang phục thời trang',
+    pill: 'Thời trang',
   },
   {
     id: 3,
-    label: 'Tech',
+    label: 'Công nghệ',
     bg: 'linear-gradient(150deg, #d8e1ee 0%, #4a5d7e 100%)',
     img: unsplash('1488590528505-98d2b5aba04b', 600, 600),
-    alt: 'Tech laptop and devices',
-    pill: 'Tech',
+    alt: 'Laptop và thiết bị công nghệ',
+    pill: 'Công nghệ',
   },
   {
     id: 4,
-    label: 'Food',
+    label: 'Ẩm thực',
     bg: 'linear-gradient(150deg, #f0d0b1 0%, #a05a2c 100%)',
     img: unsplash('1504674900247-0877df9cc836', 600, 600),
-    alt: 'Food spread dishes',
-    pill: 'Food',
+    alt: 'Món ăn ẩm thực',
+    pill: 'Ẩm thực',
   },
   {
     id: 5,
-    label: 'Lifestyle',
+    label: 'Phong cách sống',
     bg: 'linear-gradient(150deg, #fde8d8 0%, #d4845a 100%)',
     img: unsplash('1506126613408-eca07ce68773', 600, 600),
-    alt: 'Lifestyle morning routine',
-    pill: 'Lifestyle',
+    alt: 'Phong cách sống buổi sáng',
+    pill: 'Phong cách sống',
   },
   {
     id: 6,
-    label: 'Travel',
+    label: 'Du lịch',
     bg: 'linear-gradient(150deg, #c8dcd6 0%, #4f7a72 100%)',
     img: unsplash('1476514525535-07fb3b4ae5f1', 600, 600),
-    alt: 'Travel scenic landscape',
-    pill: 'Travel',
+    alt: 'Phong cảnh du lịch',
+    pill: 'Du lịch',
   },
   {
     id: 7,
-    label: 'Fitness',
+    label: 'Thể thao',
     bg: 'linear-gradient(150deg, #ddebd5 0%, #5b7d3f 100%)',
     img: unsplash('1526506118085-60ce8714f8c5', 600, 600),
-    alt: 'Fitness running workout',
-    pill: 'Fitness',
+    alt: 'Tập luyện thể thao',
+    pill: 'Thể thao',
   },
   {
     id: 12,
-    label: 'Entertainment',
+    label: 'Giải trí',
     bg: 'linear-gradient(150deg, #d8c9eb 0%, #5a3f8e 100%)',
     img: unsplash('1514320291840-2e0a9bf2a9ae', 600, 600),
-    alt: 'Entertainment music concert',
-    pill: 'Entertainment',
+    alt: 'Buổi hòa nhạc giải trí',
+    pill: 'Giải trí',
   },
 ];
 
@@ -426,7 +426,7 @@ function PinterestFooter() {
             <ul className="space-y-2 text-sm text-mute">
               <li><a href="#" className="hover:text-ink">Thương hiệu</a></li>
               <li><a href="#" className="hover:text-ink">Nhà sáng tạo</a></li>
-              <li><a href="#" className="hover:text-ink">Agency</a></li>
+              <li><a href="#" className="hover:text-ink">Đại lý</a></li>
             </ul>
           </div>
           <div>

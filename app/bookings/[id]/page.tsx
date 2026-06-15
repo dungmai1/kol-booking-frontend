@@ -28,6 +28,7 @@ import { BookingTimeline } from '@/components/booking-timeline';
 import { ReviewFormDialog } from '@/components/review-form-dialog';
 import { bookingsApi } from '@/lib/api/bookings';
 import { reviewsApi } from '@/lib/api/reviews';
+import { bookingBrandLabel, bookingKolLabel } from '@/lib/bookings/display';
 import { useAuth } from '@/contexts/AuthContext';
 import type {
   BookingMessageResponse,
@@ -279,7 +280,7 @@ export default function BookingDetailPage({
     }
     const deliverableId = Number(idRaw);
     if (!Number.isFinite(deliverableId) || deliverableId < 0) {
-      setDeliverableForm((prev) => ({ ...prev, error: 'Mã deliverable không hợp lệ.' }));
+      setDeliverableForm((prev) => ({ ...prev, error: 'Mã giao nội dung không hợp lệ.' }));
       return;
     }
     setActionLoading('submit-deliverable');
@@ -299,7 +300,7 @@ export default function BookingDetailPage({
       });
       await fetchBooking();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Nộp deliverable thất bại.';
+      const message = err instanceof Error ? err.message : 'Nộp giao nội dung thất bại.';
       setDeliverableForm((prev) => ({ ...prev, error: message }));
     } finally {
       setActionLoading(null);
@@ -507,7 +508,7 @@ export default function BookingDetailPage({
                   id="submit-deliverable-title"
                   className="font-display font-extrabold text-xl text-ink"
                 >
-                  Nộp deliverable
+                  Nộp giao nội dung
                 </h2>
                 <p className="text-sm text-mute mt-1">
                   Gửi nội dung đã hoàn thiện để brand kiểm duyệt và thanh toán.
@@ -558,7 +559,7 @@ export default function BookingDetailPage({
 
               <div>
                 <label className="text-xs uppercase tracking-wide text-mute font-bold mb-1.5 block">
-                  Mã deliverable
+                  Mã giao nội dung
                 </label>
                 <input
                   type="number"
@@ -576,7 +577,7 @@ export default function BookingDetailPage({
                   className="pin-input w-full disabled:opacity-50"
                 />
                 <p className="text-xs text-mute mt-1">
-                  Để 0 nếu đơn chỉ có một deliverable.
+                  Để 0 nếu booking chỉ có một mục giao nội dung.
                 </p>
               </div>
 
@@ -823,7 +824,7 @@ function DetailTab({
           ) : (
             <Upload className="w-4 h-4" />
           )}
-          Nộp deliverable
+          Nộp giao nội dung
         </button>,
       );
     }
@@ -837,8 +838,8 @@ function DetailTab({
     booking.status === 'COMPLETED' && (isBrand || isKol);
   const reviewDirection: ReviewDirection = isBrand ? 'TO_KOL' : 'TO_BRAND';
   const targetName = isBrand
-    ? `KOL #${booking.kolProfileId}`
-    : `Brand #${booking.brandProfileId}`;
+    ? bookingKolLabel(booking)
+    : bookingBrandLabel(booking);
   const otherSideLabel = isBrand ? 'KOL' : 'Brand';
 
   return (
@@ -850,6 +851,9 @@ function DetailTab({
             Thông tin chiến dịch
           </h2>
           <div className="space-y-4">
+            <DetailRow label={isBrand ? 'KOL' : 'Brand'}>
+              <p className="text-ink font-bold">{targetName}</p>
+            </DetailRow>
             <DetailRow label="Mô tả chiến dịch">
               <p className="whitespace-pre-wrap text-body leading-relaxed">
                 {booking.campaignBrief || '—'}

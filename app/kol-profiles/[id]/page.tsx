@@ -153,7 +153,7 @@ export default function KOLProfileDetailPage({ params }: { params: Promise<{ id:
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
-                    <p className="text-blue-100 text-sm mb-1">Followers</p>
+                    <p className="text-blue-100 text-sm mb-1">Người theo dõi</p>
                     <p className="text-2xl font-bold">
                       {maxFollower >= 1_000_000
                         ? `${(maxFollower / 1_000_000).toFixed(1)}M`

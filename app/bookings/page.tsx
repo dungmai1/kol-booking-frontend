@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Header } from '@/components/header';
 import { bookingsApi } from '@/lib/api/bookings';
+import { bookingBrandLabel, bookingKolLabel } from '@/lib/bookings/display';
 import type { BookingResponse, BookingStatus } from '@/lib/api/types';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -184,7 +185,15 @@ export default function BookingsPage() {
                       <div className="flex items-start justify-between gap-3 mb-4">
                         <div className="min-w-0">
                           <h3 className="font-display font-bold text-ink text-[18px] leading-tight truncate">{booking.campaignTitle}</h3>
-                          <p className="text-xs text-mute mt-1">#{booking.id}</p>
+                          <p className="text-xs text-mute mt-1">
+                            #{booking.id}
+                            {user?.role === 'KOL' && (
+                              <> · {bookingBrandLabel(booking)}</>
+                            )}
+                            {user?.role === 'BRAND' && booking.kolDisplayName && (
+                              <> · {bookingKolLabel(booking)}</>
+                            )}
+                          </p>
                         </div>
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${statusPillStyle(booking.status)}`} style={booking.status === 'COMPLETED' ? { background: 'var(--success-deep)' } : undefined}>
                           {statusIcon(booking.status)}
@@ -314,13 +323,13 @@ export default function BookingsPage() {
             </dl>
 
             <div className="mb-6">
-              <h3 className="text-xs text-mute font-semibold mb-2">Campaign Brief</h3>
+              <h3 className="text-xs text-mute font-semibold mb-2">Mô tả chiến dịch</h3>
               <p className="text-sm text-body leading-relaxed">{selectedBooking.campaignBrief}</p>
             </div>
 
             {selectedBooking.deliverables && (
               <div className="mb-6">
-                <h3 className="text-xs text-mute font-semibold mb-2">Deliverables</h3>
+                <h3 className="text-xs text-mute font-semibold mb-2">Yêu cầu giao nội dung</h3>
                 <p className="text-sm text-body whitespace-pre-wrap bg-surface-card p-4 rounded-md">{selectedBooking.deliverables}</p>
               </div>
             )}

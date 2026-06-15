@@ -27,6 +27,7 @@ import {
 import { bookingsApi } from '@/lib/api/bookings';
 import { brandApi } from '@/lib/api/brand';
 import { ApiError } from '@/lib/api/client';
+import { isPendingReview, isProfileApproved } from '@/lib/profile-status';
 import { useAuth } from '@/contexts/AuthContext';
 import { PLATFORM_FEE_RATE, kolPayout, platformFee } from '@/lib/bookings/status';
 
@@ -109,8 +110,12 @@ export function BookingFormDialog({
     setChecking(true);
     try {
       const profile = await brandApi.getMyProfile();
-      if (profile.status !== 'APPROVED') {
-        toast.error('Vui lòng hoàn thiện hồ sơ Brand trước');
+      if (!isProfileApproved(profile.status)) {
+        if (isPendingReview(profile.status)) {
+          toast.error('Hồ sơ Brand đang chờ admin duyệt');
+        } else {
+          toast.error('Vui lòng hoàn thiện và gửi hồ sơ Brand trước');
+        }
         return;
       }
       resetForm();

@@ -100,7 +100,7 @@ export function notificationTypeLabel(type: NotificationType): string {
     case 'PROFILE_REJECTED': return 'Hồ sơ bị từ chối';
     case 'NEW_MESSAGE': return 'Tin nhắn mới';
     case 'PRODUCT_APPLICATION_RECEIVED': return 'Ứng tuyển mới';
-    case 'APPLICATION_SHORTLISTED': return 'Vào shortlist';
+    case 'APPLICATION_SHORTLISTED': return 'Vào danh sách rút gọn';
     case 'APPLICATION_ACCEPTED': return 'Ứng tuyển được duyệt';
     case 'APPLICATION_REJECTED': return 'Ứng tuyển bị từ chối';
     default: return 'Thông báo';

@@ -217,7 +217,7 @@ function DiscoverPageContent() {
                 <option value="rating">Đánh giá cao</option>
                 <option value="price_asc">Giá thấp → cao</option>
                 <option value="price_desc">Giá cao → thấp</option>
-                <option value="followers">Nhiều follower</option>
+                <option value="followers">Nhiều người theo dõi</option>
               </select>
             </div>
           </div>

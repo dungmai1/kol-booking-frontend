@@ -801,10 +801,10 @@ function ResultsPanel({
                 className="bg-transparent text-sm font-bold outline-none"
                 aria-label="Sắp xếp KOL"
               >
-                <option value="matchScore">Match score</option>
-                <option value="followers">Follower</option>
+                <option value="matchScore">Điểm phù hợp</option>
+                <option value="followers">Người theo dõi</option>
                 <option value="price">Giá thấp</option>
-                <option value="rating">Rating</option>
+                <option value="rating">Đánh giá</option>
               </select>
               <ChevronDown className="h-4 w-4 text-mute" />
             </label>
@@ -848,8 +848,8 @@ function CriteriaSummary({ criteria }: { criteria: KolSearchCriteria }) {
   const rows = [
     { label: 'Ngành hàng', value: criteria.category },
     { label: 'Nền tảng', value: criteria.platforms.length ? criteria.platforms.join(', ') : null, highlight: !criteria.platforms.length },
-    { label: 'Follower tối thiểu', value: formatNumber(criteria.minFollowers) },
-    { label: 'Follower tối đa', value: formatNumber(criteria.maxFollowers) },
+    { label: 'Người theo dõi tối thiểu', value: formatNumber(criteria.minFollowers) },
+    { label: 'Người theo dõi tối đa', value: formatNumber(criteria.maxFollowers) },
     { label: 'Ngân sách tối thiểu', value: formatCurrency(criteria.minBudget) },
     { label: 'Ngân sách tối đa', value: formatCurrency(criteria.maxBudget) },
     { label: 'Khu vực', value: criteria.location },
@@ -920,18 +920,18 @@ function RecommendationCard({
               </div>
             </div>
             <span className="shrink-0 rounded-full bg-ink px-3 py-1.5 text-xs font-bold text-on-dark">
-              {kol.matchScore}% match
+              {kol.matchScore}% phù hợp
             </span>
           </div>
 
           <div className="mt-3 grid gap-1 text-sm text-body">
             <p className="truncate">
               {primaryPlatform
-                ? `${formatPlatform(primaryPlatform.platform)}: ${formatCompact(primaryPlatform.followers)} followers · ER ${formatEngagement(primaryPlatform.engagementRate)}`
+                ? `${formatPlatform(primaryPlatform.platform)}: ${formatCompact(primaryPlatform.followers)} người theo dõi · ER ${formatEngagement(primaryPlatform.engagementRate)}`
                 : 'Chưa có nền tảng chính'}
             </p>
             <p className="truncate">
-              Giá từ: {kol.priceFrom ? formatMinPrice(kol.priceFrom) : 'Liên hệ'} · Rating {kol.rating?.toFixed(1) ?? 'Mới'} · {kol.completedBookingCount} booking
+              Giá từ: {kol.priceFrom ? formatMinPrice(kol.priceFrom) : 'Liên hệ'} · Đánh giá {kol.rating?.toFixed(1) ?? 'Mới'} · {kol.completedBookingCount} booking
             </p>
             <p className="line-clamp-2 text-mute">Lý do: {kol.reason}</p>
           </div>
@@ -958,14 +958,14 @@ function SelectedKolDetail({ kol }: { kol: KolRecommendationItem | null }) {
           <Avatar name={kol.displayName} src={kol.avatarUrl} size="lg" />
           <div className="min-w-0">
             <h3 className="truncate text-base font-bold text-ink">{kol.displayName}</h3>
-            <p className="text-sm text-mute">{kol.matchScore}% match</p>
+            <p className="text-sm text-mute">{kol.matchScore}% phù hợp</p>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <Metric label="Follower" value={formatCompact(totalFollowers(kol))} />
-        <Metric label="Rating" value={kol.rating ? kol.rating.toFixed(1) : 'Mới'} />
+        <Metric label="Người theo dõi" value={formatCompact(totalFollowers(kol))} />
+        <Metric label="Đánh giá" value={kol.rating ? kol.rating.toFixed(1) : 'Mới'} />
         <Metric label="Giá từ" value={kol.priceFrom ? formatMinPrice(kol.priceFrom) : 'Liên hệ'} />
         <Metric label="Booking" value={`${kol.completedBookingCount}`} />
       </div>

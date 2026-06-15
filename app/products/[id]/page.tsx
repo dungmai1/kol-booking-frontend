@@ -245,7 +245,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 />
                 <Fact
                   icon={<Users className="w-4 h-4" />}
-                  label="Follower tối thiểu"
+                  label="Người theo dõi tối thiểu"
                   value={product.minFollowers != null && product.minFollowers > 0 ? `${formatFollowers(product.minFollowers)}+` : 'Không yêu cầu'}
                 />
                 <Fact icon={<ClipboardList className="w-4 h-4" />} label="Số suất" value={String(product.slots ?? 1)} />

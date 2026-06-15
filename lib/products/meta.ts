@@ -22,7 +22,7 @@ export const PRODUCT_STATUS_CLASS: Record<ProductStatus, string> = {
 
 export const APPLICATION_STATUS_LABEL: Record<ApplicationStatus, string> = {
   PENDING: 'Chờ duyệt',
-  SHORTLISTED: 'Trong shortlist',
+  SHORTLISTED: 'Trong danh sách rút gọn',
   ACCEPTED: 'Đã duyệt',
   REJECTED: 'Đã từ chối',
   WITHDRAWN: 'Đã rút',
@@ -39,7 +39,7 @@ export const APPLICATION_STATUS_CLASS: Record<ApplicationStatus, string> = {
 export const TOP_BY_OPTIONS: { value: TopApplicantsBy; label: string }[] = [
   { value: 'rating', label: 'Đánh giá cao nhất' },
   { value: 'reviews', label: 'Nhiều nhận xét nhất' },
-  { value: 'followers', label: 'Nhiều follower nhất' },
+  { value: 'followers', label: 'Nhiều người theo dõi nhất' },
 ];
 
 export const vnd = new Intl.NumberFormat('vi-VN', {
