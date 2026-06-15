@@ -5,6 +5,7 @@ import type {
   AdminBookingStats,
   AdminTopKol,
   AdminRevenueStats,
+  AdminEscrowMetrics,
   AdminCommissionSummary,
   AdminCommissionTransaction,
   AdminRejectRequest,
@@ -44,6 +45,9 @@ function mapStatsOverview(raw: AdminStatsOverviewRaw): AdminStatsOverview {
     totalBookings: num(raw.totalBookings),
     totalRevenue: num(raw.platformRevenue),
     activeBookings: num(raw.activeBookings),
+    disputeCount: num((raw as Record<string, unknown>).disputeCount),
+    pendingKolApprovals: num((raw as Record<string, unknown>).pendingKolApprovals),
+    pendingBrandApprovals: num((raw as Record<string, unknown>).pendingBrandApprovals),
   };
 }
 
@@ -59,7 +63,7 @@ function mapTopKol(r: AdminTopKolRaw): AdminTopKol {
   return {
     id: num(r.kolProfileId),
     displayName: r.displayName ?? '',
-    earnings: num(r.revenue),
+    kolNet: num(r.revenue),
     bookingCount: num(r.bookings),
     avgRating: num(r.avgRating),
   };
@@ -166,6 +170,18 @@ export const adminApi = {
   getRevenueStats(params: { from?: string; to?: string } = {}): Promise<AdminRevenueStats[]> {
     const q = api.buildQuery(params as Record<string, unknown>);
     return api.get(`/admin/stats/revenue${q}`);
+  },
+
+  getEscrowMetrics(params: { from?: string; to?: string } = {}): Promise<AdminEscrowMetrics> {
+    const q = api.buildQuery(params as Record<string, unknown>);
+    return api.get<Record<string, unknown>>(`/admin/stats/escrow-metrics${q}`).then((raw) => ({
+      totalEscrowHeld: Number(raw.totalEscrowHeld ?? 0),
+      bookingsPendingApproval: Number(raw.bookingsPendingApproval ?? 0),
+      refundRate: Number(raw.refundRate ?? 0),
+      completedBookings: Number(raw.completedBookings ?? 0),
+      rejectedDeliveries: Number(raw.rejectedDeliveries ?? 0),
+      totalRefunded: Number(raw.totalRefunded ?? 0),
+    }));
   },
 
   /** Platform commission overview: current rate, accumulated fees, platform wallet. */

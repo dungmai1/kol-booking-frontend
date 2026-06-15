@@ -84,9 +84,11 @@ export function BookingFormDialog({
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [touched, setTouched] = useState(false);
 
   const minDate = todayISO();
   const budget = Number(budgetDigits || '0');
+  const isFormValid = validate() === null;
 
   function resetForm() {
     setCampaignTitle('');
@@ -96,6 +98,7 @@ export function BookingFormDialog({
     setStartDate('');
     setEndDate('');
     setError('');
+    setTouched(false);
   }
 
   async function handleTriggerClick() {
@@ -149,6 +152,7 @@ export function BookingFormDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setTouched(true);
     setError('');
     const validationError = validate();
     if (validationError) {
@@ -303,6 +307,9 @@ export function BookingFormDialog({
                   ≈ {vnd.format(budget)}
                 </p>
               )}
+              {touched && (!budget || budget <= 0) && (
+                <p className="text-xs text-destructive">Vui lòng nhập ngân sách hợp lệ</p>
+              )}
               {defaultBudget ? (
                 <p className="text-xs text-muted-foreground">
                   Tối thiểu: {vnd.format(defaultBudget)}
@@ -372,8 +379,8 @@ export function BookingFormDialog({
               </DialogClose>
               <Button
                 type="submit"
-                disabled={submitting}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                disabled={submitting || !isFormValid}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white disabled:opacity-50"
               >
                 {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 {submitting ? 'Đang gửi…' : 'Gửi yêu cầu'}

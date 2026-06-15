@@ -17,6 +17,13 @@ import {
   ArrowUpRight,
   Star,
   Trophy,
+  Lock,
+  Clock,
+  RotateCcw,
+  Ban,
+  AlertTriangle,
+  UserCog,
+  Store,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
@@ -38,6 +45,7 @@ import type {
   AdminRevenueStats,
   AdminBookingStats,
   AdminTopKol,
+  AdminEscrowMetrics,
 } from '@/lib/api/types';
 
 import {
@@ -183,6 +191,10 @@ export default function AdminDashboardPage() {
   const [topKolsLoading, setTopKolsLoading] = useState(true);
   const [topKolsError, setTopKolsError] = useState<string | null>(null);
 
+  const [escrow, setEscrow] = useState<AdminEscrowMetrics | null>(null);
+  const [escrowLoading, setEscrowLoading] = useState(true);
+  const [escrowError, setEscrowError] = useState<string | null>(null);
+
   const fetchAll = useCallback(async () => {
     const params = { from: range.from, to: range.to };
 
@@ -230,6 +242,17 @@ export default function AdminDashboardPage() {
         setTopKolsError(msg);
       })
       .finally(() => setTopKolsLoading(false));
+
+    setEscrowLoading(true);
+    setEscrowError(null);
+    adminApi
+      .getEscrowMetrics(params)
+      .then((data) => setEscrow(data))
+      .catch((e: unknown) => {
+        const msg = e instanceof ApiError ? e.message : 'Không tải được chỉ số escrow';
+        setEscrowError(msg);
+      })
+      .finally(() => setEscrowLoading(false));
   }, [range.from, range.to]);
 
   useEffect(() => {
@@ -439,6 +462,60 @@ export default function AdminDashboardPage() {
         })}
       </section>
 
+      {/* ── Row 1b: Operational alerts ─────────────────────────────────────── */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4" aria-label="Cảnh báo vận hành">
+        {[
+          {
+            label: 'Tranh chấp đang mở',
+            value: overview?.disputeCount ?? 0,
+            icon: AlertTriangle,
+            accent: 'text-pin-red',
+            desc: 'Booking cần admin xử lý',
+          },
+          {
+            label: 'KOL chờ duyệt',
+            value: overview?.pendingKolApprovals ?? 0,
+            icon: UserCog,
+            accent: 'text-accent-purple',
+            desc: 'Hồ sơ PENDING_REVIEW',
+          },
+          {
+            label: 'Brand chờ duyệt',
+            value: overview?.pendingBrandApprovals ?? 0,
+            icon: Store,
+            accent: 'text-accent-pressed-blue',
+            desc: 'Hồ sơ PENDING_REVIEW',
+          },
+        ].map((card) => (
+          <Card key={card.label} className="bg-surface-card border-hairline shadow-none rounded-2xl">
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between">
+                <CardDescription className="text-xs font-semibold text-mute uppercase tracking-wide">
+                  {card.label}
+                </CardDescription>
+                <span className={`grid place-items-center w-8 h-8 rounded-full bg-surface-soft ${card.accent}`}>
+                  <card.icon className="w-4 h-4" />
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {overviewLoading ? (
+                <Skeleton className="h-7 w-16 mb-2" />
+              ) : overviewError ? (
+                <div className="text-xs text-pin-red flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5" /> Lỗi
+                </div>
+              ) : (
+                <div className="font-display font-bold text-ink text-2xl tracking-tight leading-none">
+                  {compactNumber(card.value)}
+                </div>
+              )}
+              <div className="mt-2 text-xs text-mute">{card.desc}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </section>
+
       {/* ── Row 2: Charts ──────────────────────────────────────────────────── */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Revenue line chart */}
@@ -559,7 +636,131 @@ export default function AdminDashboardPage() {
         </Card>
       </section>
 
-      {/* ── Row 3: Top 10 KOL ─────────────────────────────────────────────── */}
+      {/* ── Row 3: Escrow / financial-risk metrics ────────────────────────── */}
+      <section aria-label="Chỉ số tài chính rủi ro">
+        <h3 className="text-sm font-bold text-mute uppercase tracking-wide mb-3">
+          Rủi ro tài chính
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {/* 1 — Tiền đang giữ escrow */}
+          <Card className="bg-surface-card border-hairline shadow-none rounded-2xl">
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between">
+                <CardDescription className="text-xs font-semibold text-mute uppercase tracking-wide">
+                  Tiền đang escrow
+                </CardDescription>
+                <span className="grid place-items-center w-8 h-8 rounded-full bg-surface-soft text-accent-purple">
+                  <Lock className="w-4 h-4" />
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {escrowLoading ? (
+                <Skeleton className="h-7 w-28 mb-2" />
+              ) : escrowError ? (
+                <div className="text-xs text-pin-red flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5" /> Lỗi
+                </div>
+              ) : (
+                <div className="font-display font-bold text-ink text-2xl tracking-tight leading-none">
+                  {vnd(escrow?.totalEscrowHeld ?? 0)}
+                </div>
+              )}
+              <div className="mt-2 text-xs text-mute">Tổng balance_held của Brand</div>
+            </CardContent>
+          </Card>
+
+          {/* 2 — Booking chờ Brand duyệt */}
+          <Card className="bg-surface-card border-hairline shadow-none rounded-2xl">
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between">
+                <CardDescription className="text-xs font-semibold text-mute uppercase tracking-wide">
+                  Chờ nghiệm thu
+                </CardDescription>
+                <span className="grid place-items-center w-8 h-8 rounded-full bg-surface-soft text-pin-red">
+                  <Clock className="w-4 h-4" />
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {escrowLoading ? (
+                <Skeleton className="h-7 w-16 mb-2" />
+              ) : escrowError ? (
+                <div className="text-xs text-pin-red flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5" /> Lỗi
+                </div>
+              ) : (
+                <div className="font-display font-bold text-ink text-2xl tracking-tight leading-none">
+                  {compactNumber(escrow?.bookingsPendingApproval ?? 0)}
+                </div>
+              )}
+              <div className="mt-2 text-xs text-mute">Đang ở DELIVERED (snapshot)</div>
+            </CardContent>
+          </Card>
+
+          {/* 3 — Tỷ lệ reject */}
+          <Card className="bg-surface-card border-hairline shadow-none rounded-2xl">
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between">
+                <CardDescription className="text-xs font-semibold text-mute uppercase tracking-wide">
+                  Tỷ lệ từ chối
+                </CardDescription>
+                <span className="grid place-items-center w-8 h-8 rounded-full bg-surface-soft text-charcoal">
+                  <Ban className="w-4 h-4" />
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {escrowLoading ? (
+                <Skeleton className="h-7 w-20 mb-2" />
+              ) : escrowError ? (
+                <div className="text-xs text-pin-red flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5" /> Lỗi
+                </div>
+              ) : (
+                <div className="font-display font-bold text-ink text-2xl tracking-tight leading-none">
+                  {((escrow?.refundRate ?? 0) * 100).toFixed(1)}%
+                </div>
+              )}
+              <div className="mt-2 text-xs text-mute">
+                {escrow
+                  ? `${escrow.rejectedDeliveries} từ chối / ${escrow.completedBookings + escrow.rejectedDeliveries} hoàn tất`
+                  : 'DELIVERY_REJECTED / hoàn tất'}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 4 — Tổng đã hoàn tiền */}
+          <Card className="bg-surface-card border-hairline shadow-none rounded-2xl">
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between">
+                <CardDescription className="text-xs font-semibold text-mute uppercase tracking-wide">
+                  Đã hoàn tiền
+                </CardDescription>
+                <span className="grid place-items-center w-8 h-8 rounded-full bg-surface-soft text-success-deep">
+                  <RotateCcw className="w-4 h-4" />
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {escrowLoading ? (
+                <Skeleton className="h-7 w-28 mb-2" />
+              ) : escrowError ? (
+                <div className="text-xs text-pin-red flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5" /> Lỗi
+                </div>
+              ) : (
+                <div className="font-display font-bold text-ink text-2xl tracking-tight leading-none">
+                  {vnd(escrow?.totalRefunded ?? 0)}
+                </div>
+              )}
+              <div className="mt-2 text-xs text-mute">REFUND transactions trong range</div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* ── Row 4: Top 10 KOL ─────────────────────────────────────────────── */}
       <section>
         <Card className="bg-surface-card border-hairline shadow-none rounded-2xl">
           <CardHeader className="flex flex-row items-start justify-between gap-2">
@@ -607,7 +808,7 @@ export default function AdminDashboardPage() {
                     <TableRow className="border-hairline hover:bg-transparent">
                       <TableHead className="w-14 text-mute font-semibold">#</TableHead>
                       <TableHead className="text-mute font-semibold">KOL</TableHead>
-                      <TableHead className="text-mute font-semibold text-right">Thu nhập</TableHead>
+                      <TableHead className="text-mute font-semibold text-right">Thu nhập KOL</TableHead>
                       <TableHead className="text-mute font-semibold text-right">Booking</TableHead>
                       <TableHead className="text-mute font-semibold">Đánh giá</TableHead>
                     </TableRow>
@@ -641,7 +842,7 @@ export default function AdminDashboardPage() {
                             </div>
                           </TableCell>
                           <TableCell className="text-right text-ink font-semibold tabular-nums">
-                            {vnd(kol.earnings)}
+                            {vnd(kol.kolNet)}
                           </TableCell>
                           <TableCell className="text-right text-ink tabular-nums">
                             {compactNumber(kol.bookingCount)}
