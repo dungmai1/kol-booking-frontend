@@ -615,6 +615,9 @@ export interface AdminStatsOverview {
   totalBookings: number;
   totalRevenue: number;
   activeBookings: number;
+  disputeCount: number;
+  pendingKolApprovals: number;
+  pendingBrandApprovals: number;
   previousMonth?: {
     totalUsers?: number;
     totalKols?: number;
@@ -634,7 +637,7 @@ export interface AdminBookingStats {
 export interface AdminTopKol {
   id: number;
   displayName: string;
-  earnings: number;
+  kolNet: number;
   bookingCount: number;
   avgRating: number;
 }
@@ -661,6 +664,22 @@ export interface AdminCommissionSummary {
   totalCommission: number;
   /** Number of FEE ledger entries. */
   commissionTransactions: number;
+}
+
+/** GET /admin/stats/escrow-metrics — financial-risk metrics for admin ops. */
+export interface AdminEscrowMetrics {
+  /** Total brand funds currently frozen in escrow (current snapshot). */
+  totalEscrowHeld: number;
+  /** DELIVERED bookings waiting for brand review or auto-complete (current snapshot). */
+  bookingsPendingApproval: number;
+  /** Refund rate = DELIVERY_REJECTED / (COMPLETED + DELIVERY_REJECTED) in date range (0–1). */
+  refundRate: number;
+  /** Count of completed bookings in range. */
+  completedBookings: number;
+  /** Count of delivery-rejected bookings in range. */
+  rejectedDeliveries: number;
+  /** Sum of all REFUND wallet-transactions in date range. */
+  totalRefunded: number;
 }
 
 /** GET /admin/stats/commission/transactions — one FEE ledger row with booking context. */
