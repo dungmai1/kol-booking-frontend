@@ -18,6 +18,3 @@ node_modules
 # npm lockfile (project uses pnpm)
 package-lock.json
 pnpm-lock.yaml
-pnpm-lock.yaml
-pnpm-workspace.yaml
-pnpm-lock.yaml
