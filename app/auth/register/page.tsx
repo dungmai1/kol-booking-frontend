@@ -9,6 +9,23 @@ import { Eye, EyeOff, Loader2, Building2, Star } from 'lucide-react';
 
 type Role = 'BRAND' | 'KOL';
 
+type PasswordStrength = 'weak' | 'medium' | 'strong';
+
+function getPasswordStrength(pw: string): PasswordStrength {
+  const hasUpper = /[A-Z]/.test(pw);
+  const hasNumber = /[0-9]/.test(pw);
+  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{}|;':",.<>?/]/.test(pw);
+  if (pw.length < 8 || (!hasUpper && !hasNumber)) return 'weak';
+  if (pw.length >= 8 && hasUpper && hasNumber && hasSpecial) return 'strong';
+  return 'medium';
+}
+
+const strengthMeta: Record<PasswordStrength, { label: string; color: string; segments: number }> = {
+  weak:   { label: 'Yếu',      color: 'bg-red-500',    segments: 1 },
+  medium: { label: 'Trung bình', color: 'bg-yellow-400', segments: 2 },
+  strong: { label: 'Mạnh',     color: 'bg-green-500',  segments: 3 },
+};
+
 /**
  * Register — twin of the login `modal-card`. Adds a role picker
  * implemented as two radio-like cards: each is a small surface-card
@@ -24,28 +41,66 @@ export default function RegisterPage() {
   const [role, setRole] = useState<Role>('BRAND');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+
+  // Per-field errors
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
+  // Server-level error
+  const [serverError, setServerError] = useState('');
+
+  // Password touched (show strength bar only after user typed)
+  const [passwordTouched, setPasswordTouched] = useState(false);
+
+  function validateEmail(value: string): string {
+    if (!value.trim()) return 'Vui lòng nhập email.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return 'Email không đúng định dạng.';
+    return '';
+  }
+
+  function validatePassword(value: string): string {
+    if (!value) return 'Vui lòng nhập mật khẩu.';
+    if (value.length < 8) return 'Mật khẩu phải có ít nhất 8 ký tự.';
+    if (!/[A-Z]/.test(value)) return 'Mật khẩu phải có ít nhất 1 chữ hoa.';
+    if (!/[0-9]/.test(value)) return 'Mật khẩu phải có ít nhất 1 chữ số.';
+    if (!/[!@#$%^&*()_+\-=\[\]{}|;':",.<>?/]/.test(value))
+      return 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt (!@#$%…).';
+    return '';
+  }
+
+  function validateConfirmPassword(value: string): string {
+    if (!value) return 'Vui lòng xác nhận mật khẩu.';
+    if (value !== password) return 'Mật khẩu xác nhận không khớp.';
+    return '';
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
-    if (!email.trim()) return setError('Vui lòng nhập email.');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      return setError('Email không đúng định dạng.');
-    }
-    if (!password) return setError('Vui lòng nhập mật khẩu.');
-    if (password !== confirmPassword) return setError('Mật khẩu xác nhận không khớp.');
-    if (password.length < 8) return setError('Mật khẩu phải có ít nhất 8 ký tự.');
+    setServerError('');
+
+    const eErr = validateEmail(email);
+    const pErr = validatePassword(password);
+    const cErr = validateConfirmPassword(confirmPassword);
+
+    setEmailError(eErr);
+    setPasswordError(pErr);
+    setConfirmPasswordError(cErr);
+
+    if (eErr || pErr || cErr) return;
+
     setIsLoading(true);
     try {
       await register({ email, password, role });
       router.push('/auth/check-email');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Đã xảy ra lỗi. Vui lòng thử lại.');
+      setServerError(err instanceof ApiError ? err.message : 'Đã xảy ra lỗi. Vui lòng thử lại.');
     } finally {
       setIsLoading(false);
     }
   }
+
+  const pwStrength = passwordTouched && password ? getPasswordStrength(password) : null;
+  const meta = pwStrength ? strengthMeta[pwStrength] : null;
 
   return (
     <div className="min-h-screen bg-surface-soft flex items-center justify-center p-4">
@@ -64,9 +119,9 @@ export default function RegisterPage() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
+            {serverError && (
               <div className="rounded-md px-4 py-3 text-sm font-bold" style={{ background: 'var(--success-pale)', color: 'var(--error)' }}>
-                {error}
+                {serverError}
               </div>
             )}
 
@@ -91,29 +146,41 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {/* Email */}
             <div>
               <label className="block text-sm font-bold text-ink mb-2">Email</label>
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                onChange={(e) => { setEmail(e.target.value); if (emailError) setEmailError(''); }}
+                onBlur={() => setEmailError(validateEmail(email))}
                 placeholder="ban@email.com"
-                className="pin-input"
+                className={`pin-input${emailError ? ' border-red-500' : ''}`}
               />
+              {emailError && <p className="text-xs text-red-600 mt-1">{emailError}</p>}
             </div>
 
+            {/* Password */}
             <div>
               <label className="block text-sm font-bold text-ink mb-2">Mật khẩu</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={8}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setPasswordTouched(true);
+                    if (passwordError) setPasswordError('');
+                    // live-update confirm error when password changes
+                    if (confirmPassword && e.target.value !== confirmPassword) {
+                      setConfirmPasswordError('Mật khẩu xác nhận không khớp.');
+                    } else if (confirmPassword) {
+                      setConfirmPasswordError('');
+                    }
+                  }}
+                  onBlur={() => { setPasswordTouched(true); setPasswordError(validatePassword(password)); }}
                   placeholder="Tối thiểu 8 ký tự"
-                  className="pin-input pr-12"
+                  className={`pin-input pr-12${passwordError ? ' border-red-500' : ''}`}
                 />
                 <button
                   type="button"
@@ -124,18 +191,44 @@ export default function RegisterPage() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+
+              {/* Password strength bar */}
+              {passwordTouched && password && meta && (
+                <div className="mt-2">
+                  <div className="flex gap-1 mb-1">
+                    {[1, 2, 3].map((seg) => (
+                      <div
+                        key={seg}
+                        className={`h-1.5 flex-1 rounded-full transition-colors ${
+                          seg <= meta.segments ? meta.color : 'bg-gray-200'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className={`text-xs font-semibold ${
+                    pwStrength === 'strong' ? 'text-green-600' :
+                    pwStrength === 'medium' ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    Độ mạnh: {meta.label}
+                  </p>
+                </div>
+              )}
+
+              {passwordError && <p className="text-xs text-red-600 mt-1">{passwordError}</p>}
             </div>
 
+            {/* Confirm password */}
             <div>
               <label className="block text-sm font-bold text-ink mb-2">Xác nhận mật khẩu</label>
               <input
                 type="password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
+                onChange={(e) => { setConfirmPassword(e.target.value); if (confirmPasswordError) setConfirmPasswordError(''); }}
+                onBlur={() => setConfirmPasswordError(validateConfirmPassword(confirmPassword))}
                 placeholder="••••••••"
-                className="pin-input"
+                className={`pin-input${confirmPasswordError ? ' border-red-500' : ''}`}
               />
+              {confirmPasswordError && <p className="text-xs text-red-600 mt-1">{confirmPasswordError}</p>}
             </div>
 
             <button type="submit" disabled={isLoading} className="btn-pin-primary w-full !py-3 !rounded-full text-base">

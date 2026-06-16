@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
+  AlertTriangle,
   ArrowLeft,
   Calendar,
   CheckCircle2,
@@ -14,12 +15,23 @@ import {
   PenSquare,
   Receipt,
   RefreshCw,
+  ShieldAlert,
   Sparkles,
   Star,
   Upload,
   XCircle,
 } from 'lucide-react';
 import { Header } from '@/components/header';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import { BookingStatusPill } from '@/components/booking-status-pill';
 import { BookingTimeline } from '@/components/booking-timeline';
 import { ReviewFormDialog } from '@/components/review-form-dialog';
@@ -101,6 +113,13 @@ export default function BookingDetailPage({
   const [error, setError] = useState('');
   const [tab, setTab] = useState<Tab>('detail');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Dispute dialog (BRAND only, when status === 'DELIVERED').
+  const [disputeDialog, setDisputeDialog] = useState<{
+    open: boolean;
+    reason: string;
+    reasonError: string;
+  }>({ open: false, reason: '', reasonError: '' });
 
   // Deliverable submission modal (KOL only, when status === 'IN_PROGRESS').
   const [deliverableForm, setDeliverableForm] = useState<{
@@ -243,6 +262,34 @@ export default function BookingDetailPage({
       await fetchBooking();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Từ chối nội dung thất bại.';
+      window.alert(message);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  function openDisputeDialog() {
+    setDisputeDialog({ open: true, reason: '', reasonError: '' });
+  }
+
+  async function handleDisputeSubmit() {
+    const reason = disputeDialog.reason.trim();
+    if (!reason) {
+      setDisputeDialog((p) => ({ ...p, reasonError: 'Vui lòng nhập lý do tranh chấp.' }));
+      return;
+    }
+    if (reason.length < 20) {
+      setDisputeDialog((p) => ({ ...p, reasonError: 'Lý do phải có ít nhất 20 ký tự.' }));
+      return;
+    }
+    if (!booking) return;
+    setActionLoading('dispute');
+    setDisputeDialog((p) => ({ ...p, open: false }));
+    try {
+      await bookingsApi.dispute(booking.id, reason);
+      await fetchBooking();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Gửi tranh chấp thất bại.';
       window.alert(message);
     } finally {
       setActionLoading(null);
@@ -515,6 +562,7 @@ export default function BookingDetailPage({
             onAccept={handleAccept}
             onReject={handleReject}
             onSubmitDeliverable={openDeliverableForm}
+            onDispute={openDisputeDialog}
             myReview={myReview}
             otherReview={otherReview}
             onReviewSuccess={setMyReview}
@@ -523,6 +571,89 @@ export default function BookingDetailPage({
           <BookingChatTab bookingId={booking.id} currentUserId={user?.userId ?? -1} />
         )}
       </main>
+
+      {/* Dispute dialog — BRAND flow when booking is DELIVERED */}
+      <Dialog
+        open={disputeDialog.open}
+        onOpenChange={(open) => !open && setDisputeDialog((p) => ({ ...p, open: false }))}
+      >
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-700">
+              <AlertTriangle className="w-5 h-5" />
+              Gửi khiếu nại tranh chấp
+            </DialogTitle>
+            <DialogDescription>
+              Mô tả rõ vấn đề với nội dung được giao. Admin sẽ xem xét và phân xử trong vòng 3-5
+              ngày làm việc. Trong thời gian tranh chấp, ngân sách sẽ được tạm giữ.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div>
+              <label className="block text-sm font-bold text-ink mb-1.5">
+                Lý do khiếu nại <span className="text-pin-red">*</span>
+              </label>
+              <Textarea
+                value={disputeDialog.reason}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val.length <= 2000)
+                    setDisputeDialog((p) => ({
+                      ...p,
+                      reason: val,
+                      reasonError: val.trim().length > 0 && val.trim().length < 20
+                        ? 'Lý do phải có ít nhất 20 ký tự.'
+                        : '',
+                    }));
+                }}
+                placeholder="Mô tả vấn đề: nội dung không đúng yêu cầu, chất lượng kém, thiếu deliverable…"
+                className={`min-h-[120px] resize-none${disputeDialog.reasonError ? ' border-red-500' : ''}`}
+                maxLength={2000}
+              />
+              <div className="flex justify-between mt-1">
+                {disputeDialog.reasonError ? (
+                  <p className="text-xs text-red-600">{disputeDialog.reasonError}</p>
+                ) : (
+                  <span />
+                )}
+                <p className="text-xs text-mute">{disputeDialog.reason.length}/2000</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+              <p className="font-bold mb-1">Lưu ý quan trọng</p>
+              <ul className="list-disc list-inside space-y-1 text-xs">
+                <li>Tranh chấp chỉ có thể gửi 1 lần cho mỗi đơn hàng.</li>
+                <li>Cung cấp bằng chứng rõ ràng để tăng khả năng thắng kiện.</li>
+                <li>Kết quả phân xử của Admin là quyết định cuối cùng.</li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setDisputeDialog((p) => ({ ...p, open: false }))}
+              disabled={actionLoading === 'dispute'}
+            >
+              Huỷ
+            </Button>
+            <Button
+              onClick={handleDisputeSubmit}
+              disabled={actionLoading === 'dispute' || disputeDialog.reason.trim().length < 20}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {actionLoading === 'dispute' ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <ShieldAlert className="w-4 h-4 mr-2" />
+              )}
+              Gửi khiếu nại
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Deliverable submission modal — KOL flow when booking is IN_PROGRESS */}
       {deliverableForm.open && (
@@ -747,6 +878,7 @@ interface DetailTabProps {
   onAccept: () => void;
   onReject: () => void;
   onSubmitDeliverable: () => void;
+  onDispute: () => void;
   myReview: ReviewResponse | null;
   otherReview: ReviewResponse | null;
   onReviewSuccess: (review: ReviewResponse) => void;
@@ -763,6 +895,7 @@ function DetailTab({
   onAccept,
   onReject,
   onSubmitDeliverable,
+  onDispute,
   myReview,
   otherReview,
   onReviewSuccess,
@@ -832,6 +965,20 @@ function DetailTab({
             <XCircle className="w-4 h-4" />
           )}
           Từ chối nội dung
+        </button>,
+        <button
+          key="dispute"
+          type="button"
+          onClick={onDispute}
+          disabled={actionLoading !== null}
+          className="btn-pin-secondary disabled:opacity-50 !border-amber-400 !text-amber-700 hover:!bg-amber-50"
+        >
+          {actionLoading === 'dispute' ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <ShieldAlert className="w-4 h-4" />
+          )}
+          Khiếu nại tranh chấp
         </button>,
       );
     }

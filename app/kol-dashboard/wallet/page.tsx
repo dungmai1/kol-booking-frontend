@@ -105,6 +105,11 @@ interface WithdrawForm {
   bankAccount: string;
   accountName: string;
   error: string;
+  // per-field errors
+  amountError: string;
+  bankNameError: string;
+  bankAccountError: string;
+  accountNameError: string;
 }
 
 const EMPTY_FORM: WithdrawForm = {
@@ -114,6 +119,10 @@ const EMPTY_FORM: WithdrawForm = {
   bankAccount: '',
   accountName: '',
   error: '',
+  amountError: '',
+  bankNameError: '',
+  bankAccountError: '',
+  accountNameError: '',
 };
 
 export default function KolWalletPage() {
@@ -163,6 +172,40 @@ export default function KolWalletPage() {
     void fetchAll();
   }, [authLoading, isAuthenticated, user, fetchAll]);
 
+  // ─── Withdraw field validators ─────────────────────────────────────────────
+
+  function validateWithdrawAmount(v: string, balanceAvailable: number): string {
+    if (!v.trim()) return 'Vui lòng nhập số tiền.';
+    const n = Number(v);
+    if (isNaN(n) || !Number.isFinite(n)) return 'Số tiền không phải là số hợp lệ.';
+    if (n <= 0) return 'Số tiền phải lớn hơn 0.';
+    if (n < 10_000) return 'Số tiền rút tối thiểu là 10.000 VND.';
+    if (n > balanceAvailable) return `Số tiền vượt quá số dư khả dụng (${vnd.format(balanceAvailable)}).`;
+    return '';
+  }
+
+  function validateBankName(v: string): string {
+    if (!v.trim()) return 'Vui lòng nhập tên ngân hàng.';
+    if (v.trim().length < 2) return 'Tên ngân hàng phải có ít nhất 2 ký tự.';
+    if (v.trim().length > 150) return 'Tên ngân hàng không được vượt quá 150 ký tự.';
+    return '';
+  }
+
+  function validateBankAccount(v: string): string {
+    if (!v.trim()) return 'Vui lòng nhập số tài khoản.';
+    if (v.trim().length < 5) return 'Số tài khoản phải có ít nhất 5 ký tự.';
+    if (v.trim().length > 50) return 'Số tài khoản không được vượt quá 50 ký tự.';
+    if (!/^[0-9-]+$/.test(v.trim())) return 'Số tài khoản chỉ được chứa chữ số và dấu gạch ngang.';
+    return '';
+  }
+
+  function validateAccountName(v: string): string {
+    if (!v.trim()) return 'Vui lòng nhập tên chủ tài khoản.';
+    if (v.trim().length < 2) return 'Tên chủ tài khoản phải có ít nhất 2 ký tự.';
+    if (v.trim().length > 150) return 'Tên chủ tài khoản không được vượt quá 150 ký tự.';
+    return '';
+  }
+
   function openForm() {
     setForm({ ...EMPTY_FORM, open: true });
   }
@@ -174,25 +217,25 @@ export default function KolWalletPage() {
 
   async function handleSubmitWithdraw(e: React.FormEvent) {
     e.preventDefault();
+    const balanceAvailable = wallet?.balanceAvailable ?? 0;
+
+    const aErr = validateWithdrawAmount(form.amount, balanceAvailable);
+    const bnErr = validateBankName(form.bankName);
+    const baErr = validateBankAccount(form.bankAccount);
+    const anErr = validateAccountName(form.accountName);
+
+    setForm((prev) => ({
+      ...prev,
+      amountError: aErr,
+      bankNameError: bnErr,
+      bankAccountError: baErr,
+      accountNameError: anErr,
+      error: '',
+    }));
+
+    if (aErr || bnErr || baErr || anErr) return;
+
     const amount = Number(form.amount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setForm((prev) => ({ ...prev, error: 'Số tiền không hợp lệ.' }));
-      return;
-    }
-    if (wallet && amount > wallet.balanceAvailable) {
-      setForm((prev) => ({
-        ...prev,
-        error: `Số tiền vượt quá số dư khả dụng (${vnd.format(wallet.balanceAvailable)}).`,
-      }));
-      return;
-    }
-    if (!form.bankName.trim() || !form.bankAccount.trim() || !form.accountName.trim()) {
-      setForm((prev) => ({
-        ...prev,
-        error: 'Vui lòng điền đầy đủ thông tin ngân hàng.',
-      }));
-      return;
-    }
     setSubmitting(true);
     setForm((prev) => ({ ...prev, error: '' }));
     try {
@@ -568,83 +611,129 @@ export default function KolWalletPage() {
             </div>
 
             <form onSubmit={handleSubmitWithdraw} className="space-y-4">
+              {/* Amount */}
               <div>
                 <label className="text-xs uppercase tracking-wide text-gray-500 font-bold mb-1.5 block">
                   Số tiền muốn rút <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
-                  min={1}
+                  min={10000}
                   step={1000}
-                  required
                   autoFocus
-                  placeholder="VD: 1000000"
+                  placeholder="VD: 1000000 (tối thiểu 10.000)"
                   value={form.amount}
                   onChange={(e) =>
-                    setForm((prev) => ({ ...prev, amount: e.target.value, error: '' }))
+                    setForm((prev) => ({ ...prev, amount: e.target.value, amountError: '', error: '' }))
+                  }
+                  onBlur={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      amountError: validateWithdrawAmount(prev.amount, wallet?.balanceAvailable ?? 0),
+                    }))
                   }
                   disabled={submitting}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:border-gray-900 focus:outline-none text-sm disabled:opacity-50"
+                  className={`w-full px-3 py-2.5 rounded-xl border focus:outline-none text-sm disabled:opacity-50 ${
+                    form.amountError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-gray-900'
+                  }`}
                 />
+                {form.amountError && (
+                  <p className="text-xs text-red-600 mt-1">{form.amountError}</p>
+                )}
               </div>
 
+              {/* Bank name */}
               <div>
                 <label className="text-xs uppercase tracking-wide text-gray-500 font-bold mb-1.5 block">
                   Ngân hàng <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  required
                   placeholder="VD: Vietcombank"
                   value={form.bankName}
                   onChange={(e) =>
-                    setForm((prev) => ({ ...prev, bankName: e.target.value, error: '' }))
+                    setForm((prev) => ({ ...prev, bankName: e.target.value, bankNameError: '', error: '' }))
+                  }
+                  onBlur={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      bankNameError: validateBankName(prev.bankName),
+                    }))
                   }
                   disabled={submitting}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:border-gray-900 focus:outline-none text-sm disabled:opacity-50"
+                  className={`w-full px-3 py-2.5 rounded-xl border focus:outline-none text-sm disabled:opacity-50 ${
+                    form.bankNameError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-gray-900'
+                  }`}
                 />
+                {form.bankNameError && (
+                  <p className="text-xs text-red-600 mt-1">{form.bankNameError}</p>
+                )}
               </div>
 
+              {/* Bank account */}
               <div>
                 <label className="text-xs uppercase tracking-wide text-gray-500 font-bold mb-1.5 block">
                   Số tài khoản <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  required
                   placeholder="VD: 0123456789"
                   value={form.bankAccount}
                   onChange={(e) =>
                     setForm((prev) => ({
                       ...prev,
                       bankAccount: e.target.value,
+                      bankAccountError: '',
                       error: '',
                     }))
                   }
+                  onBlur={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      bankAccountError: validateBankAccount(prev.bankAccount),
+                    }))
+                  }
                   disabled={submitting}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:border-gray-900 focus:outline-none text-sm disabled:opacity-50"
+                  className={`w-full px-3 py-2.5 rounded-xl border focus:outline-none text-sm disabled:opacity-50 ${
+                    form.bankAccountError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-gray-900'
+                  }`}
                 />
+                {form.bankAccountError && (
+                  <p className="text-xs text-red-600 mt-1">{form.bankAccountError}</p>
+                )}
               </div>
 
+              {/* Account name */}
               <div>
                 <label className="text-xs uppercase tracking-wide text-gray-500 font-bold mb-1.5 block">
                   Tên chủ tài khoản <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  required
                   placeholder="Họ và tên (không dấu)"
                   value={form.accountName}
                   onChange={(e) =>
                     setForm((prev) => ({
                       ...prev,
                       accountName: e.target.value,
+                      accountNameError: '',
                       error: '',
                     }))
                   }
+                  onBlur={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      accountNameError: validateAccountName(prev.accountName),
+                    }))
+                  }
                   disabled={submitting}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:border-gray-900 focus:outline-none text-sm disabled:opacity-50"
+                  className={`w-full px-3 py-2.5 rounded-xl border focus:outline-none text-sm disabled:opacity-50 ${
+                    form.accountNameError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-gray-900'
+                  }`}
                 />
+                {form.accountNameError && (
+                  <p className="text-xs text-red-600 mt-1">{form.accountNameError}</p>
+                )}
               </div>
 
               {form.error && (
@@ -670,7 +759,14 @@ export default function KolWalletPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || !form.amount.trim()}
+                  disabled={
+                    submitting ||
+                    !form.amount.trim() ||
+                    !!form.amountError ||
+                    !!form.bankNameError ||
+                    !!form.bankAccountError ||
+                    !!form.accountNameError
+                  }
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
                   {submitting ? (

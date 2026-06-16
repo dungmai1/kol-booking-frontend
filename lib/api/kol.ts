@@ -15,6 +15,24 @@ import type {
   Platform,
 } from './types';
 
+// ─── Analytics types ──────────────────────────────────────────────────────────
+export interface KolAnalyticsOverview {
+  availableBalance: number;
+  pendingBalance: number;
+  totalEarned: number;
+  totalBookings: number;
+  bookingsByStatus: Record<string, number>;
+  completionRate: number;
+  avgRating: number | null;
+  reviewCount: number;
+}
+
+export interface KolEarningsPoint {
+  month: string;
+  amount: number;
+  bookings: number;
+}
+
 const PLATFORM_VALUES: readonly Platform[] = ['TIKTOK', 'INSTAGRAM', 'YOUTUBE', 'FACEBOOK'];
 
 /**
@@ -107,5 +125,19 @@ export const kolApi = {
 
   deletePortfolioItem(id: number): Promise<void> {
     return api.delete(`/kols/me/portfolio/${id}`);
+  },
+
+  // ─── Analytics ───────────────────────────────────────────────────────────────
+
+  getAnalyticsOverview(): Promise<KolAnalyticsOverview> {
+    return api.get('/kols/me/analytics/overview');
+  },
+
+  getEarningsChart(months = 12): Promise<KolEarningsPoint[]> {
+    return api.get(`/kols/me/analytics/earnings?months=${months}`);
+  },
+
+  getBookingBreakdown(): Promise<Record<string, number>> {
+    return api.get('/kols/me/analytics/bookings');
   },
 };
