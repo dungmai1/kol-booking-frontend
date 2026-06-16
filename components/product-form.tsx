@@ -25,6 +25,12 @@ function toDateInput(iso: string | null | undefined): string {
   return iso.slice(0, 10);
 }
 
+/** Today's date as yyyy-MM-dd (local time). */
+function todayISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function ProductForm({ initial, submitLabel, submitting, error, disabled = false, onSubmit, onCancel }: ProductFormProps) {
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [title, setTitle] = useState(initial?.title ?? '');
@@ -41,11 +47,67 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
   const [uploadError, setUploadError] = useState('');
   const [formError, setFormError] = useState('');
 
+  // Per-field errors
+  const [titleError, setTitleError] = useState('');
+  const [descriptionError, setDescriptionError] = useState('');
+  const [budgetError, setBudgetError] = useState('');
+  const [slotsError, setSlotsError] = useState('');
+  const [deadlineError, setDeadlineError] = useState('');
+  const [minFollowersError, setMinFollowersError] = useState('');
+
   useEffect(() => {
     categoriesApi.getAll().then(setCategories).catch(() => setCategories([]));
   }, []);
 
   const flatCategories: CategoryResponse[] = categories.flatMap((c) => [c, ...(c.children ?? [])]);
+
+  // ─── Field validators ───────────────────────────────────────────
+
+  function validateTitle(v: string): string {
+    if (!v.trim()) return 'Vui lòng nhập tiêu đề.';
+    if (v.trim().length < 5) return 'Tiêu đề phải có ít nhất 5 ký tự.';
+    if (v.trim().length > 200) return 'Tiêu đề không được vượt quá 200 ký tự.';
+    return '';
+  }
+
+  function validateDescription(v: string): string {
+    if (!v.trim()) return '';
+    if (v.trim().length < 20) return 'Mô tả phải có ít nhất 20 ký tự (nếu điền).';
+    if (v.trim().length > 3000) return 'Mô tả không được vượt quá 3000 ký tự.';
+    return '';
+  }
+
+  function validateBudget(v: string): string {
+    if (!v) return '';
+    const n = Number(v);
+    if (isNaN(n)) return 'Ngân sách không phải là số hợp lệ.';
+    if (n <= 0) return 'Ngân sách phải lớn hơn 0.';
+    return '';
+  }
+
+  function validateSlots(v: string): string {
+    const n = Number(v);
+    if (!v) return 'Vui lòng nhập số suất.';
+    if (isNaN(n) || !Number.isInteger(n)) return 'Số suất phải là số nguyên.';
+    if (n < 1) return 'Số suất phải ít nhất là 1.';
+    if (n > 1000) return 'Số suất không được vượt quá 1000.';
+    return '';
+  }
+
+  function validateDeadline(v: string): string {
+    if (!v) return '';
+    if (v < todayISO()) return 'Hạn ứng tuyển không được là ngày trong quá khứ.';
+    return '';
+  }
+
+  function validateMinFollowers(v: string): string {
+    if (!v) return '';
+    const n = Number(v);
+    if (isNaN(n)) return 'Người theo dõi tối thiểu không phải là số hợp lệ.';
+    if (n < 100) return 'Người theo dõi tối thiểu phải ít nhất là 100.';
+    if (n > 100_000_000) return 'Người theo dõi tối thiểu không được vượt quá 100,000,000.';
+    return '';
+  }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -66,18 +128,24 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError('');
-    if (!title.trim()) {
-      setFormError('Vui lòng nhập tiêu đề.');
-      return;
-    }
-    if (slots && Number(slots) < 1) {
-      setFormError('Số suất phải lớn hơn 0.');
-      return;
-    }
-    if (budget && Number(budget) < 0) {
-      setFormError('Ngân sách không hợp lệ.');
-      return;
-    }
+
+    // Run all validators
+    const tErr = validateTitle(title);
+    const dErr = validateDescription(description);
+    const bErr = validateBudget(budget);
+    const sErr = validateSlots(slots);
+    const dlErr = validateDeadline(deadline);
+    const mfErr = validateMinFollowers(minFollowers);
+
+    setTitleError(tErr);
+    setDescriptionError(dErr);
+    setBudgetError(bErr);
+    setSlotsError(sErr);
+    setDeadlineError(dlErr);
+    setMinFollowersError(mfErr);
+
+    if (tErr || dErr || bErr || sErr || dlErr || mfErr) return;
+
     const payload: ProductCreateRequest = {
       title: title.trim(),
       description: description.trim() || undefined,
@@ -94,6 +162,8 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
 
   const inputClass =
     'w-full px-3 py-2.5 rounded-xl border border-hairline bg-surface-soft focus:bg-canvas focus:border-ink focus:outline-none text-sm';
+  const inputErrorClass =
+    'w-full px-3 py-2.5 rounded-xl border border-red-500 bg-surface-soft focus:bg-canvas focus:border-red-500 focus:outline-none text-sm';
   const labelClass = 'block text-sm font-bold text-ink mb-1.5';
 
   return (
@@ -130,32 +200,50 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
         {uploadError && <p className="text-sm text-pin-red mt-1.5">{uploadError}</p>}
       </div>
 
+      {/* Title */}
       <div>
         <label className={labelClass}>Tiêu đề <span className="text-pin-red">*</span></label>
         <input
           type="text"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => { setTitle(e.target.value); if (titleError) setTitleError(''); }}
+          onBlur={() => setTitleError(validateTitle(title))}
           maxLength={200}
           placeholder="VD: Tìm KOL review sản phẩm chăm sóc da"
-          className={inputClass}
-          required
+          className={titleError ? inputErrorClass : inputClass}
         />
+        <div className="flex items-center justify-between mt-1">
+          {titleError
+            ? <p className="text-xs text-red-600">{titleError}</p>
+            : <span />
+          }
+          <p className="text-xs text-mute ml-auto">{title.length}/200</p>
+        </div>
       </div>
 
+      {/* Description */}
       <div>
         <label className={labelClass}>Mô tả chi tiết</label>
         <textarea
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(e) => { setDescription(e.target.value); if (descriptionError) setDescriptionError(''); }}
+          onBlur={() => setDescriptionError(validateDescription(description))}
           rows={5}
-          maxLength={5000}
+          maxLength={3000}
           placeholder="Mô tả yêu cầu, nội dung giao, thông điệp thương hiệu…"
-          className={`${inputClass} resize-none`}
+          className={`${descriptionError ? inputErrorClass : inputClass} resize-none`}
         />
+        <div className="flex items-center justify-between mt-1">
+          {descriptionError
+            ? <p className="text-xs text-red-600">{descriptionError}</p>
+            : <span />
+          }
+          <p className="text-xs text-mute ml-auto">{description.length}/3000</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Budget */}
         <div>
           <label className={labelClass}>Ngân sách (VND)</label>
           <input
@@ -163,21 +251,30 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
             min={0}
             step={1000}
             value={budget}
-            onChange={(e) => setBudget(e.target.value)}
+            onChange={(e) => { setBudget(e.target.value); if (budgetError) setBudgetError(''); }}
+            onBlur={() => setBudgetError(validateBudget(budget))}
             placeholder="VD: 5000000"
-            className={inputClass}
+            className={budgetError ? inputErrorClass : inputClass}
           />
+          {budgetError && <p className="text-xs text-red-600 mt-1">{budgetError}</p>}
         </div>
+
+        {/* Slots */}
         <div>
           <label className={labelClass}>Số suất tuyển</label>
           <input
             type="number"
             min={1}
+            max={1000}
             value={slots}
-            onChange={(e) => setSlots(e.target.value)}
-            className={inputClass}
+            onChange={(e) => { setSlots(e.target.value); if (slotsError) setSlotsError(''); }}
+            onBlur={() => setSlotsError(validateSlots(slots))}
+            className={slotsError ? inputErrorClass : inputClass}
           />
+          {slotsError && <p className="text-xs text-red-600 mt-1">{slotsError}</p>}
         </div>
+
+        {/* Category */}
         <div>
           <label className={labelClass}>Danh mục</label>
           <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={inputClass}>
@@ -189,6 +286,8 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
             ))}
           </select>
         </div>
+
+        {/* Platform */}
         <div>
           <label className={labelClass}>Nền tảng yêu cầu</label>
           <select value={platform} onChange={(e) => setPlatform(e.target.value)} className={inputClass}>
@@ -200,25 +299,34 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
             ))}
           </select>
         </div>
+
+        {/* Min followers */}
         <div>
           <label className={labelClass}>Người theo dõi tối thiểu</label>
           <input
             type="number"
             min={0}
             value={minFollowers}
-            onChange={(e) => setMinFollowers(e.target.value)}
+            onChange={(e) => { setMinFollowers(e.target.value); if (minFollowersError) setMinFollowersError(''); }}
+            onBlur={() => setMinFollowersError(validateMinFollowers(minFollowers))}
             placeholder="VD: 10000"
-            className={inputClass}
+            className={minFollowersError ? inputErrorClass : inputClass}
           />
+          {minFollowersError && <p className="text-xs text-red-600 mt-1">{minFollowersError}</p>}
         </div>
+
+        {/* Deadline */}
         <div>
           <label className={labelClass}>Hạn ứng tuyển</label>
           <input
             type="date"
             value={deadline}
-            onChange={(e) => setDeadline(e.target.value)}
-            className={inputClass}
+            min={todayISO()}
+            onChange={(e) => { setDeadline(e.target.value); if (deadlineError) setDeadlineError(''); }}
+            onBlur={() => setDeadlineError(validateDeadline(deadline))}
+            className={deadlineError ? inputErrorClass : inputClass}
           />
+          {deadlineError && <p className="text-xs text-red-600 mt-1">{deadlineError}</p>}
         </div>
       </div>
 

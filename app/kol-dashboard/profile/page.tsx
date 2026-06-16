@@ -117,6 +117,7 @@ export default function KolProfileEditPage() {
   const [form, setForm] = useState<UpdateKolProfileRequest>({});
   const [dob, setDob] = useState<Date | undefined>();
   const [slugError, setSlugError] = useState<string | null>(null);
+  const [bioError, setBioError] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
 
@@ -174,8 +175,13 @@ export default function KolProfileEditPage() {
   }
 
   function handleBio(v: string) {
-    if (v.length > 500) return;
+    if (v.length > 2000) return;
     setField('bio', v);
+    if (v.length > 0 && v.length < 20) {
+      setBioError('Giới thiệu phải có ít nhất 20 ký tự (hoặc để trống).');
+    } else {
+      setBioError(null);
+    }
   }
 
   function handleSlug(v: string) {
@@ -212,6 +218,10 @@ export default function KolProfileEditPage() {
   async function handleSave() {
     if (slugError) {
       toast.error(slugError);
+      return;
+    }
+    if (bioError) {
+      toast.error(bioError);
       return;
     }
     setIsSaving(true);
@@ -553,9 +563,17 @@ export default function KolProfileEditPage() {
                       value={form.bio ?? ''}
                       onChange={(e) => handleBio(e.target.value)}
                       rows={5}
+                      maxLength={2000}
                       placeholder="Mô tả ngắn về bản thân, phong cách, lĩnh vực sở trường…"
+                      aria-invalid={!!bioError}
                     />
-                    <p className="text-xs text-mute mt-1 text-right">{(form.bio ?? '').length}/500</p>
+                    <div className="flex items-center justify-between mt-1">
+                      {bioError
+                        ? <p className="text-xs text-red-600">{bioError}</p>
+                        : <span />
+                      }
+                      <p className="text-xs text-mute ml-auto">{(form.bio ?? '').length}/2000 ký tự</p>
+                    </div>
                   </div>
 
                   <div>

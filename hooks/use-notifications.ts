@@ -1,11 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { notificationsApi } from '@/lib/api/notifications';
 import type { NotificationResponse, PageResponse } from '@/lib/api/types';
 import { useAuth } from '@/contexts/AuthContext';
-
-const POLL_INTERVAL_MS = 30_000;
+import { useSse } from '@/hooks/use-sse';
 
 interface UseNotificationsResult {
   unreadCount: number;
@@ -19,7 +18,8 @@ interface UseNotificationsResult {
 
 /**
  * Lightweight client-side notification state.
- * - Polls unread count every 30s while the tab is visible.
+ * - Streams real-time notifications via SSE while authenticated.
+ * - Fetches the initial unread count on mount.
  * - `refreshRecent` is called on demand (e.g. when the dropdown opens).
  */
 export function useNotifications(): UseNotificationsResult {
@@ -27,7 +27,6 @@ export function useNotifications(): UseNotificationsResult {
   const [unreadCount, setUnreadCount] = useState(0);
   const [recent, setRecent] = useState<NotificationResponse[]>([]);
   const [isLoadingRecent, setIsLoadingRecent] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refreshUnread = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -85,15 +84,32 @@ export function useNotifications(): UseNotificationsResult {
       return;
     }
     refreshUnread();
-    pollRef.current = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-      refreshUnread();
-    }, POLL_INTERVAL_MS);
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-      pollRef.current = null;
-    };
   }, [isAuthenticated, refreshUnread]);
+
+  const handleSseEvent = useCallback(
+    (eventName: string, data: string) => {
+      if (eventName === 'heartbeat' || eventName === 'connected') return;
+      if (eventName === 'notification') {
+        try {
+          const notification: NotificationResponse = JSON.parse(data);
+          setRecent((prev) => {
+            if (prev.some((n) => n.id === notification.id)) return prev;
+            return [notification, ...prev].slice(0, 8);
+          });
+          setUnreadCount((c) => c + 1);
+        } catch {
+          // malformed JSON — ignore
+        }
+      }
+    },
+    [],
+  );
+
+  useSse({
+    path: '/notifications/stream',
+    enabled: isAuthenticated,
+    onEvent: handleSseEvent,
+  });
 
   return {
     unreadCount,

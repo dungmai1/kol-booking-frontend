@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, MessageSquare, Paperclip, Send, XCircle } from 'lucide-react';
 import { bookingsApi } from '@/lib/api/bookings';
 import type { BookingMessageResponse } from '@/lib/api/types';
+import { useSse } from '@/hooks/use-sse';
 
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -34,6 +35,7 @@ export function BookingChatTab({ bookingId, currentUserId }: BookingChatTabProps
   const [sending, setSending] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(0);
+  const [connected, setConnected] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -41,6 +43,32 @@ export function BookingChatTab({ bookingId, currentUserId }: BookingChatTabProps
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, []);
+
+  const handleSseEvent = useCallback(
+    (eventName: string, data: string) => {
+      if (eventName === 'message') {
+        try {
+          const msg: BookingMessageResponse = JSON.parse(data);
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === msg.id)) return prev;
+            return [...prev, msg];
+          });
+          setTimeout(scrollToBottom, 0);
+        } catch {
+          // malformed JSON — ignore
+        }
+      }
+    },
+    [scrollToBottom],
+  );
+
+  useSse({
+    path: `/bookings/${bookingId}/messages/stream`,
+    enabled: true,
+    onEvent: handleSseEvent,
+    onConnect: () => setConnected(true),
+    onDisconnect: () => setConnected(false),
+  });
 
   const loadMessages = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -99,16 +127,26 @@ export function BookingChatTab({ bookingId, currentUserId }: BookingChatTabProps
           {messages.length} tin nhắn
           {hasMore ? ' (còn cũ hơn)' : ''}
         </p>
-        {hasMore && (
-          <button
-            type="button"
-            onClick={() => loadMessages(page + 1, true)}
-            disabled={loading}
-            className="text-xs font-bold text-ink hover:underline disabled:opacity-50"
-          >
-            Xem tin cũ hơn
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {hasMore && (
+            <button
+              type="button"
+              onClick={() => loadMessages(page + 1, true)}
+              disabled={loading}
+              className="text-xs font-bold text-ink hover:underline disabled:opacity-50"
+            >
+              Xem tin cũ hơn
+            </button>
+          )}
+          <span className="flex items-center gap-1.5 text-xs text-mute select-none">
+            <span
+              className={`inline-block w-2 h-2 rounded-full ${
+                connected ? 'bg-green-500' : 'bg-gray-400'
+              }`}
+            />
+            {connected ? 'Trực tuyến' : 'Đang kết nối...'}
+          </span>
+        </div>
       </div>
 
       <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
