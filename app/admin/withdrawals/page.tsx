@@ -71,7 +71,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 function requesterLabel(w: WithdrawResponse): string {
   const role = w.requesterRole ? ROLE_LABEL[w.requesterRole] ?? w.requesterRole : 'User';
-  return `${role} #${w.userId}`;
+  return w.requesterEmail ? `${role} — ${w.requesterEmail}` : `${role} #${w.userId}`;
 }
 
 const PAGE_SIZE = 15;

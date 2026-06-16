@@ -467,6 +467,7 @@ export interface WalletTransactionResponse {
 export interface WithdrawResponse {
   id: number;
   userId: number;
+  requesterEmail: string | null;
   requesterRole: 'KOL' | 'BRAND' | 'ADMIN' | null;
   amount: number;
   bankName: string;
