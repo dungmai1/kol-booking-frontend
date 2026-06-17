@@ -21,9 +21,8 @@ import { AlertCircle, CheckCircle2, ExternalLink, Eye, Loader2, Save, Send, Uplo
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { ACCEPTED_IMAGE_ACCEPT, validateUploadFile } from '@/lib/uploads/validate';
 
-const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
-const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const MAX_NAME_LENGTH = 100;
 const MAX_ADDRESS_LENGTH = 255;
 const MAX_BIO_LENGTH = 500;
@@ -240,16 +239,9 @@ export default function ProfilePage() {
   }
 
   async function handleAvatarUpload(file: File) {
-    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-      toast.error('Chỉ hỗ trợ ảnh JPG, PNG, GIF hoặc WEBP.');
-      return;
-    }
-    if (file.size > MAX_AVATAR_BYTES) {
-      toast.error('Ảnh không được vượt quá 5MB.');
-      return;
-    }
-    if (file.size === 0) {
-      toast.error('File ảnh không hợp lệ.');
+    const validationError = validateUploadFile(file, 'image');
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
 
@@ -509,7 +501,7 @@ export default function ProfilePage() {
                           <input
                             ref={fileInputRef}
                             type="file"
-                            accept={ACCEPTED_IMAGE_TYPES.join(',')}
+                            accept={ACCEPTED_IMAGE_ACCEPT}
                             className="sr-only"
                             onChange={(e) => {
                               const file = e.target.files?.[0];

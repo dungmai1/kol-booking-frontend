@@ -7,6 +7,7 @@ import { resolveMediaUrl } from '@/lib/api/client';
 import { filesApi } from '@/lib/api/files';
 import type { CategoryResponse, Platform, ProductResponse, ProductCreateRequest } from '@/lib/api/types';
 import { PLATFORM_LABEL, PLATFORM_OPTIONS } from '@/lib/products/meta';
+import { ACCEPTED_IMAGE_ACCEPT, validateUploadFile } from '@/lib/uploads/validate';
 
 interface ProductFormProps {
   initial?: ProductResponse | null;
@@ -112,6 +113,12 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const validationError = validateUploadFile(file, 'image');
+    if (validationError) {
+      setUploadError(validationError);
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
     setUploadError('');
     try {
@@ -194,7 +201,7 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
                 <span className="text-sm text-mute">Nhấn để tải ảnh lên</span>
               </>
             )}
-            <input type="file" accept="image/*" onChange={handleFile} className="hidden" disabled={uploading} />
+            <input type="file" accept={ACCEPTED_IMAGE_ACCEPT} onChange={handleFile} className="hidden" disabled={uploading} />
           </label>
         )}
         {uploadError && <p className="text-sm text-pin-red mt-1.5">{uploadError}</p>}

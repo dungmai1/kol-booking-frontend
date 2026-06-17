@@ -1,8 +1,9 @@
 'use client';
 
-import { use, useCallback, useEffect, useState } from 'react';
+import { use, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -22,6 +23,8 @@ import {
   Upload,
   XCircle,
 } from 'lucide-react';
+import { filesApi } from '@/lib/api/files';
+import { ACCEPTED_IMAGE_ACCEPT, validateUploadFile } from '@/lib/uploads/validate';
 import { Header } from '@/components/header';
 import {
   Dialog,
@@ -115,6 +118,8 @@ export default function BookingDetailPage({
   const [error, setError] = useState('');
   const [tab, setTab] = useState<Tab>('detail');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [deliverableUploading, setDeliverableUploading] = useState(false);
+  const deliverableFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Dispute dialog (BRAND only, when status === 'DELIVERED').
   const [disputeDialog, setDisputeDialog] = useState<{
@@ -343,8 +348,37 @@ export default function BookingDetailPage({
   }
 
   function closeDeliverableForm() {
-    if (actionLoading === 'submit-deliverable') return;
+    if (actionLoading === 'submit-deliverable' || deliverableUploading) return;
     setDeliverableForm((prev) => ({ ...prev, open: false, error: '' }));
+  }
+
+  async function handleDeliverableFileUpload(
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const validationError = validateUploadFile(file, 'image');
+    if (validationError) {
+      toast.error(validationError);
+      e.target.value = '';
+      return;
+    }
+    setDeliverableUploading(true);
+    try {
+      const res = await filesApi.upload(file);
+      setDeliverableForm((prev) => ({
+        ...prev,
+        submittedUrl: res.url,
+        error: '',
+      }));
+      toast.success('Đã tải lên tệp nội dung.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Tải lên thất bại.';
+      toast.error(message);
+    } finally {
+      setDeliverableUploading(false);
+      e.target.value = '';
+    }
   }
 
   async function handleSubmitDeliverable() {
@@ -704,32 +738,59 @@ export default function BookingDetailPage({
                 <label className="text-xs uppercase tracking-wide text-mute font-bold mb-1.5 block">
                   Đường dẫn nội dung <span className="text-pin-red">*</span>
                 </label>
-                <input
-                  type="url"
-                  required
-                  autoFocus
-                  placeholder="https://..."
-                  value={deliverableForm.submittedUrl}
-                  onChange={(e) => {
-                    const submittedUrl = e.target.value;
-                    setDeliverableForm((prev) => {
-                      const detected =
-                        deliverableSpecs.length === 0
-                          ? detectPlatformFromUrl(submittedUrl)
-                          : null;
-                      return {
-                        ...prev,
-                        submittedUrl,
-                        ...(detected ? { platform: detected } : {}),
-                        error: '',
-                      };
-                    });
-                  }}
-                  disabled={actionLoading === 'submit-deliverable'}
-                  className="pin-input w-full disabled:opacity-50"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    required
+                    autoFocus
+                    placeholder="https://..."
+                    maxLength={500}
+                    value={deliverableForm.submittedUrl}
+                    onChange={(e) => {
+                      const submittedUrl = e.target.value;
+                      setDeliverableForm((prev) => {
+                        const detected =
+                          deliverableSpecs.length === 0
+                            ? detectPlatformFromUrl(submittedUrl)
+                            : null;
+                        return {
+                          ...prev,
+                          submittedUrl,
+                          ...(detected ? { platform: detected } : {}),
+                          error: '',
+                        };
+                      });
+                    }}
+                    disabled={
+                      actionLoading === 'submit-deliverable' || deliverableUploading
+                    }
+                    className="pin-input w-full disabled:opacity-50"
+                  />
+                  <input
+                    ref={deliverableFileInputRef}
+                    type="file"
+                    accept={ACCEPTED_IMAGE_ACCEPT}
+                    className="hidden"
+                    onChange={handleDeliverableFileUpload}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => deliverableFileInputRef.current?.click()}
+                    disabled={
+                      actionLoading === 'submit-deliverable' || deliverableUploading
+                    }
+                    className="btn-pin-secondary shrink-0 disabled:opacity-50"
+                    title="Tải ảnh lên"
+                  >
+                    {deliverableUploading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
                 <p className="text-xs text-mute mt-1">
-                  Link bài đăng, video, story hoặc tài liệu Drive/Dropbox.
+                  Dán link bài đăng/video/story/Drive — hoặc bấm tải ảnh để upload trực tiếp (tối đa 5MB).
                 </p>
               </div>
 
@@ -847,6 +908,7 @@ export default function BookingDetailPage({
                   type="submit"
                   disabled={
                     actionLoading === 'submit-deliverable' ||
+                    deliverableUploading ||
                     !deliverableForm.submittedUrl.trim()
                   }
                   className="btn-pin-primary disabled:opacity-50"

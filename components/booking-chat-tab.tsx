@@ -1,10 +1,20 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { Loader2, MessageSquare, Paperclip, Send, XCircle } from 'lucide-react';
 import { bookingsApi } from '@/lib/api/bookings';
+import { filesApi } from '@/lib/api/files';
 import type { BookingMessageResponse } from '@/lib/api/types';
 import { useSse } from '@/hooks/use-sse';
+import {
+  ACCEPTED_IMAGE_ACCEPT,
+  ACCEPTED_IMAGE_TYPES,
+  ACCEPTED_VIDEO_ACCEPT,
+  validateUploadFile,
+} from '@/lib/uploads/validate';
+
+const ATTACHMENT_ACCEPT = `${ACCEPTED_IMAGE_ACCEPT},${ACCEPTED_VIDEO_ACCEPT}`;
 
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -32,7 +42,9 @@ export function BookingChatTab({ bookingId, currentUserId }: BookingChatTabProps
   const [error, setError] = useState('');
   const [content, setContent] = useState('');
   const [attachmentUrl, setAttachmentUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(0);
   const [connected, setConnected] = useState(false);
@@ -98,10 +110,38 @@ export function BookingChatTab({ bookingId, currentUserId }: BookingChatTabProps
     loadMessages(0, false);
   }, [loadMessages]);
 
+  async function handleAttachmentChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const kind = ACCEPTED_IMAGE_TYPES.includes(
+      file.type as (typeof ACCEPTED_IMAGE_TYPES)[number],
+    )
+      ? 'image'
+      : 'video';
+    const validationError = validateUploadFile(file, kind);
+    if (validationError) {
+      toast.error(validationError);
+      e.target.value = '';
+      return;
+    }
+    setUploading(true);
+    try {
+      const res = await filesApi.upload(file);
+      setAttachmentUrl(res.url);
+      toast.success('Đã tải lên tệp đính kèm.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Tải lên thất bại.';
+      toast.error(message);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  }
+
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = content.trim();
-    if (!trimmed || sending) return;
+    if (!trimmed || sending || uploading) return;
     setSending(true);
     try {
       const sent = await bookingsApi.sendMessage(bookingId, {
@@ -240,21 +280,30 @@ export function BookingChatTab({ bookingId, currentUserId }: BookingChatTabProps
             className="pin-input min-h-[44px] max-h-32 resize-none"
           />
         </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ATTACHMENT_ACCEPT}
+          className="hidden"
+          onChange={handleAttachmentChange}
+        />
         <button
           type="button"
-          onClick={() => {
-            const url = window.prompt('Đường dẫn tệp đính kèm:');
-            if (url) setAttachmentUrl(url.trim());
-          }}
-          className="grid place-items-center w-11 h-11 rounded-full bg-surface-card text-ink hover:bg-secondary-bg transition-colors"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="grid place-items-center w-11 h-11 rounded-full bg-surface-card text-ink hover:bg-secondary-bg transition-colors disabled:opacity-50"
           aria-label="Đính kèm tệp"
           title="Đính kèm tệp"
         >
-          <Paperclip className="w-4 h-4" />
+          {uploading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Paperclip className="w-4 h-4" />
+          )}
         </button>
         <button
           type="submit"
-          disabled={sending || !content.trim()}
+          disabled={sending || uploading || !content.trim()}
           className="grid place-items-center w-11 h-11 rounded-full bg-ink text-on-dark hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
           aria-label="Gửi"
         >

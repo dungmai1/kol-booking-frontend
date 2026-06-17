@@ -14,6 +14,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { kolApi, normalizePlatform } from '@/lib/api/kol';
 import { categoriesApi } from '@/lib/api/categories';
 import { filesApi } from '@/lib/api/files';
+import {
+  ACCEPTED_IMAGE_ACCEPT,
+  ACCEPTED_VIDEO_ACCEPT,
+  validateUploadFile,
+} from '@/lib/uploads/validate';
 import type {
   KolProfileResponse,
   CategoryResponse,
@@ -201,6 +206,11 @@ export default function KolProfileEditPage() {
   }
 
   async function uploadImage(file: File, kind: 'avatar' | 'cover') {
+    const validationError = validateUploadFile(file, 'image');
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
     const setBusy = kind === 'avatar' ? setAvatarUploading : setCoverUploading;
     setBusy(true);
     try {
@@ -490,11 +500,16 @@ export default function KolProfileEditPage() {
                         <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-hairline bg-canvas hover:bg-surface-card cursor-pointer text-sm font-semibold">
                           {avatarUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                           Tải ảnh lên
-                          <input type="file" accept="image/*" className="hidden"
-                            onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], 'avatar')} />
+                          <input type="file" accept={ACCEPTED_IMAGE_ACCEPT} className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) void uploadImage(file, 'avatar');
+                              e.target.value = '';
+                            }} />
                         </label>
                         <Input
                           placeholder="hoặc dán URL ảnh"
+                          maxLength={500}
                           value={form.avatarUrl ?? ''}
                           onChange={(e) => setField('avatarUrl', e.target.value)}
                         />
@@ -518,11 +533,16 @@ export default function KolProfileEditPage() {
                         <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-hairline bg-canvas hover:bg-surface-card cursor-pointer text-sm font-semibold whitespace-nowrap">
                           {coverUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                           Tải ảnh lên
-                          <input type="file" accept="image/*" className="hidden"
-                            onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], 'cover')} />
+                          <input type="file" accept={ACCEPTED_IMAGE_ACCEPT} className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) void uploadImage(file, 'cover');
+                              e.target.value = '';
+                            }} />
                         </label>
                         <Input
                           placeholder="hoặc dán URL ảnh"
+                          maxLength={500}
                           value={form.coverUrl ?? ''}
                           onChange={(e) => setField('coverUrl', e.target.value)}
                         />
@@ -852,7 +872,11 @@ export default function KolProfileEditPage() {
             )}
           </div>
           <div className="flex items-center gap-2 ml-auto">
-            <Button onClick={handleSave} disabled={isSaving} variant="outline">
+            <Button
+              onClick={handleSave}
+              disabled={isSaving || avatarUploading || coverUploading}
+              variant="outline"
+            >
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Lưu thay đổi
             </Button>
@@ -1051,6 +1075,12 @@ function PortfolioDialog({ onSubmit }: { onSubmit: (data: CreatePortfolioItemReq
   const [uploading, setUploading] = useState(false);
 
   async function handleUpload(file: File) {
+    const kind = mediaType === 'VIDEO' ? 'video' : 'image';
+    const validationError = validateUploadFile(file, kind);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
     setUploading(true);
     try {
       const res = await filesApi.upload(file);
@@ -1110,12 +1140,20 @@ function PortfolioDialog({ onSubmit }: { onSubmit: (data: CreatePortfolioItemReq
         <div>
           <Label htmlFor="po-url" className="mb-2 block">Liên kết media</Label>
           <div className="flex items-center gap-2">
-            <Input id="po-url" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} placeholder="https://www.tiktok.com/@user/video/… hoặc link ảnh/mp4" />
+            <Input id="po-url" value={mediaUrl} maxLength={500} onChange={(e) => setMediaUrl(e.target.value)} placeholder="https://www.tiktok.com/@user/video/… hoặc link ảnh/mp4" />
             <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-hairline bg-canvas hover:bg-surface-card cursor-pointer text-sm font-semibold whitespace-nowrap">
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               Tải lên
-              <input type="file" accept={mediaType === 'VIDEO' ? 'video/*' : 'image/*'} className="hidden"
-                onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0])} />
+              <input
+                type="file"
+                accept={mediaType === 'VIDEO' ? ACCEPTED_VIDEO_ACCEPT : ACCEPTED_IMAGE_ACCEPT}
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleUpload(file);
+                  e.target.value = '';
+                }}
+              />
             </label>
           </div>
           {mediaUrl && (
