@@ -404,8 +404,8 @@ export default function AdminCommissionPage() {
           ) : (
             <ul className="space-y-2.5">
               {revenue.map((r) => (
-                <li key={r.month} className="flex items-center gap-3">
-                  <span className="w-28 text-sm text-mute shrink-0">{fmtMonth(r.month)}</span>
+                <li key={r.period} className="flex items-center gap-3">
+                  <span className="w-28 text-sm text-mute shrink-0">{fmtMonth(r.period)}</span>
                   <div className="flex-1 h-6 rounded-full bg-surface-soft overflow-hidden">
                     <div
                       className="h-full bg-pin-red/80 rounded-full"

@@ -11,7 +11,6 @@ import {
   Activity,
   TrendingUp,
   TrendingDown,
-  Minus,
   AlertCircle,
   CalendarRange,
   ArrowUpRight,
@@ -21,19 +20,19 @@ import {
   Clock,
   RotateCcw,
   Ban,
-  AlertTriangle,
-  UserCog,
-  Store,
+  Download,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 import { toast } from 'sonner';
 import {
   CartesianGrid,
-  Line,
-  LineChart as RechartsLineChart,
+  Area,
+  AreaChart as RechartsAreaChart,
   Bar,
   BarChart as RechartsBarChart,
+  Line,
+  LineChart as RechartsLineChart,
   XAxis,
   YAxis,
 } from 'recharts';
@@ -46,6 +45,7 @@ import type {
   AdminBookingStats,
   AdminTopKol,
   AdminEscrowMetrics,
+  StatsGranularity,
 } from '@/lib/api/types';
 
 import {
@@ -82,8 +82,6 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import {
   ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
@@ -109,14 +107,6 @@ const compactVnd = (n: number) => {
 const compactNumber = (n: number) =>
   new Intl.NumberFormat('vi-VN', { notation: 'compact' }).format(n ?? 0);
 
-const fmtMonthLabel = (raw: string) => {
-  // Accept "YYYY-MM" or "YYYY-MM-DD"
-  if (!raw) return '';
-  const parts = raw.split('-');
-  if (parts.length < 2) return raw;
-  return `T${Number(parts[1])}/${parts[0].slice(-2)}`;
-};
-
 // Backend expects ISO 8601 Instant (e.g. "2026-06-10T00:00:00Z"), not date-only.
 const toIsoDateTime = (d: Date, endOfDay = false): string => {
   const y = d.getFullYear();
@@ -131,7 +121,76 @@ const fmtDateLabel = (iso: string) => {
   return `${d}/${m}/${y}`;
 };
 
+const fmtTime = (d: Date) =>
+  d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+// Fill missing periods for day/month/year granularity so charts always show a continuous series.
+function fillPeriodRange<T extends { period: string }>(
+  rows: T[],
+  from: string | undefined,
+  to: string | undefined,
+  gran: StatsGranularity,
+  defaults: Omit<T, 'period'>,
+): T[] {
+  const sliceLen = gran === 'day' ? 10 : gran === 'month' ? 7 : 4;
+  const startKey = (from ? from.slice(0, sliceLen) : rows[0]?.period?.slice(0, sliceLen)) ?? '';
+  const endKey = (to ? to.slice(0, sliceLen) : rows[rows.length - 1]?.period?.slice(0, sliceLen)) ?? startKey;
+  if (!startKey || !endKey) return rows;
+  const map = new Map(rows.map((r) => [r.period.slice(0, sliceLen), r]));
+  const result: T[] = [];
+  if (gran === 'day') {
+    const cur = new Date(startKey + 'T00:00:00Z');
+    const end = new Date(endKey + 'T00:00:00Z');
+    while (cur <= end) {
+      const key = cur.toISOString().slice(0, 10);
+      result.push(map.get(key) ?? ({ period: key, ...defaults } as T));
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+  } else if (gran === 'month') {
+    let [y, m] = startKey.split('-').map(Number);
+    const [ey, em] = endKey.split('-').map(Number);
+    while (y < ey || (y === ey && m <= em)) {
+      const key = `${y}-${String(m).padStart(2, '0')}`;
+      result.push(map.get(key) ?? ({ period: key, ...defaults } as T));
+      if (m === 12) { y++; m = 1; } else { m++; }
+    }
+  } else {
+    let y = parseInt(startKey.slice(0, 4), 10);
+    const ey = parseInt(endKey.slice(0, 4), 10);
+    if (!isNaN(y) && !isNaN(ey)) {
+      while (y <= ey) {
+        const key = String(y);
+        result.push(map.get(key) ?? ({ period: key, ...defaults } as T));
+        y++;
+      }
+    }
+  }
+  return result;
+}
+
+function fmtPeriodLabel(period: string, gran: StatsGranularity): string {
+  if (!period) return '';
+  if (gran === 'year') return period.slice(0, 4);
+  if (gran === 'month') {
+    const parts = period.split('-');
+    if (parts.length < 2) return period;
+    return `T${Number(parts[1])}/${parts[0].slice(-2)}`;
+  }
+  // day: "YYYY-MM-DD" → "DD/MM"
+  const parts = period.split('-');
+  if (parts.length < 3) return period;
+  return `${parts[2]}/${parts[1]}`;
+}
+
 type Preset = '30d' | '90d' | '1y' | 'custom';
+type ChartType = 'bar' | 'line' | 'area' | 'stackbar';
+
+const CHART_TYPE_OPTIONS: { t: ChartType; label: string }[] = [
+  { t: 'bar',      label: 'Cột'   },
+  { t: 'line',     label: 'Đường' },
+  { t: 'area',     label: 'Vùng'  },
+  { t: 'stackbar', label: 'Chồng' },
+];
 
 function computePresetRange(preset: Exclude<Preset, 'custom'>): {
   from: string;
@@ -195,7 +254,22 @@ export default function AdminDashboardPage() {
   const [escrowLoading, setEscrowLoading] = useState(true);
   const [escrowError, setEscrowError] = useState<string | null>(null);
 
+  const [chartMetric, setChartMetric] = useState<'fee' | 'count'>('fee');
+  const [activeChartType, setActiveChartType] = useState<ChartType>('bar');
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [granularity, setGranularity] = useState<StatsGranularity>('day');
+
+  // Preset selection — always update preset + granularity in the same React batch
+  // so that fetchAll only fires once with the correct granularity (avoids a spurious
+  // fetch with the old granularity when the preset changes).
+  function handlePresetSelect(p: Exclude<Preset, 'custom'>) {
+    setPreset(p);
+    if (p === '30d' || p === '90d') setGranularity('day');
+    else if (p === '1y') setGranularity('month');
+  }
+
   const fetchAll = useCallback(async () => {
+    setLastUpdated(new Date());
     const params = { from: range.from, to: range.to };
 
     setOverviewLoading(true);
@@ -213,7 +287,7 @@ export default function AdminDashboardPage() {
     setRevenueLoading(true);
     setRevenueError(null);
     adminApi
-      .getRevenueStats(params)
+      .getRevenueStats({ ...params, granularity })
       .then((data) => setRevenue(data))
       .catch((e: unknown) => {
         const msg = e instanceof ApiError ? e.message : 'Không tải được doanh thu';
@@ -224,7 +298,7 @@ export default function AdminDashboardPage() {
     setBookingsLoading(true);
     setBookingsError(null);
     adminApi
-      .getBookingStats(params)
+      .getBookingStats({ ...params, granularity })
       .then((data) => setBookings(data))
       .catch((e: unknown) => {
         const msg = e instanceof ApiError ? e.message : 'Không tải được booking';
@@ -253,12 +327,18 @@ export default function AdminDashboardPage() {
         setEscrowError(msg);
       })
       .finally(() => setEscrowLoading(false));
-  }, [range.from, range.to]);
+  }, [range.from, range.to, granularity]);
 
   useEffect(() => {
     if (preset === 'custom' && (!range.from || !range.to)) return;
     fetchAll();
   }, [fetchAll, preset, range.from, range.to]);
+
+  // Auto-refresh every 60 s, matching the reference dashboard pattern
+  useEffect(() => {
+    const id = setInterval(fetchAll, 60_000);
+    return () => clearInterval(id);
+  }, [fetchAll]);
 
   // ─── KPI definitions ────────────────────────────────────────────────────────
 
@@ -267,56 +347,158 @@ export default function AdminDashboardPage() {
     key: KpiKey;
     label: string;
     icon: LucideIcon;
-    accent: string;
+    iconBg: string;
+    iconColor: string;
     formatter: (v: number) => string;
   }> = [
-    { key: 'totalUsers',     label: 'Tổng người dùng', icon: Users,     accent: 'text-pin-red',          formatter: compactNumber },
-    { key: 'totalKols',      label: 'KOL',             icon: UserCheck, accent: 'text-accent-purple',    formatter: compactNumber },
-    { key: 'totalBrands',    label: 'Brand',           icon: Building2, accent: 'text-accent-pressed-blue', formatter: compactNumber },
-    { key: 'totalBookings',  label: 'Tổng booking',    icon: Briefcase, accent: 'text-charcoal',         formatter: compactNumber },
-    { key: 'totalRevenue',   label: 'Doanh thu',       icon: Wallet,    accent: 'text-success-deep',     formatter: vnd },
-    { key: 'activeBookings', label: 'Booking đang chạy', icon: Activity, accent: 'text-pin-red',         formatter: compactNumber },
+    { key: 'totalUsers',     label: 'Tổng người dùng',    icon: Users,     iconBg: 'bg-blue-50',   iconColor: 'text-blue-600',   formatter: compactNumber },
+    { key: 'totalKols',      label: 'KOL',                icon: UserCheck, iconBg: 'bg-purple-50', iconColor: 'text-purple-600', formatter: compactNumber },
+    { key: 'totalBrands',    label: 'Brand',              icon: Building2, iconBg: 'bg-indigo-50', iconColor: 'text-indigo-600', formatter: compactNumber },
+    { key: 'totalBookings',  label: 'Tổng booking',       icon: Briefcase, iconBg: 'bg-orange-50', iconColor: 'text-orange-600', formatter: compactNumber },
+    { key: 'totalRevenue',   label: 'Doanh thu',          icon: Wallet,    iconBg: 'bg-green-50',  iconColor: 'text-green-600',  formatter: vnd },
+    { key: 'activeBookings', label: 'Booking đang chạy',  icon: Activity,  iconBg: 'bg-red-50',    iconColor: 'text-red-500',    formatter: compactNumber },
   ];
 
   // ─── Chart configs ──────────────────────────────────────────────────────────
 
   const revenueConfig: ChartConfig = {
-    fee: { label: 'Phí nền tảng', color: 'var(--chart-2)' },
+    fee: { label: 'Phí nền tảng', color: '#6366f1' },
   };
   const bookingConfig: ChartConfig = {
-    count: { label: 'Số booking', color: 'var(--chart-4)' },
+    count: { label: 'Số booking', color: '#22c55e' },
   };
 
-  const revenueData = useMemo(
-    () =>
-      (revenue ?? []).map((r) => ({
-        month: fmtMonthLabel(r.month),
-        fee: r.fee,
-      })),
-    [revenue],
+  const revenueData = useMemo(() => {
+    const rows = revenue ?? [];
+    const detected: StatsGranularity = rows.length > 0
+      ? (rows[0].period.length <= 4 ? 'year' : rows[0].period.length <= 7 ? 'month' : 'day')
+      : granularity;
+    // Daily: skip zero-fill — only show days with actual data so the chart stays clean.
+    // Monthly/yearly: fill gaps so the continuous timeline looks natural (12 months, few years).
+    const filled = detected === 'day'
+      ? rows
+      : fillPeriodRange(rows, range.from, range.to, detected, { fee: 0 } as Omit<AdminRevenueStats, 'period'>);
+    // Client-side year aggregation when user selects 'year' but backend returned monthly data.
+    if (granularity === 'year' && detected === 'month') {
+      const ymap = new Map<string, number>();
+      filled.forEach((r) => { const y = r.period.slice(0, 4); ymap.set(y, (ymap.get(y) ?? 0) + r.fee); });
+      return Array.from(ymap.entries()).map(([period, fee]) => ({ period, fee }));
+    }
+    return filled.map((r) => ({ period: fmtPeriodLabel(r.period, detected), fee: Number(r.fee) }));
+  }, [revenue, range.from, range.to, granularity]);
+
+  const bookingData = useMemo(() => {
+    const rows = bookings ?? [];
+    const detected: StatsGranularity = rows.length > 0
+      ? (rows[0].period.length <= 4 ? 'year' : rows[0].period.length <= 7 ? 'month' : 'day')
+      : granularity;
+    // Daily: skip zero-fill — sparse bar chart is cleaner than a sea of invisible zero bars.
+    // Monthly/yearly: fill gaps for a continuous timeline.
+    const filled = detected === 'day'
+      ? rows
+      : fillPeriodRange(rows, range.from, range.to, detected, { count: 0, total: 0 } as Omit<AdminBookingStats, 'period'>);
+    if (granularity === 'year' && detected === 'month') {
+      const ymap = new Map<string, number>();
+      filled.forEach((r) => { const y = r.period.slice(0, 4); ymap.set(y, (ymap.get(y) ?? 0) + r.count); });
+      return Array.from(ymap.entries()).map(([period, count]) => ({ period, count }));
+    }
+    return filled.map((r) => ({ period: fmtPeriodLabel(r.period, detected), count: Number(r.count) }));
+  }, [bookings, range.from, range.to, granularity]);
+
+  const revenuePeriodTotal = useMemo(
+    () => revenueData.reduce((s, r) => s + r.fee, 0),
+    [revenueData],
   );
 
-  const bookingData = useMemo(
-    () =>
-      (bookings ?? []).map((r) => ({
-        month: fmtMonthLabel(r.month),
-        count: r.count,
-      })),
-    [bookings],
+  const bookingPeriodTotal = useMemo(
+    () => bookingData.reduce((s, r) => s + r.count, 0),
+    [bookingData],
   );
+
+  // Trim leading + trailing zero-value periods so bars don't crowd one side of the chart.
+  // Keeps 1 zero-padding period on each side of non-zero data for visual context.
+  const revenueChartData = useMemo(() => {
+    let first = revenueData.findIndex((r) => r.fee > 0);
+    let last = [...revenueData].reverse().findIndex((r) => r.fee > 0);
+    if (first === -1) return revenueData; // all zeros → let empty-state handle it
+    last = revenueData.length - 1 - last;
+    return revenueData.slice(Math.max(0, first - 1), Math.min(revenueData.length, last + 2));
+  }, [revenueData]);
+
+  const bookingChartData = useMemo(() => {
+    let first = bookingData.findIndex((r) => r.count > 0);
+    let last = [...bookingData].reverse().findIndex((r) => r.count > 0);
+    if (first === -1) return bookingData;
+    last = bookingData.length - 1 - last;
+    return bookingData.slice(Math.max(0, first - 1), Math.min(bookingData.length, last + 2));
+  }, [bookingData]);
+
+  // Effective display granularity — reflects what the chart actually shows, not what the user requested.
+  // 'year' is always honoured (client-side aggregation). For day/month, detect from backend response.
+  const displayGranularity = useMemo((): StatsGranularity => {
+    if (granularity === 'year') return 'year';
+    const rows = chartMetric === 'fee' ? (revenue ?? []) : (bookings ?? []);
+    if (!rows.length) return granularity;
+    const plen = rows[0].period.length;
+    return plen <= 4 ? 'year' : plen <= 7 ? 'month' : 'day';
+  }, [granularity, chartMetric, revenue, bookings]);
+
+  // ─── Derived ────────────────────────────────────────────────────────────────
+
+  const currentRangeLabel = useMemo(
+    () =>
+      preset === 'custom' && range.from && range.to
+        ? `${fmtDateLabel(range.from)} → ${fmtDateLabel(range.to)}`
+        : preset === '30d' ? '30 ngày qua'
+        : preset === '90d' ? '90 ngày qua'
+        : preset === '1y'  ? '1 năm qua'
+        : 'Chọn khoảng ngày',
+    [preset, range.from, range.to],
+  );
+
+  const isLoading =
+    overviewLoading || revenueLoading || bookingsLoading || topKolsLoading || escrowLoading;
+
+  function exportStatsCsv() {
+    const slug = currentRangeLabel.replace(/[\s→/]+/g, '-');
+    const csv = [
+      `Phí nền tảng - ${currentRangeLabel}`,
+      'Kỳ,Phí nền tảng (VND)',
+      ...revenueData.map((r) => `${r.period},${r.fee}`),
+      '',
+      `Số booking - ${currentRangeLabel}`,
+      'Kỳ,Số booking',
+      ...bookingData.map((r) => `${r.period},${r.count}`),
+    ].join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `stats-${slug}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  function exportTopKolCsv() {
+    if (!topKols?.length) return;
+    const slug = currentRangeLabel.replace(/[\s→/]+/g, '-');
+    const header = 'Rank,Ten KOL,ID,Thu nhap KOL (VND),So booking,Danh gia';
+    const rows = topKols
+      .slice(0, 10)
+      .map((k, i) =>
+        `${i + 1},"${k.displayName.replace(/"/g, '""')}",${k.id},${k.kolNet},${k.bookingCount},${k.avgRating.toFixed(1)}`,
+      );
+    const csv = [`Top KOL - ${currentRangeLabel}`, header, ...rows].join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `top-kol-${slug}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
 
   // ─── Render ─────────────────────────────────────────────────────────────────
-
-  const currentRangeLabel =
-    preset === 'custom' && range.from && range.to
-      ? `${fmtDateLabel(range.from)} → ${fmtDateLabel(range.to)}`
-      : preset === '30d'
-        ? '30 ngày qua'
-        : preset === '90d'
-          ? '90 ngày qua'
-          : preset === '1y'
-            ? '1 năm qua'
-            : 'Chọn khoảng ngày';
 
   return (
     <div className="space-y-6">
@@ -341,24 +523,51 @@ export default function AdminDashboardPage() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Dashboard header with filter */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+      {/* Dashboard header */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <h2 className="font-display font-bold text-ink text-[26px] tracking-tight leading-tight">
             Tổng quan nền tảng
           </h2>
           <p className="text-sm text-mute mt-1">
-            Theo dõi tăng trưởng người dùng, doanh thu và hiệu suất KOL — {currentRangeLabel}.
+            Theo dõi tăng trưởng người dùng, doanh thu và hiệu suất KOL.
           </p>
         </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {lastUpdated && (
+            <span className="text-xs text-mute">
+              Cập nhật lúc{' '}
+              <span className="font-semibold text-ink">{fmtTime(lastUpdated)}</span>
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={fetchAll}
+            disabled={isLoading}
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full text-sm font-semibold border border-hairline bg-surface-card text-ink hover:border-ink transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RotateCcw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            Làm mới
+          </button>
+        </div>
+      </div>
 
+      {/* Global time bar — syncs all charts */}
+      <div className="bg-surface-card border border-hairline rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-sm font-bold text-ink">Khoảng thời gian phân tích</p>
+          <p className="text-xs text-mute mt-0.5">
+            Đồng bộ tất cả biểu đồ và chỉ số —{' '}
+            <span className="font-semibold text-ink">{currentRangeLabel}</span>
+          </p>
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
           {(['30d', '90d', '1y'] as const).map((p) => (
             <button
               key={p}
               type="button"
-              onClick={() => setPreset(p)}
-              className={`h-9 px-3 rounded-full text-sm font-semibold transition-colors border ${
+              onClick={() => handlePresetSelect(p)}
+              className={`h-8 px-3 rounded-lg text-sm font-semibold transition-colors border ${
                 preset === p
                   ? 'bg-ink text-on-dark border-ink'
                   : 'bg-surface-card text-ink border-hairline hover:border-ink'
@@ -367,19 +576,18 @@ export default function AdminDashboardPage() {
               {p === '30d' ? '30 ngày' : p === '90d' ? '90 ngày' : '1 năm'}
             </button>
           ))}
-
           <Popover open={customPopOpen} onOpenChange={setCustomPopOpen}>
             <PopoverTrigger asChild>
               <button
                 type="button"
                 onClick={() => setPreset('custom')}
-                className={`h-9 px-3 rounded-full text-sm font-semibold inline-flex items-center gap-1.5 transition-colors border ${
+                className={`h-8 px-3 rounded-lg text-sm font-semibold inline-flex items-center gap-1.5 transition-colors border ${
                   preset === 'custom'
                     ? 'bg-ink text-on-dark border-ink'
                     : 'bg-surface-card text-ink border-hairline hover:border-ink'
                 }`}
               >
-                <CalendarRange className="w-4 h-4" />
+                <CalendarRange className="w-3.5 h-3.5" />
                 {preset === 'custom' && customRange?.from && customRange?.to
                   ? `${fmtDateLabel(toIsoDateTime(customRange.from))} → ${fmtDateLabel(toIsoDateTime(customRange.to, true))}`
                   : 'Tùy chọn'}
@@ -397,6 +605,15 @@ export default function AdminDashboardPage() {
               />
             </PopoverContent>
           </Popover>
+          <div className="w-px h-6 bg-hairline" />
+          <button
+            type="button"
+            onClick={exportStatsCsv}
+            disabled={revenueLoading || bookingsLoading}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-sm font-semibold border border-hairline text-ink hover:border-ink transition-colors disabled:opacity-50"
+          >
+            <Download className="w-3.5 h-3.5" /> Export CSV
+          </button>
         </div>
       </div>
 
@@ -405,234 +622,316 @@ export default function AdminDashboardPage() {
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4"
         aria-label="Chỉ số tổng quan"
       >
-        {KPIS.map((k) => {
-          const Icon = k.icon;
-          const value = overview ? overview[k.key] : 0;
-          const prev = overview?.previousMonth?.[k.key];
+        {KPIS.map((kpi) => {
+          const value = overview ? overview[kpi.key] : 0;
+          const prev = overview?.previousMonth?.[kpi.key];
           const delta = deltaInfo(value, prev);
           return (
-            <Card
-              key={k.key}
-              className="bg-surface-card border-hairline shadow-none rounded-2xl"
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <CardDescription className="text-xs font-semibold text-mute uppercase tracking-wide">
-                    {k.label}
-                  </CardDescription>
-                  <span className={`grid place-items-center w-8 h-8 rounded-full bg-surface-soft ${k.accent}`}>
-                    <Icon className="w-4 h-4" />
-                  </span>
+            <div key={kpi.key} className="rounded-2xl border border-hairline bg-surface-card p-5">
+              {/* Icon + delta row */}
+              <div className="flex items-start justify-between">
+                <div
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${kpi.iconBg}`}
+                >
+                  <kpi.icon className={`w-6 h-6 ${kpi.iconColor}`} />
                 </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                {overviewLoading ? (
-                  <Skeleton className="h-7 w-24 mb-2" />
-                ) : overviewError ? (
-                  <div className="text-xs text-pin-red flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5" /> Lỗi tải dữ liệu
-                  </div>
-                ) : (
-                  <div className="font-display font-bold text-ink text-2xl tracking-tight leading-none">
-                    {k.formatter(value)}
-                  </div>
-                )}
                 {!overviewLoading && !overviewError && delta && (
-                  <div
-                    className={`mt-2 inline-flex items-center gap-1 text-xs font-semibold ${
+                  <span
+                    className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full shrink-0 ${
                       delta.dir === 'up'
-                        ? 'text-success-deep'
+                        ? 'bg-green-50 text-green-700'
                         : delta.dir === 'down'
-                          ? 'text-pin-red'
-                          : 'text-mute'
+                          ? 'bg-red-50 text-red-600'
+                          : 'bg-gray-100 text-mute'
                     }`}
                   >
-                    {delta.dir === 'up' && <TrendingUp className="w-3.5 h-3.5" />}
-                    {delta.dir === 'down' && <TrendingDown className="w-3.5 h-3.5" />}
-                    {delta.dir === 'flat' && <Minus className="w-3.5 h-3.5" />}
-                    {delta.pct.toFixed(1)}% so với tháng trước
-                  </div>
+                    {delta.dir === 'up' && <TrendingUp className="w-3 h-3" />}
+                    {delta.dir === 'down' && <TrendingDown className="w-3 h-3" />}
+                    {delta.pct.toFixed(1)}%
+                  </span>
                 )}
-                {!overviewLoading && !overviewError && !delta && (
-                  <div className="mt-2 text-xs text-mute">&nbsp;</div>
-                )}
-              </CardContent>
-            </Card>
+              </div>
+              {/* Label + value */}
+              <div className="mt-4">
+                <p className="text-xs text-mute font-medium">{kpi.label}</p>
+                <div className="mt-1.5 text-[22px] font-bold text-ink leading-tight break-all">
+                  {overviewLoading ? (
+                    <Skeleton className="h-7 w-20" />
+                  ) : overviewError ? (
+                    <span className="text-sm text-pin-red inline-flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" /> Lỗi
+                    </span>
+                  ) : (
+                    kpi.formatter(value)
+                  )}
+                </div>
+              </div>
+            </div>
           );
         })}
       </section>
 
-      {/* ── Row 1b: Operational alerts ─────────────────────────────────────── */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4" aria-label="Cảnh báo vận hành">
-        {[
-          {
-            label: 'Tranh chấp đang mở',
-            value: overview?.disputeCount ?? 0,
-            icon: AlertTriangle,
-            accent: 'text-pin-red',
-            desc: 'Booking cần admin xử lý',
-          },
-          {
-            label: 'KOL chờ duyệt',
-            value: overview?.pendingKolApprovals ?? 0,
-            icon: UserCog,
-            accent: 'text-accent-purple',
-            desc: 'Hồ sơ PENDING_REVIEW',
-          },
-          {
-            label: 'Brand chờ duyệt',
-            value: overview?.pendingBrandApprovals ?? 0,
-            icon: Store,
-            accent: 'text-accent-pressed-blue',
-            desc: 'Hồ sơ PENDING_REVIEW',
-          },
-        ].map((card) => (
-          <Card key={card.label} className="bg-surface-card border-hairline shadow-none rounded-2xl">
-            <CardHeader className="pb-2">
-              <div className="flex items-start justify-between">
-                <CardDescription className="text-xs font-semibold text-mute uppercase tracking-wide">
-                  {card.label}
-                </CardDescription>
-                <span className={`grid place-items-center w-8 h-8 rounded-full bg-surface-soft ${card.accent}`}>
-                  <card.icon className="w-4 h-4" />
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
+      {/* ── Operational highlights (dark banner like reference) ─────────────── */}
+      <section
+        className="rounded-2xl overflow-hidden grid grid-cols-1 sm:grid-cols-3"
+        style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #0f172a 100%)' }}
+        aria-label="Cảnh báo vận hành"
+      >
+        {/* 1 — Tranh chấp */}
+        <div className="p-5 border-b sm:border-b-0 sm:border-r" style={{ background: 'rgba(239,68,68,0.1)', borderColor: 'rgba(255,255,255,0.1)' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse shrink-0" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-red-400">Tranh chấp đang mở</span>
+          </div>
+          {overviewLoading ? (
+            <div className="h-10 w-20 rounded-lg bg-white/10 animate-pulse mb-2" />
+          ) : (
+            <div className="text-4xl font-bold text-white leading-none tabular-nums">
+              {compactNumber(overview?.disputeCount ?? 0)}
+            </div>
+          )}
+          <div className="mt-3 pt-3 flex items-center justify-between text-xs" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <span className="text-white/50">Booking cần admin xử lý</span>
+          </div>
+        </div>
+
+        {/* 2 — Hồ sơ chờ duyệt */}
+        <div className="p-5 border-b sm:border-b-0 sm:border-r" style={{ background: 'rgba(99,102,241,0.1)', borderColor: 'rgba(255,255,255,0.1)' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse shrink-0" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">Hồ sơ chờ duyệt</span>
+          </div>
+          <div className="flex">
+            <div className="flex-1 pr-4 mr-4" style={{ borderRight: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1">KOL</div>
               {overviewLoading ? (
-                <Skeleton className="h-7 w-16 mb-2" />
-              ) : overviewError ? (
-                <div className="text-xs text-pin-red flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5" /> Lỗi
-                </div>
+                <div className="h-8 w-12 rounded-lg bg-white/10 animate-pulse" />
               ) : (
-                <div className="font-display font-bold text-ink text-2xl tracking-tight leading-none">
-                  {compactNumber(card.value)}
-                </div>
+                <div className="text-3xl font-bold text-white tabular-nums leading-none">{compactNumber(overview?.pendingKolApprovals ?? 0)}</div>
               )}
-              <div className="mt-2 text-xs text-mute">{card.desc}</div>
-            </CardContent>
-          </Card>
-        ))}
+              <div className="text-[10px] text-white/40 mt-1">PENDING_REVIEW</div>
+            </div>
+            <div className="flex-1">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1">BRAND</div>
+              {overviewLoading ? (
+                <div className="h-8 w-12 rounded-lg bg-white/10 animate-pulse" />
+              ) : (
+                <div className="text-3xl font-bold text-white tabular-nums leading-none">{compactNumber(overview?.pendingBrandApprovals ?? 0)}</div>
+              )}
+              <div className="text-[10px] text-white/40 mt-1">PENDING_REVIEW</div>
+            </div>
+          </div>
+          <div className="mt-3 pt-3 flex items-center justify-between text-xs" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <span className="text-white/50">Tổng chờ duyệt</span>
+            <span className="font-bold text-white tabular-nums">
+              {overviewLoading ? '—' : compactNumber((overview?.pendingKolApprovals ?? 0) + (overview?.pendingBrandApprovals ?? 0))}
+            </span>
+          </div>
+        </div>
+
+        {/* 3 — Hiệu suất kỳ này */}
+        <div className="p-5" style={{ background: 'rgba(16,185,129,0.08)' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Hiệu suất kỳ này</span>
+          </div>
+          <div className="flex">
+            <div className="flex-1 pr-4 mr-4" style={{ borderRight: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1">Doanh thu</div>
+              {overviewLoading ? (
+                <div className="h-8 w-20 rounded-lg bg-white/10 animate-pulse" />
+              ) : (
+                <div className="text-xl font-bold text-white tabular-nums leading-tight">{compactVnd(overview?.totalRevenue ?? 0)}</div>
+              )}
+              <div className="text-[10px] text-white/40 mt-1">Phí nền tảng</div>
+            </div>
+            <div className="flex-1">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-sky-400 mb-1">Active</div>
+              {overviewLoading ? (
+                <div className="h-8 w-12 rounded-lg bg-white/10 animate-pulse" />
+              ) : (
+                <div className="text-3xl font-bold text-white tabular-nums leading-none">{compactNumber(overview?.activeBookings ?? 0)}</div>
+              )}
+              <div className="text-[10px] text-white/40 mt-1">Booking đang chạy</div>
+            </div>
+          </div>
+          <div className="mt-3 pt-3 text-xs text-white/50" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            Khoảng phân tích: {currentRangeLabel}
+          </div>
+        </div>
       </section>
 
-      {/* ── Row 2: Charts ──────────────────────────────────────────────────── */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Revenue line chart */}
-        <Card className="bg-surface-card border-hairline shadow-none rounded-2xl">
-          <CardHeader>
-            <CardTitle className="text-ink font-display text-base">
-              Phí nền tảng theo tháng
-            </CardTitle>
-            <CardDescription className="text-mute text-xs">
-              Hoa hồng nền tảng thu được từ các đơn hoàn tất.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {revenueLoading ? (
-              <Skeleton className="h-[280px] w-full rounded-xl" />
-            ) : revenueError ? (
-              <ChartErrorState message={revenueError} />
-            ) : revenueData.length === 0 ? (
-              <ChartEmptyState />
-            ) : (
-              <ChartContainer config={revenueConfig} className="h-[280px] w-full">
-                <RechartsLineChart data={revenueData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="month"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    fontSize={12}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    fontSize={12}
-                    tickFormatter={(v: number) => compactVnd(v)}
-                    width={56}
-                  />
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        formatter={(value, name) => {
-                          const label =
-                            revenueConfig[name as keyof typeof revenueConfig]?.label ?? name;
-                          return [vnd(Number(value)), String(label)];
-                        }}
-                      />
-                    }
-                  />
-                  <ChartLegend content={<ChartLegendContent />} />
-                  <Line
-                    dataKey="fee"
-                    type="monotone"
-                    stroke="var(--color-fee)"
-                    strokeWidth={2.5}
-                    dot={false}
-                    activeDot={{ r: 5 }}
-                  />
-                </RechartsLineChart>
-              </ChartContainer>
-            )}
-          </CardContent>
-        </Card>
+      {/* ── Biểu đồ thống kê ───────────────────────────────────────────────── */}
+      <section aria-label="Biểu đồ thống kê">
+        <Card className="bg-surface-card border-hairline shadow-none rounded-2xl overflow-hidden">
+          {/* Toolbar — matches reference: title + metric selector left, chart type right */}
+          <div className="flex items-center justify-between flex-wrap gap-3 px-5 py-3.5 border-b border-hairline bg-surface-soft">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-sm font-bold text-ink">Biểu đồ thống kê</span>
+              <div className="flex border border-hairline rounded-lg overflow-hidden">
+                {([
+                  { m: 'fee' as const, label: 'Phí nền tảng' },
+                  { m: 'count' as const, label: 'Số booking' },
+                ] as const).map(({ m, label }) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setChartMetric(m)}
+                    className={`h-7 px-3 text-xs font-semibold transition-colors border-r border-hairline last:border-r-0 ${
+                      chartMetric === m ? 'bg-ink text-on-dark' : 'text-mute hover:bg-surface-card'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {/* Granularity selector */}
+              <div className="flex border border-hairline rounded-lg overflow-hidden">
+                {([
+                  { g: 'day' as const, label: 'Ngày' },
+                  { g: 'month' as const, label: 'Tháng' },
+                  { g: 'year' as const, label: 'Năm' },
+                ] as const).map(({ g, label }) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setGranularity(g)}
+                    className={`h-7 px-2.5 text-xs font-semibold transition-colors border-r border-hairline last:border-r-0 ${
+                      granularity === g ? 'bg-ink text-on-dark' : 'text-mute hover:bg-surface-card'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex border border-hairline rounded-lg overflow-hidden">
+              {CHART_TYPE_OPTIONS.map(({ t, label }) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setActiveChartType(t)}
+                  className={`h-7 px-2.5 text-xs font-semibold transition-colors border-r border-hairline last:border-r-0 ${
+                    activeChartType === t ? 'bg-ink text-on-dark' : 'text-mute hover:bg-surface-card'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-        {/* Booking bar chart */}
-        <Card className="bg-surface-card border-hairline shadow-none rounded-2xl">
-          <CardHeader>
-            <CardTitle className="text-ink font-display text-base">
-              Số booking theo tháng
-            </CardTitle>
-            <CardDescription className="text-mute text-xs">
-              Lượng booking được tạo trong từng tháng.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {bookingsLoading ? (
-              <Skeleton className="h-[280px] w-full rounded-xl" />
-            ) : bookingsError ? (
-              <ChartErrorState message={bookingsError} />
-            ) : bookingData.length === 0 ? (
-              <ChartEmptyState />
-            ) : (
-              <ChartContainer config={bookingConfig} className="h-[280px] w-full">
-                <RechartsBarChart data={bookingData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="month"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    fontSize={12}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    fontSize={12}
-                    width={40}
-                    allowDecimals={false}
-                  />
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        formatter={(value) => [compactNumber(Number(value)), 'Số booking']}
-                      />
-                    }
-                  />
-                  <Bar
-                    dataKey="count"
-                    fill="var(--color-count)"
-                    radius={[6, 6, 0, 0]}
-                    maxBarSize={48}
-                  />
-                </RechartsBarChart>
-              </ChartContainer>
-            )}
+          {/* Chart body */}
+          <CardContent className="px-5 pt-5 pb-0">
+            {(() => {
+              const isFee = chartMetric === 'fee';
+              const chartData = isFee ? revenueChartData : bookingChartData;
+              const chartTotal = isFee ? revenuePeriodTotal : bookingPeriodTotal;
+              const chartConfig = isFee ? revenueConfig : bookingConfig;
+              const chartLoading = isFee ? revenueLoading : bookingsLoading;
+              const chartError = isFee ? revenueError : bookingsError;
+              const dataKey = isFee ? 'fee' : 'count';
+              const color = isFee ? 'var(--color-fee)' : 'var(--color-count)';
+              const yFmt = isFee
+                ? (v: number) => compactVnd(v)
+                : (v: number) => compactNumber(v);
+              const yWidth = isFee ? 64 : 40;
+              const tooltipFmt = isFee
+                ? (v: unknown, n: unknown) => [vnd(Number(v)), String(revenueConfig[n as keyof typeof revenueConfig]?.label ?? n)]
+                : (v: unknown) => [compactNumber(Number(v)), 'Số booking'];
+              const gradId = isFee ? 'feeAreaGrad2' : 'bookAreaGrad2';
+
+              if (chartLoading) return <Skeleton className="h-[380px] w-full rounded-xl" />;
+              if (chartError) return <ChartErrorState message={chartError} onRetry={fetchAll} />;
+              if (!chartData.length || chartTotal === 0) return <ChartEmptyState />;
+
+              // Dynamic bar width: wider when few data points, capped when many
+              const barSize = chartData.length <= 6
+                ? Math.min(96, Math.floor(600 / Math.max(chartData.length, 1)))
+                : Math.min(56, Math.floor(700 / Math.max(chartData.length, 1)));
+
+              // Recharts iterates props.children by element type — JSX variables work fine here,
+              // but never wrap them in a Fragment (<></>) since Recharts won't descend into it.
+              const xAxis = (
+                <XAxis
+                  dataKey="period"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={10}
+                  fontSize={12}
+                  tick={{ fill: '#64748b' }}
+                  interval={chartData.length > 16 ? Math.ceil(chartData.length / 8) - 1 : 0}
+                />
+              );
+              const yAxis = (
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  fontSize={12}
+                  tickFormatter={yFmt}
+                  width={yWidth}
+                  tick={{ fill: '#64748b' }}
+                  allowDecimals={false}
+                />
+              );
+              const grid = (
+                <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="#f1f5f9" />
+              );
+              const tooltip = (
+                <ChartTooltip
+                  cursor={{ fill: 'rgba(100,116,139,0.06)' }}
+                  content={<ChartTooltipContent formatter={tooltipFmt} />}
+                />
+              );
+
+              return (
+                <ChartContainer config={chartConfig} className="h-[380px] w-full">
+                  {(activeChartType === 'bar' || activeChartType === 'stackbar') ? (
+                    <RechartsBarChart data={chartData} barSize={barSize} margin={{ top: 12, right: 12, left: 0, bottom: 4 }}>
+                      {grid}{xAxis}{yAxis}{tooltip}
+                      <Bar dataKey={dataKey} fill={color} radius={[6, 6, 0, 0]} />
+                    </RechartsBarChart>
+                  ) : activeChartType === 'line' ? (
+                    <RechartsLineChart data={chartData} margin={{ top: 12, right: 12, left: 0, bottom: 4 }}>
+                      {grid}{xAxis}{yAxis}{tooltip}
+                      <Line dataKey={dataKey} type="monotone" stroke={color} strokeWidth={3} dot={{ r: 5, fill: color, strokeWidth: 0 }} activeDot={{ r: 7, fill: color }} />
+                    </RechartsLineChart>
+                  ) : (
+                    <RechartsAreaChart data={chartData} margin={{ top: 12, right: 12, left: 0, bottom: 4 }}>
+                      <defs>
+                        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={color} stopOpacity={0.35} />
+                          <stop offset="95%" stopColor={color} stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      {grid}{xAxis}{yAxis}{tooltip}
+                      <Area dataKey={dataKey} type="monotone" stroke={color} strokeWidth={3} fill={`url(#${gradId})`} dot={{ r: 5, fill: color, strokeWidth: 0 }} activeDot={{ r: 7, fill: color }} />
+                    </RechartsAreaChart>
+                  )}
+                </ChartContainer>
+              );
+            })()}
           </CardContent>
+
+          {/* Legend row — like reference: colored dot + label left, context right */}
+          <div className="flex items-center justify-between px-5 py-3.5 mt-2 border-t border-hairline">
+            <div className="flex items-center gap-2">
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ background: chartMetric === 'fee' ? 'var(--color-fee)' : 'var(--color-count)' }}
+              />
+              <span className="text-xs font-semibold text-mute">
+                {chartMetric === 'fee' ? 'Phí nền tảng' : 'Số booking'}
+              </span>
+            </div>
+            <span className="text-xs text-mute">
+              {currentRangeLabel} · {displayGranularity === 'day' ? 'theo ngày' : displayGranularity === 'month' ? 'theo tháng' : 'theo năm'} · Tổng kỳ:{' '}
+              <span className="font-semibold text-ink">
+                {chartMetric === 'fee' ? vnd(revenuePeriodTotal) : compactNumber(bookingPeriodTotal) + ' booking'}
+              </span>
+            </span>
+          </div>
         </Card>
       </section>
 
@@ -772,15 +1071,21 @@ export default function AdminDashboardPage() {
                 Xếp hạng theo tổng thu nhập trong khoảng thời gian đã chọn.
               </CardDescription>
             </div>
-            <Button
-              asChild
-              variant="ghost"
-              className="text-mute hover:text-pin-red h-8 px-2"
-            >
-              <Link href="/admin/kols/review" className="inline-flex items-center gap-1 text-sm font-semibold">
-                Quản lý KOL <ArrowUpRight className="w-4 h-4" />
-              </Link>
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={exportTopKolCsv}
+                disabled={topKolsLoading || !topKols?.length}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-mute border border-hairline rounded-lg px-3 h-8 hover:border-ink hover:text-ink transition-colors disabled:opacity-40"
+              >
+                <Download className="w-3.5 h-3.5" /> CSV
+              </button>
+              <Button asChild variant="ghost" className="text-mute hover:text-pin-red h-8 px-2">
+                <Link href="/admin/kols/review" className="inline-flex items-center gap-1 text-sm font-semibold">
+                  Quản lý KOL <ArrowUpRight className="w-4 h-4" />
+                </Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {topKolsLoading ? (
@@ -796,7 +1101,7 @@ export default function AdminDashboardPage() {
                 ))}
               </div>
             ) : topKolsError ? (
-              <ChartErrorState message={topKolsError} />
+              <ChartErrorState message={topKolsError} onRetry={fetchAll} />
             ) : !topKols || topKols.length === 0 ? (
               <div className="py-10 text-center text-mute text-sm">
                 Chưa có dữ liệu Top KOL.
@@ -866,11 +1171,22 @@ export default function AdminDashboardPage() {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function ChartErrorState({ message }: { message: string }) {
+function ChartErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <div className="h-[280px] grid place-items-center text-center">
-      <div className="text-pin-red text-sm font-semibold inline-flex items-center gap-2">
-        <AlertCircle className="w-4 h-4" /> {message}
+      <div className="flex flex-col items-center gap-3">
+        <div className="text-pin-red text-sm font-semibold inline-flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" /> {message}
+        </div>
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-mute border border-hairline rounded-lg px-3 h-7 hover:border-ink hover:text-ink transition-colors"
+          >
+            <RotateCcw className="w-3 h-3" /> Thử lại
+          </button>
+        )}
       </div>
     </div>
   );

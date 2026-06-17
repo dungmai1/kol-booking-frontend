@@ -16,6 +16,7 @@ import type {
   CategoryResponse,
   CreateCategoryRequest,
   PageResponse,
+  StatsGranularity,
 } from './types';
 
 // ─── Stats response adapters ───────────────────────────────────────────────────
@@ -31,13 +32,22 @@ interface AdminStatsOverviewRaw {
   totalGmv?: number | string;
   platformRevenue?: number | string;
   activeBookings?: number | string;
+  disputeCount?: number;
+  pendingKolApprovals?: number;
+  pendingBrandApprovals?: number;
+  previousPeriod?: {
+    users?: Partial<Record<Role, number>>;
+    totalBookings?: number | string;
+    platformRevenue?: number | string;
+  };
 }
 
 const num = (v: unknown): number => Number(v ?? 0);
 
 function mapStatsOverview(raw: AdminStatsOverviewRaw): AdminStatsOverview {
   const u = raw.users ?? {};
-  // "Total users" = real accounts (excludes the synthetic SYSTEM platform-wallet user).
+  const prev = raw.previousPeriod;
+  const pu = prev?.users ?? {};
   return {
     totalUsers: num(u.KOL) + num(u.BRAND) + num(u.ADMIN),
     totalKols: num(u.KOL),
@@ -45,9 +55,18 @@ function mapStatsOverview(raw: AdminStatsOverviewRaw): AdminStatsOverview {
     totalBookings: num(raw.totalBookings),
     totalRevenue: num(raw.platformRevenue),
     activeBookings: num(raw.activeBookings),
-    disputeCount: num((raw as Record<string, unknown>).disputeCount),
-    pendingKolApprovals: num((raw as Record<string, unknown>).pendingKolApprovals),
-    pendingBrandApprovals: num((raw as Record<string, unknown>).pendingBrandApprovals),
+    disputeCount: num(raw.disputeCount),
+    pendingKolApprovals: num(raw.pendingKolApprovals),
+    pendingBrandApprovals: num(raw.pendingBrandApprovals),
+    previousMonth: prev
+      ? {
+          totalUsers: num(pu.KOL) + num(pu.BRAND) + num(pu.ADMIN),
+          totalKols: num(pu.KOL),
+          totalBrands: num(pu.BRAND),
+          totalBookings: num(prev.totalBookings),
+          totalRevenue: num(prev.platformRevenue),
+        }
+      : undefined,
   };
 }
 
@@ -155,9 +174,15 @@ export const adminApi = {
     return api.get<AdminStatsOverviewRaw>(`/admin/stats/overview${q}`).then(mapStatsOverview);
   },
 
-  getBookingStats(params: { from?: string; to?: string } = {}): Promise<AdminBookingStats[]> {
+  getBookingStats(params: { from?: string; to?: string; granularity?: StatsGranularity } = {}): Promise<AdminBookingStats[]> {
     const q = api.buildQuery(params as Record<string, unknown>);
-    return api.get(`/admin/stats/bookings${q}`);
+    return api.get<Record<string, unknown>[]>(`/admin/stats/bookings${q}`).then((rows) =>
+      (rows ?? []).map((r) => ({
+        period: String(r.period ?? r.month ?? r.day ?? r.year ?? ''),
+        count: Number(r.count ?? 0),
+        total: Number(r.total ?? 0),
+      })),
+    );
   },
 
   getTopKols(params: { from?: string; to?: string; limit?: number } = {}): Promise<AdminTopKol[]> {
@@ -167,9 +192,14 @@ export const adminApi = {
       .then((rows) => (rows ?? []).map(mapTopKol));
   },
 
-  getRevenueStats(params: { from?: string; to?: string } = {}): Promise<AdminRevenueStats[]> {
+  getRevenueStats(params: { from?: string; to?: string; granularity?: StatsGranularity } = {}): Promise<AdminRevenueStats[]> {
     const q = api.buildQuery(params as Record<string, unknown>);
-    return api.get(`/admin/stats/revenue${q}`);
+    return api.get<Record<string, unknown>[]>(`/admin/stats/revenue${q}`).then((rows) =>
+      (rows ?? []).map((r) => ({
+        period: String(r.period ?? r.month ?? r.day ?? r.year ?? ''),
+        fee: Number(r.fee ?? r.platformFee ?? r.revenue ?? 0),
+      })),
+    );
   },
 
   getEscrowMetrics(params: { from?: string; to?: string } = {}): Promise<AdminEscrowMetrics> {

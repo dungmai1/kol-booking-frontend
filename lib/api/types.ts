@@ -639,10 +639,14 @@ export interface AdminStatsOverview {
   };
 }
 
+/** Granularity for time-series stats: day = "YYYY-MM-DD", month = "YYYY-MM", year = "YYYY". */
+export type StatsGranularity = 'day' | 'month' | 'year';
+
 export interface AdminBookingStats {
-  month: string;
+  /** ISO period string — format depends on requested granularity. */
+  period: string;
   count: number;
-  revenue: number;
+  total: number;
 }
 
 export interface AdminTopKol {
@@ -653,11 +657,11 @@ export interface AdminTopKol {
   avgRating: number;
 }
 
-/** GET /admin/stats/revenue — monthly platform commission (FE-mapped from `{month, fee}`). */
+/** GET /admin/stats/revenue — platform commission by period. */
 export interface AdminRevenueStats {
-  /** "YYYY-MM" */
-  month: string;
-  /** Total platform fee collected that month. */
+  /** ISO period string — "YYYY-MM-DD" | "YYYY-MM" | "YYYY" depending on granularity. */
+  period: string;
+  /** Total platform fee collected in this period. */
   fee: number;
 }
 
