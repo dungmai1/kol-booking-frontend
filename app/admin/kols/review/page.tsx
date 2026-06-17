@@ -1,7 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Check, X, ExternalLink, Inbox, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import {
+  Check,
+  X,
+  ExternalLink,
+  Eye,
+  Inbox,
+  Loader2,
+  RefreshCw,
+  AlertCircle,
+  User,
+} from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import {
@@ -12,13 +22,41 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { PaginationBar } from '@/components/pagination-bar';
 import { adminApi } from '@/lib/api/admin';
-import { ApiError } from '@/lib/api/client';
-import type { KolProfileResponse, PageResponse } from '@/lib/api/types';
+import { ApiError, resolveMediaUrl } from '@/lib/api/client';
+import type {
+  KolProfileResponse,
+  KolSocialChannelResponse,
+  KolPricingPackageResponse,
+  KolPortfolioItemResponse,
+  PageResponse,
+} from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
 const PENDING_STATUS = 'PENDING_REVIEW';
+
+const PLATFORM_LABEL: Record<string, string> = {
+  TIKTOK: 'TikTok',
+  INSTAGRAM: 'Instagram',
+  YOUTUBE: 'YouTube',
+  FACEBOOK: 'Facebook',
+};
+
+const PACKAGE_TYPE_LABEL: Record<string, string> = {
+  VIDEO: 'Video',
+  POST: 'Bài viết',
+  STORY: 'Story',
+  REEL: 'Reel',
+  REVIEW: 'Review',
+  LIVESTREAM: 'Livestream',
+};
 
 function formatDate(iso: string): string {
   try {
@@ -34,22 +72,255 @@ function formatDate(iso: string): string {
   }
 }
 
+function vnd(amount: number): string {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatFollowers(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
+// ─── KOL Detail Sheet ─────────────────────────────────────────────────────────
+
+interface KolDetailSheetProps {
+  kol: KolProfileResponse | null;
+  onClose: () => void;
+  onApprove: (kol: KolProfileResponse) => void;
+  onReject: (kol: KolProfileResponse) => void;
+  pendingId: number | null;
+}
+
+function KolDetailSheet({ kol, onClose, onApprove, onReject, pendingId }: KolDetailSheetProps) {
+  const isLoading = kol !== null && pendingId === kol.id;
+
+  return (
+    <Sheet open={kol !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <SheetContent side="right" className="w-full sm:max-w-[520px] overflow-y-auto">
+        {kol && (
+          <>
+            <SheetHeader className="mb-4">
+              <SheetTitle>Hồ sơ KOL chờ duyệt</SheetTitle>
+            </SheetHeader>
+
+            {/* Avatar + name */}
+            <div className="flex items-start gap-4 mb-5">
+              {kol.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={resolveMediaUrl(kol.avatarUrl)}
+                  alt={kol.displayName}
+                  className="w-16 h-16 rounded-full object-cover shrink-0"
+                />
+              ) : (
+                <span className="grid place-items-center w-16 h-16 rounded-full bg-ink text-on-dark font-bold text-xl shrink-0">
+                  {kol.displayName?.[0]?.toUpperCase() ?? <User className="w-6 h-6" />}
+                </span>
+              )}
+              <div className="min-w-0">
+                <p className="font-bold text-ink text-lg leading-tight">{kol.displayName}</p>
+                <p className="text-xs text-mute mt-0.5">@{kol.slug}</p>
+                <p className="text-xs text-mute mt-0.5">ID #{kol.id} · User #{kol.userId}</p>
+                <p className="text-xs text-mute mt-0.5">Đăng ký: {formatDate(kol.createdAt)}</p>
+                {(kol.city || kol.country) && (
+                  <p className="text-xs text-mute mt-0.5">
+                    {[kol.city, kol.country].filter(Boolean).join(', ')}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Bio */}
+            {kol.bio && (
+              <section className="mb-5">
+                <h3 className="text-xs font-bold text-mute uppercase tracking-wide mb-1.5">Giới thiệu</h3>
+                <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap">{kol.bio}</p>
+              </section>
+            )}
+
+            {/* Social channels */}
+            {kol.channels && kol.channels.length > 0 && (
+              <section className="mb-5">
+                <h3 className="text-xs font-bold text-mute uppercase tracking-wide mb-2">
+                  Kênh mạng xã hội ({kol.channels.length})
+                </h3>
+                <div className="space-y-2">
+                  {kol.channels.map((ch: KolSocialChannelResponse) => (
+                    <div
+                      key={ch.id}
+                      className="flex items-center justify-between gap-2 rounded-md border border-hairline bg-surface-card px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-ink">
+                          {PLATFORM_LABEL[ch.platform] ?? ch.platform}
+                          {ch.verified && (
+                            <span className="ml-1.5 text-emerald-600">(đã xác minh)</span>
+                          )}
+                        </p>
+                        {ch.username && (
+                          <p className="text-xs text-mute truncate">@{ch.username}</p>
+                        )}
+                        {ch.url && (
+                          <a
+                            href={ch.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-pin-red hover:underline truncate block"
+                          >
+                            {ch.url}
+                          </a>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-bold text-ink">
+                          {formatFollowers(ch.followerCount)}
+                        </p>
+                        <p className="text-xs text-mute">followers</p>
+                        {ch.engagementRate > 0 && (
+                          <p className="text-xs text-mute">{ch.engagementRate.toFixed(1)}% ER</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Pricing packages */}
+            {kol.pricingPackages && kol.pricingPackages.length > 0 && (
+              <section className="mb-5">
+                <h3 className="text-xs font-bold text-mute uppercase tracking-wide mb-2">
+                  Bảng giá ({kol.pricingPackages.length} gói)
+                </h3>
+                <div className="space-y-1.5">
+                  {kol.pricingPackages.map((pkg: KolPricingPackageResponse) => (
+                    <div
+                      key={pkg.id}
+                      className="flex items-center justify-between gap-2 rounded-md border border-hairline bg-surface-card px-3 py-2"
+                    >
+                      <div>
+                        <p className="text-xs font-bold text-ink">
+                          {PACKAGE_TYPE_LABEL[pkg.type] ?? pkg.type} ·{' '}
+                          {PLATFORM_LABEL[pkg.platform] ?? pkg.platform}
+                        </p>
+                        {pkg.description && (
+                          <p className="text-xs text-mute mt-0.5">{pkg.description}</p>
+                        )}
+                      </div>
+                      <p className="text-sm font-bold text-ink shrink-0">{vnd(pkg.price)}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Portfolio */}
+            {kol.portfolio && kol.portfolio.length > 0 && (
+              <section className="mb-5">
+                <h3 className="text-xs font-bold text-mute uppercase tracking-wide mb-2">
+                  Portfolio ({kol.portfolio.length} mục)
+                </h3>
+                <div className="space-y-1.5">
+                  {kol.portfolio.map((item: KolPortfolioItemResponse) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between gap-2 rounded-md border border-hairline bg-surface-card px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-ink truncate">{item.title}</p>
+                        {item.campaignName && (
+                          <p className="text-xs text-mute truncate">{item.campaignName}</p>
+                        )}
+                      </div>
+                      {item.mediaUrl && (
+                        <a
+                          href={item.mediaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-bold text-pin-red hover:underline shrink-0"
+                        >
+                          Xem <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* No channels/packages warning */}
+            {(!kol.channels || kol.channels.length === 0) &&
+              (!kol.pricingPackages || kol.pricingPackages.length === 0) && (
+                <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  KOL chưa thêm kênh mạng xã hội hoặc bảng giá.
+                </div>
+              )}
+
+            {/* Reject reason (if previously rejected) */}
+            {kol.rejectReason && (
+              <section className="mb-5">
+                <h3 className="text-xs font-bold text-mute uppercase tracking-wide mb-1.5">
+                  Lý do từ chối trước
+                </h3>
+                <p className="text-sm text-pin-red">{kol.rejectReason}</p>
+              </section>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex gap-3 pt-4 border-t border-hairline-soft">
+              <button
+                type="button"
+                onClick={() => onApprove(kol)}
+                disabled={isLoading}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                Duyệt KOL
+              </button>
+              <button
+                type="button"
+                onClick={() => onReject(kol)}
+                disabled={isLoading}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-bold bg-pin-red text-on-dark hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <X className="w-4 h-4" />
+                Từ chối
+              </button>
+            </div>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
 export default function AdminKolReviewPage() {
   const [page, setPage] = useState(0);
   const [data, setData] = useState<PageResponse<KolProfileResponse> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Per-row pending state (approve or reject in flight) — keyed by KOL id.
   const [pendingId, setPendingId] = useState<number | null>(null);
+
+  // Detail sheet
+  const [detailKol, setDetailKol] = useState<KolProfileResponse | null>(null);
 
   // Reject modal state
   const [rejectTarget, setRejectTarget] = useState<KolProfileResponse | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [reasonError, setReasonError] = useState<string | null>(null);
 
-  // Retain the last target's name during the dialog's close animation so the
-  // body content does not blank out mid-fade (QA reads that as a flicker).
   const [stableRejectName, setStableRejectName] = useState<string>('');
   useEffect(() => {
     if (rejectTarget) setStableRejectName(rejectTarget.displayName);
@@ -81,8 +352,7 @@ export default function AdminKolReviewPage() {
   }, [fetchList]);
 
   async function refreshAfterAction() {
-    // After approve/reject we may end up on an empty page; clamp page index
-    // before refetching so the user lands on something useful.
+    setDetailKol(null);
     if (data && data.content.length === 1 && page > 0) {
       setPage((p) => p - 1);
       return;
@@ -112,7 +382,7 @@ export default function AdminKolReviewPage() {
   }
 
   function closeReject() {
-    if (pendingId === rejectTarget?.id) return; // prevent close while submitting
+    if (pendingId === rejectTarget?.id) return;
     setRejectTarget(null);
     setRejectReason('');
     setReasonError(null);
@@ -204,7 +474,7 @@ export default function AdminKolReviewPage() {
                     Tên hiển thị
                   </th>
                   <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide">
-                    Slug
+                    Kênh / Followers
                   </th>
                   <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide whitespace-nowrap">
                     Ngày tạo
@@ -217,6 +487,7 @@ export default function AdminKolReviewPage() {
               <tbody>
                 {items.map((kol) => {
                   const isRowPending = pendingId === kol.id;
+                  const topChannel = kol.channels?.[0];
                   return (
                     <tr
                       key={kol.id}
@@ -227,7 +498,7 @@ export default function AdminKolReviewPage() {
                           {kol.avatarUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
-                              src={kol.avatarUrl}
+                              src={resolveMediaUrl(kol.avatarUrl)}
                               alt={kol.displayName}
                               className="w-10 h-10 rounded-full object-cover shrink-0"
                             />
@@ -241,27 +512,41 @@ export default function AdminKolReviewPage() {
                               {kol.displayName}
                             </p>
                             <p className="text-xs text-mute mt-0.5">
-                              ID #{kol.id} • user #{kol.userId}
+                              ID #{kol.id} · user #{kol.userId}
                             </p>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3 align-top">
-                        <Link
-                          href={`/kol/${kol.slug}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-ink hover:text-pin-red font-mono text-xs"
-                        >
-                          {kol.slug}
-                          <ExternalLink className="w-3 h-3" />
-                        </Link>
+                        {topChannel ? (
+                          <div>
+                            <p className="text-xs font-bold text-ink">
+                              {PLATFORM_LABEL[topChannel.platform] ?? topChannel.platform}
+                            </p>
+                            <p className="text-xs text-mute">
+                              {formatFollowers(topChannel.followerCount)} followers
+                            </p>
+                            {kol.channels.length > 1 && (
+                              <p className="text-xs text-mute">+{kol.channels.length - 1} kênh khác</p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-mute">Chưa có</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 align-top text-mute text-xs whitespace-nowrap">
                         {formatDate(kol.createdAt)}
                       </td>
                       <td className="px-4 py-3 align-top">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => setDetailKol(kol)}
+                            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold bg-surface-card text-ink border border-hairline hover:bg-secondary-bg transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            Xem
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleApprove(kol)}
@@ -284,6 +569,15 @@ export default function AdminKolReviewPage() {
                             <X className="w-3.5 h-3.5" />
                             Từ chối
                           </button>
+                          <Link
+                            href={`/kol/${kol.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-mute hover:text-ink"
+                            title="Xem trang công khai"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </Link>
                         </div>
                       </td>
                     </tr>
@@ -304,6 +598,21 @@ export default function AdminKolReviewPage() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }
         }}
+      />
+
+      {/* KOL Detail Sheet */}
+      <KolDetailSheet
+        kol={detailKol}
+        onClose={() => setDetailKol(null)}
+        onApprove={(kol) => {
+          setDetailKol(null);
+          handleApprove(kol);
+        }}
+        onReject={(kol) => {
+          setDetailKol(null);
+          openReject(kol);
+        }}
+        pendingId={pendingId}
       />
 
       {/* Reject reason modal */}
@@ -398,8 +707,9 @@ function TableSkeleton() {
             <div className="h-3.5 bg-surface-card rounded animate-pulse w-1/3" />
             <div className="h-3 bg-surface-card rounded animate-pulse w-1/4" />
           </div>
-          <div className="w-24 h-7 rounded-full bg-surface-card animate-pulse" />
-          <div className="w-24 h-7 rounded-full bg-surface-card animate-pulse" />
+          <div className="w-20 h-7 rounded-full bg-surface-card animate-pulse" />
+          <div className="w-20 h-7 rounded-full bg-surface-card animate-pulse" />
+          <div className="w-20 h-7 rounded-full bg-surface-card animate-pulse" />
         </div>
       ))}
     </div>

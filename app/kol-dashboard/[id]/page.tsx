@@ -13,6 +13,7 @@ import { bookingsApi } from '@/lib/api/bookings';
 import { walletApi } from '@/lib/api/wallet';
 import { reviewsApi } from '@/lib/api/reviews';
 import { useAuth } from '@/contexts/AuthContext';
+import { resolveMediaUrl } from '@/lib/api/client';
 import { ReviewAuthorLink } from '@/components/review-author-link';
 import type { KolProfileResponse, BookingResponse, ReviewResponse, WalletResponse } from '@/lib/api/types';
 
@@ -128,7 +129,7 @@ export default function KOLDashboardPage() {
             <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
               <div className="flex items-center gap-4">
                 {profile.avatarUrl ? (
-                  <img src={profile.avatarUrl} alt={profile.displayName} className="w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-white object-cover" />
+                  <img src={resolveMediaUrl(profile.avatarUrl)} alt={profile.displayName} className="w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-white object-cover" />
                 ) : (
                   <div className="w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-white bg-white/20 flex items-center justify-center text-4xl font-bold text-white">
                     {profile.displayName[0]}

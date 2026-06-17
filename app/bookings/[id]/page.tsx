@@ -1046,18 +1046,16 @@ function DetailTab({
         </button>,
       );
     }
-    if (booking.invoiceUrl && booking.status === 'COMPLETED') {
+    if (booking.status === 'COMPLETED') {
       brandActions.push(
-        <a
+        <Link
           key="invoice"
-          href={booking.invoiceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={`/bookings/${booking.id}/invoice`}
           className="btn-pin-secondary"
         >
           <Receipt className="w-4 h-4" />
-          Tải hóa đơn
-        </a>,
+          Xem hóa đơn
+        </Link>,
       );
     }
   }
@@ -1095,6 +1093,18 @@ function DetailTab({
           )}
           Từ chối
         </button>,
+      );
+    }
+    if (booking.status === 'COMPLETED') {
+      kolActions.push(
+        <Link
+          key="invoice"
+          href={`/bookings/${booking.id}/invoice`}
+          className="btn-pin-secondary"
+        >
+          <Receipt className="w-4 h-4" />
+          Xem hóa đơn
+        </Link>,
       );
     }
     if (booking.status === 'IN_PROGRESS') {

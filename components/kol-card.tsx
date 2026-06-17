@@ -4,6 +4,7 @@ import { Star } from 'lucide-react';
 import Link from 'next/link';
 import type { KolSummaryResponse } from '@/lib/api/types';
 import { formatMinPrice } from '@/lib/utils';
+import { resolveMediaUrl } from '@/lib/api/client';
 
 /**
  * Pin-card adaptation for the KOL discovery grid.
@@ -39,7 +40,7 @@ export function KOLCard({ kol }: { kol: KolSummaryResponse }) {
         {kol.avatarUrl ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
-            src={kol.avatarUrl}
+            src={resolveMediaUrl(kol.avatarUrl)}
             alt={kol.displayName}
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             loading="lazy"

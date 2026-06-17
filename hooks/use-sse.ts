@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
-import { getAccessToken, API_BASE_URL } from '@/lib/api/client';
+import { getAccessToken, API_BASE_URL, refreshIfExpired } from '@/lib/api/client';
 
 interface SseOptions {
   path: string;            // e.g. '/notifications/stream'
@@ -36,6 +36,17 @@ export function useSse({ path, enabled, onEvent, onConnect, onDisconnect }: SseO
         },
         signal: controller.signal,
       });
+
+      // Token expired — attempt one refresh then reconnect immediately.
+      // Without this, the hook would loop forever with the same stale token.
+      if (res.status === 401) {
+        onDisconnect?.();
+        const newToken = await refreshIfExpired();
+        if (!newToken || !mountedRef.current || !enabled) return;
+        delayRef.current = BASE_DELAY_MS; // reset backoff after successful refresh
+        connect();
+        return;
+      }
 
       if (!res.ok || !res.body) {
         throw new Error(`SSE connection failed: ${res.status}`);
@@ -74,7 +85,7 @@ export function useSse({ path, enabled, onEvent, onConnect, onDisconnect }: SseO
       onDisconnect?.();
     }
 
-    // Reconnect with backoff
+    // Reconnect with backoff (for non-401 failures: network drops, server restarts, etc.)
     if (mountedRef.current && enabled) {
       const delay = delayRef.current;
       delayRef.current = Math.min(delay * 2, MAX_DELAY_MS);

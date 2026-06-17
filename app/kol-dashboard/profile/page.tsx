@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { kolApi, normalizePlatform } from '@/lib/api/kol';
 import { categoriesApi } from '@/lib/api/categories';
 import { filesApi } from '@/lib/api/files';
+import { resolveMediaUrl } from '@/lib/api/client';
 import {
   ACCEPTED_IMAGE_ACCEPT,
   ACCEPTED_VIDEO_ACCEPT,
@@ -491,7 +492,7 @@ export default function KolProfileEditPage() {
                       <div className="relative w-24 h-24 rounded-full overflow-hidden bg-surface-card grid place-items-center border border-hairline">
                         {form.avatarUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={form.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                          <img src={resolveMediaUrl(form.avatarUrl)} alt="avatar" className="w-full h-full object-cover" />
                         ) : (
                           <span className="text-2xl font-bold text-mute">{(form.displayName ?? '?').charAt(0).toUpperCase()}</span>
                         )}
@@ -524,7 +525,7 @@ export default function KolProfileEditPage() {
                       <div className="relative w-full h-32 rounded-md overflow-hidden bg-surface-card border border-hairline">
                         {form.coverUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={form.coverUrl} alt="cover" className="w-full h-full object-cover" />
+                          <img src={resolveMediaUrl(form.coverUrl)} alt="cover" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full grid place-items-center text-mute text-sm">Chưa có ảnh bìa</div>
                         )}

@@ -18,6 +18,8 @@ import {
   Calendar,
   Hash,
   BadgeCheck,
+  Trash2,
+  UserPlus,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -114,7 +116,7 @@ function useDebounced<T>(value: T, delay = 350): T {
   return debounced;
 }
 
-type ConfirmAction = 'ban' | 'unban';
+type ConfirmAction = 'ban' | 'unban' | 'delete';
 
 export default function AdminUsersPage() {
   const { user: currentUser } = useAuth();
@@ -136,6 +138,14 @@ export default function AdminUsersPage() {
     action: ConfirmAction;
   } | null>(null);
   const [detailTarget, setDetailTarget] = useState<AdminUserResponse | null>(null);
+
+  // Create user dialog
+  const [showCreate, setShowCreate] = useState(false);
+  const [createEmail, setCreateEmail] = useState('');
+  const [createPassword, setCreatePassword] = useState('');
+  const [createRole, setCreateRole] = useState<'KOL' | 'BRAND'>('KOL');
+  const [createError, setCreateError] = useState('');
+  const [creating, setCreating] = useState(false);
 
   // Reset to first page whenever a filter changes
   useEffect(() => {
@@ -175,9 +185,12 @@ export default function AdminUsersPage() {
       if (action === 'ban') {
         await adminApi.banUser(target.id);
         toast.success(`Đã cấm người dùng ${target.email}`);
-      } else {
+      } else if (action === 'unban') {
         await adminApi.unbanUser(target.id);
         toast.success(`Đã mở khóa người dùng ${target.email}`);
+      } else {
+        await adminApi.deleteUser(target.id);
+        toast.success(`Đã xoá tài khoản ${target.email}`);
       }
       setConfirmTarget(null);
       await fetchList();
@@ -187,7 +200,9 @@ export default function AdminUsersPage() {
           ? e.message
           : action === 'ban'
             ? 'Không thể cấm người dùng. Vui lòng thử lại.'
-            : 'Không thể mở khóa người dùng. Vui lòng thử lại.';
+            : action === 'unban'
+              ? 'Không thể mở khóa người dùng. Vui lòng thử lại.'
+              : 'Không thể xoá tài khoản. Vui lòng thử lại.';
       toast.error(message);
     } finally {
       setPendingId(null);
@@ -212,6 +227,26 @@ export default function AdminUsersPage() {
     setStatusFilter('ALL');
   }
 
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setCreateError('');
+    if (!createEmail.trim() || !createPassword) return;
+    setCreating(true);
+    try {
+      await adminApi.createUser({ email: createEmail.trim(), password: createPassword, role: createRole });
+      toast.success(`Đã tạo tài khoản ${createEmail.trim()}`);
+      setShowCreate(false);
+      setCreateEmail('');
+      setCreatePassword('');
+      setCreateRole('KOL');
+      await fetchList();
+    } catch (e) {
+      setCreateError(e instanceof ApiError ? e.message : 'Không thể tạo tài khoản. Vui lòng thử lại.');
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
     <>
       {/* Heading */}
@@ -222,15 +257,25 @@ export default function AdminUsersPage() {
             <span className="text-pin-red">({totalElements})</span>
           )}
         </h2>
-        <button
-          type="button"
-          onClick={fetchList}
-          disabled={isLoading}
-          className="inline-flex items-center gap-2 bg-surface-card text-ink rounded-full px-4 py-2 text-sm font-bold hover:bg-secondary-bg disabled:opacity-50 transition-colors"
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Làm mới
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowCreate(true)}
+            className="inline-flex items-center gap-2 bg-ink text-on-dark rounded-full px-4 py-2 text-sm font-bold hover:opacity-90 transition-opacity"
+          >
+            <UserPlus className="w-4 h-4" />
+            Tạo tài khoản
+          </button>
+          <button
+            type="button"
+            onClick={fetchList}
+            disabled={isLoading}
+            className="inline-flex items-center gap-2 bg-surface-card text-ink rounded-full px-4 py-2 text-sm font-bold hover:bg-secondary-bg disabled:opacity-50 transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Làm mới
+          </button>
+        </div>
       </div>
 
       {/* Filter bar */}
@@ -465,6 +510,22 @@ export default function AdminUsersPage() {
                                   Chờ người dùng xác minh
                                 </span>
                               )}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setConfirmTarget({ user: u, action: 'delete' })
+                                }
+                                disabled={isRowPending}
+                                title="Xoá tài khoản"
+                                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200 hover:bg-rose-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                              >
+                                {isRowPending ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                )}
+                                Xoá
+                              </button>
                             </>
                           )}
                         </div>
@@ -589,8 +650,8 @@ export default function AdminUsersPage() {
                       mono
                     />
                   )}
-                  {profileHref && (
-                    <div className="pt-1">
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {profileHref && (
                       <Link
                         href={profileHref}
                         target="_blank"
@@ -599,8 +660,26 @@ export default function AdminUsersPage() {
                         <ExternalLink className="w-4 h-4" />
                         Xem hồ sơ công khai
                       </Link>
-                    </div>
-                  )}
+                    )}
+                    {detailTarget.role === 'KOL' && (
+                      <Link
+                        href="/admin/kols/review"
+                        className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold bg-violet-100 text-violet-700 border border-violet-200 hover:bg-violet-200 transition-colors"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                        Xét duyệt hồ sơ KOL
+                      </Link>
+                    )}
+                    {detailTarget.role === 'BRAND' && (
+                      <Link
+                        href="/admin/brands/review"
+                        className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold bg-sky-100 text-sky-700 border border-sky-200 hover:bg-sky-200 transition-colors"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                        Xét duyệt hồ sơ Brand
+                      </Link>
+                    )}
+                  </div>
                 </div>
 
                 {!isSelf && (
@@ -646,6 +725,18 @@ export default function AdminUsersPage() {
                         Chờ người dùng xác minh email trước khi thực hiện hành động.
                       </p>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDetailTarget(null);
+                        setConfirmTarget({ user: detailTarget, action: 'delete' });
+                      }}
+                      disabled={isDetailPending}
+                      className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold bg-rose-100 text-rose-700 border border-rose-200 hover:bg-rose-200 disabled:opacity-50 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Xoá tài khoản
+                    </button>
                   </div>
                 )}
               </>
@@ -666,7 +757,9 @@ export default function AdminUsersPage() {
             <DialogTitle>
               {confirmTarget?.action === 'ban'
                 ? 'Cấm người dùng'
-                : 'Mở khóa người dùng'}
+                : confirmTarget?.action === 'unban'
+                  ? 'Mở khóa người dùng'
+                  : 'Xoá tài khoản'}
             </DialogTitle>
             <DialogDescription>
               {confirmTarget?.action === 'ban' ? (
@@ -678,13 +771,22 @@ export default function AdminUsersPage() {
                   sẽ bị chặn đăng nhập và sử dụng dịch vụ. Bạn có thể mở khóa lại
                   sau.
                 </>
-              ) : (
+              ) : confirmTarget?.action === 'unban' ? (
                 <>
                   Tài khoản{' '}
                   <span className="font-bold text-ink">
                     {confirmTarget?.user.email}
                   </span>{' '}
                   sẽ được phục hồi quyền truy cập bình thường.
+                </>
+              ) : (
+                <>
+                  Tài khoản{' '}
+                  <span className="font-bold text-ink">
+                    {confirmTarget?.user.email}
+                  </span>{' '}
+                  sẽ bị vô hiệu hóa vĩnh viễn. Hành động này không thể hoàn tác.
+                  Chỉ thực hiện khi KOL/Brand không còn booking đang xử lý và ví trống.
                 </>
               )}
             </DialogDescription>
@@ -707,17 +809,90 @@ export default function AdminUsersPage() {
               }
               disabled={pendingId !== null}
               className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold disabled:opacity-50 transition-colors ${
-                confirmTarget?.action === 'ban'
-                  ? 'bg-pin-red text-on-dark hover:opacity-90'
-                  : 'bg-emerald-500 text-white hover:bg-emerald-600'
+                confirmTarget?.action === 'delete'
+                  ? 'bg-rose-600 text-white hover:bg-rose-700'
+                  : confirmTarget?.action === 'ban'
+                    ? 'bg-pin-red text-on-dark hover:opacity-90'
+                    : 'bg-emerald-500 text-white hover:bg-emerald-600'
               }`}
             >
               {pendingId !== null && (
                 <Loader2 className="w-4 h-4 animate-spin" />
               )}
-              {confirmTarget?.action === 'ban' ? 'Xác nhận cấm' : 'Xác nhận mở khóa'}
+              {confirmTarget?.action === 'delete'
+                ? 'Xác nhận xoá'
+                : confirmTarget?.action === 'ban'
+                  ? 'Xác nhận cấm'
+                  : 'Xác nhận mở khóa'}
             </button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create user dialog */}
+      <Dialog open={showCreate} onOpenChange={(open) => { if (!open) { setShowCreate(false); setCreateEmail(''); setCreatePassword(''); setCreateError(''); } }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Tạo tài khoản mới</DialogTitle>
+            <DialogDescription>
+              Tài khoản được tạo bởi admin sẽ được kích hoạt ngay, không cần xác thực email.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-4 pt-2">
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-ink">Email</label>
+              <input
+                type="email"
+                value={createEmail}
+                onChange={(e) => { setCreateEmail(e.target.value); setCreateError(''); }}
+                placeholder="user@example.com"
+                required
+                className="pin-input w-full"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-ink">Mật khẩu</label>
+              <input
+                type="password"
+                value={createPassword}
+                onChange={(e) => { setCreatePassword(e.target.value); setCreateError(''); }}
+                placeholder="Tối thiểu 8 ký tự"
+                required
+                minLength={8}
+                className="pin-input w-full"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-ink">Vai trò</label>
+              <select
+                value={createRole}
+                onChange={(e) => setCreateRole(e.target.value as 'KOL' | 'BRAND')}
+                className="pin-input w-full"
+              >
+                <option value="KOL">KOL</option>
+                <option value="BRAND">Brand</option>
+              </select>
+            </div>
+            {createError && <p className="text-sm font-semibold text-pin-red">{createError}</p>}
+            <DialogFooter>
+              <button
+                type="button"
+                onClick={() => setShowCreate(false)}
+                disabled={creating}
+                className="rounded-full px-4 py-2 text-sm font-bold bg-surface-card text-ink hover:bg-secondary-bg disabled:opacity-50 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={creating}
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold bg-ink text-on-dark hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {creating && <Loader2 className="w-4 h-4 animate-spin" />}
+                Tạo tài khoản
+              </button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </>
