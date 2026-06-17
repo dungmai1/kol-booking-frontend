@@ -15,6 +15,7 @@ import type { KolPublicResponse, ReviewResponse } from '@/lib/api/types';
 import { BookingFormDialog } from '@/components/booking-form';
 import { PortfolioItemCard } from '@/components/portfolio-item-card';
 import { ReviewAuthorLink } from '@/components/review-author-link';
+import { resolveMediaUrl } from '@/lib/api/client';
 
 const tabLabels: Record<string, string> = {
   overview: 'Tổng quan',
@@ -117,7 +118,7 @@ export default function KOLProfileDetailPage({ params }: { params: Promise<{ id:
             <div className="flex flex-col md:flex-row gap-8 items-start">
               <div className="relative">
                 {profile.avatarUrl ? (
-                  <img src={profile.avatarUrl} alt={profile.displayName} className="w-40 h-40 rounded-full border-4 border-white object-cover shadow-xl" />
+                  <img src={resolveMediaUrl(profile.avatarUrl)} alt={profile.displayName} className="w-40 h-40 rounded-full border-4 border-white object-cover shadow-xl" />
                 ) : (
                   <div className="w-40 h-40 rounded-full border-4 border-white bg-white/20 flex items-center justify-center text-5xl font-bold text-white">
                     {profile.displayName[0]}

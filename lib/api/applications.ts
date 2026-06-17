@@ -34,4 +34,21 @@ export const applicationsApi = {
   reject(id: number, data?: RejectApplicationRequest): Promise<ProductApplicationResponse> {
     return api.post(`/applications/${id}/reject`, data);
   },
+
+  // ─── Price negotiation ───────────────────────────────────────────────────────
+
+  /** Brand sends a counter-offer price to a KOL who proposed a price. */
+  counterOffer(id: number, counterPrice: number): Promise<ProductApplicationResponse> {
+    return api.post(`/applications/${id}/counter-offer`, { counterPrice });
+  },
+
+  /** KOL accepts the brand's counter-offer → triggers booking creation. */
+  acceptCounter(id: number): Promise<ProductApplicationResponse> {
+    return api.post(`/applications/${id}/accept-counter`);
+  },
+
+  /** KOL rejects the brand's counter-offer → application reverts to PENDING. */
+  rejectCounter(id: number): Promise<ProductApplicationResponse> {
+    return api.post(`/applications/${id}/reject-counter`);
+  },
 };

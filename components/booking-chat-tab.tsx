@@ -21,6 +21,13 @@ function formatDateTime(iso: string | null | undefined): string {
   }
 }
 
+function sanitizeHref(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return undefined;
+}
+
 interface BookingChatTabProps {
   bookingId: number;
   currentUserId: number;
@@ -32,11 +39,19 @@ export function BookingChatTab({ bookingId, currentUserId }: BookingChatTabProps
   const [error, setError] = useState('');
   const [content, setContent] = useState('');
   const [attachmentUrl, setAttachmentUrl] = useState('');
+  const [attachmentInput, setAttachmentInput] = useState('');
+  const [showAttachInput, setShowAttachInput] = useState(false);
+  const [attachError, setAttachError] = useState('');
+  const [sendError, setSendError] = useState('');
   const [sending, setSending] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(0);
   const [connected, setConnected] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  // Tracks whether SSE has ever connected; prevents a duplicate load on initial mount
+  // (useEffect already issues the first fetch; only reconnects need a reload).
+  const sseHasConnectedRef = useRef(false);
 
   const scrollToBottom = useCallback(() => {
     if (listRef.current) {
@@ -44,31 +59,13 @@ export function BookingChatTab({ bookingId, currentUserId }: BookingChatTabProps
     }
   }, []);
 
-  const handleSseEvent = useCallback(
-    (eventName: string, data: string) => {
-      if (eventName === 'message') {
-        try {
-          const msg: BookingMessageResponse = JSON.parse(data);
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === msg.id)) return prev;
-            return [...prev, msg];
-          });
-          setTimeout(scrollToBottom, 0);
-        } catch {
-          // malformed JSON — ignore
-        }
-      }
-    },
-    [scrollToBottom],
-  );
-
-  useSse({
-    path: `/bookings/${bookingId}/messages/stream`,
-    enabled: true,
-    onEvent: handleSseEvent,
-    onConnect: () => setConnected(true),
-    onDisconnect: () => setConnected(false),
-  });
+  // Returns true when the scroll container is close enough to the bottom that
+  // auto-scrolling on a new message won't surprise the user.
+  const isNearBottom = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+  }, []);
 
   const loadMessages = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -80,8 +77,13 @@ export function BookingChatTab({ bookingId, currentUserId }: BookingChatTabProps
         if (append) {
           setMessages((prev) => [...ordered, ...prev]);
         } else {
+          // Preserve scroll position when refreshing on reconnect:
+          // only jump to bottom if user was already there.
+          const wasNearBottom = isNearBottom();
           setMessages(ordered);
-          setTimeout(scrollToBottom, 0);
+          if (wasNearBottom) {
+            setTimeout(scrollToBottom, 0);
+          }
         }
         setHasMore(res.hasNext);
         setPage(targetPage);
@@ -91,30 +93,107 @@ export function BookingChatTab({ bookingId, currentUserId }: BookingChatTabProps
         setLoading(false);
       }
     },
-    [bookingId, scrollToBottom],
+    [bookingId, scrollToBottom, isNearBottom],
   );
+
+  const handleSseEvent = useCallback(
+    (eventName: string, data: string) => {
+      if (eventName === 'message') {
+        try {
+          const msg: BookingMessageResponse = JSON.parse(data);
+          // Capture scroll position before updating state (state update is async).
+          const atBottom = isNearBottom();
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === msg.id)) return prev;
+            return [...prev, msg];
+          });
+          if (atBottom) {
+            setTimeout(scrollToBottom, 0);
+          }
+        } catch {
+          // malformed JSON — ignore
+        }
+      }
+    },
+    [scrollToBottom, isNearBottom],
+  );
+
+  const handleSseConnect = useCallback(() => {
+    setConnected(true);
+    if (sseHasConnectedRef.current) {
+      // Re-connect after a disconnect — reload to recover any missed messages.
+      loadMessages(0, false);
+    }
+    // Mark that SSE has established at least one connection so future
+    // reconnects know to trigger a reload.
+    sseHasConnectedRef.current = true;
+  }, [loadMessages]);
+
+  // Must be a stable useCallback reference — an inline arrow function would
+  // create a new reference on every render, causing useSse to restart the SSE
+  // connection on every state update and breaking real-time delivery.
+  const handleSseDisconnect = useCallback(() => setConnected(false), []);
+
+  useSse({
+    path: `/bookings/${bookingId}/messages/stream`,
+    enabled: true,
+    onEvent: handleSseEvent,
+    onConnect: handleSseConnect,
+    onDisconnect: handleSseDisconnect,
+  });
 
   useEffect(() => {
     loadMessages(0, false);
   }, [loadMessages]);
 
+  function autoGrow(el: HTMLTextAreaElement) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 128) + 'px';
+  }
+
+  function handleAttachConfirm() {
+    const url = attachmentInput.trim();
+    if (!url) {
+      setAttachmentUrl('');
+      setShowAttachInput(false);
+      setAttachError('');
+      setAttachmentInput('');
+      return;
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      setAttachError('URL phải bắt đầu bằng https:// hoặc http://');
+      return;
+    }
+    setAttachmentUrl(url);
+    setShowAttachInput(false);
+    setAttachError('');
+    setAttachmentInput('');
+  }
+
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = content.trim();
     if (!trimmed || sending) return;
+    setSendError('');
     setSending(true);
     try {
       const sent = await bookingsApi.sendMessage(bookingId, {
         content: trimmed,
-        attachmentUrl: attachmentUrl.trim() || undefined,
+        attachmentUrl: attachmentUrl || undefined,
       });
-      setMessages((prev) => [...prev, sent]);
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === sent.id)) return prev;
+        return [...prev, sent];
+      });
       setContent('');
       setAttachmentUrl('');
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
       setTimeout(scrollToBottom, 0);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Gửi tin nhắn thất bại.';
-      window.alert(message);
+      const msg = err instanceof Error ? err.message : 'Gửi tin nhắn thất bại. Vui lòng thử lại.';
+      setSendError(msg);
     } finally {
       setSending(false);
     }
@@ -154,16 +233,23 @@ export function BookingChatTab({ bookingId, currentUserId }: BookingChatTabProps
           <div className="grid place-items-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-ink" />
           </div>
-        ) : error ? (
-          <p className="text-center text-pin-red text-sm py-12">{error}</p>
         ) : messages.length === 0 ? (
-          <div className="text-center py-12 text-mute text-sm">
-            <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-50" />
-            Chưa có tin nhắn nào. Hãy bắt đầu cuộc trò chuyện!
-          </div>
+          error ? (
+            <p className="text-center text-pin-red text-sm py-12">{error}</p>
+          ) : (
+            <div className="text-center py-12 text-mute text-sm">
+              <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-50" />
+              Chưa có tin nhắn nào. Hãy bắt đầu cuộc trò chuyện!
+            </div>
+          )
         ) : (
-          messages.map((msg) => {
+          <>
+            {error && (
+              <p className="text-center text-pin-red text-xs py-1">{error}</p>
+            )}
+            {messages.map((msg) => {
             const mine = msg.senderUserId === currentUserId;
+            const safeHref = sanitizeHref(msg.attachmentUrl);
             return (
               <div
                 key={msg.id}
@@ -179,9 +265,9 @@ export function BookingChatTab({ bookingId, currentUserId }: BookingChatTabProps
                   <p className="whitespace-pre-wrap break-words leading-relaxed">
                     {msg.content}
                   </p>
-                  {msg.attachmentUrl && (
+                  {safeHref && (
                     <a
-                      href={msg.attachmentUrl}
+                      href={safeHref}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`mt-1 inline-flex items-center gap-1 text-xs font-bold underline ${
@@ -202,33 +288,79 @@ export function BookingChatTab({ bookingId, currentUserId }: BookingChatTabProps
                 </div>
               </div>
             );
-          })
+            })}
+          </>
         )}
       </div>
 
       <form
         onSubmit={handleSend}
-        className="border-t border-hairline-soft p-3 flex items-end gap-2"
+        className="border-t border-hairline-soft p-3 flex flex-col gap-2"
       >
-        <div className="flex-1 flex flex-col gap-2">
-          {attachmentUrl && (
-            <div className="flex items-center justify-between gap-2 text-xs bg-surface-card rounded-lg px-3 py-1.5">
-              <span className="truncate text-mute flex items-center gap-1.5">
-                <Paperclip className="w-3 h-3" />
-                {attachmentUrl}
-              </span>
-              <button
-                type="button"
-                onClick={() => setAttachmentUrl('')}
-                className="text-mute hover:text-ink"
-              >
-                <XCircle className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
+        {/* Attachment URL inline input */}
+        {showAttachInput && (
+          <div className="flex items-center gap-2">
+            <input
+              type="url"
+              value={attachmentInput}
+              onChange={(e) => {
+                setAttachmentInput(e.target.value);
+                setAttachError('');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); handleAttachConfirm(); }
+                if (e.key === 'Escape') { setShowAttachInput(false); setAttachmentInput(''); setAttachError(''); }
+              }}
+              placeholder="https://example.com/file.pdf"
+              autoFocus
+              className="pin-input flex-1 text-sm"
+            />
+            <button
+              type="button"
+              onClick={handleAttachConfirm}
+              className="text-xs font-bold text-ink px-3 py-2 rounded-lg bg-surface-card hover:bg-secondary-bg transition-colors"
+            >
+              Xác nhận
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowAttachInput(false); setAttachmentInput(''); setAttachError(''); }}
+              className="text-mute hover:text-ink"
+            >
+              <XCircle className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+        {attachError && (
+          <p className="text-xs text-pin-red pl-1">{attachError}</p>
+        )}
+
+        {/* Selected attachment preview */}
+        {attachmentUrl && (
+          <div className="flex items-center justify-between gap-2 text-xs bg-surface-card rounded-lg px-3 py-1.5">
+            <span className="truncate text-mute flex items-center gap-1.5">
+              <Paperclip className="w-3 h-3" />
+              {attachmentUrl}
+            </span>
+            <button
+              type="button"
+              onClick={() => setAttachmentUrl('')}
+              className="text-mute hover:text-ink"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-end gap-2">
           <textarea
+            ref={textareaRef}
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={(e) => {
+              setContent(e.target.value);
+              setSendError('');
+              autoGrow(e.target);
+            }}
             placeholder="Nhập tin nhắn..."
             rows={1}
             onKeyDown={(e) => {
@@ -237,33 +369,38 @@ export function BookingChatTab({ bookingId, currentUserId }: BookingChatTabProps
                 handleSend(e as unknown as React.FormEvent);
               }
             }}
-            className="pin-input min-h-[44px] max-h-32 resize-none"
+            className="pin-input flex-1 min-h-[44px] max-h-32 resize-none overflow-y-auto"
           />
+          <button
+            type="button"
+            onClick={() => { setShowAttachInput((v) => !v); setAttachmentInput(''); setAttachError(''); }}
+            className={`grid place-items-center w-11 h-11 rounded-full transition-colors ${
+              attachmentUrl
+                ? 'bg-ink text-on-dark'
+                : 'bg-surface-card text-ink hover:bg-secondary-bg'
+            }`}
+            aria-label="Đính kèm tệp"
+            title="Đính kèm URL tệp"
+          >
+            <Paperclip className="w-4 h-4" />
+          </button>
+          <button
+            type="submit"
+            disabled={sending || !content.trim()}
+            className="grid place-items-center w-11 h-11 rounded-full bg-ink text-on-dark hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+            aria-label="Gửi"
+          >
+            {sending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            const url = window.prompt('Đường dẫn tệp đính kèm:');
-            if (url) setAttachmentUrl(url.trim());
-          }}
-          className="grid place-items-center w-11 h-11 rounded-full bg-surface-card text-ink hover:bg-secondary-bg transition-colors"
-          aria-label="Đính kèm tệp"
-          title="Đính kèm tệp"
-        >
-          <Paperclip className="w-4 h-4" />
-        </button>
-        <button
-          type="submit"
-          disabled={sending || !content.trim()}
-          className="grid place-items-center w-11 h-11 rounded-full bg-ink text-on-dark hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-          aria-label="Gửi"
-        >
-          {sending ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Send className="w-4 h-4" />
-          )}
-        </button>
+
+        {sendError && (
+          <p className="text-xs text-pin-red pl-1">{sendError}</p>
+        )}
       </form>
     </section>
   );

@@ -39,7 +39,7 @@ import {
 } from 'recharts';
 
 import { adminApi } from '@/lib/api/admin';
-import { ApiError } from '@/lib/api/client';
+import { ApiError, resolveMediaUrl } from '@/lib/api/client';
 import type {
   AdminStatsOverview,
   AdminRevenueStats,
@@ -1080,7 +1080,7 @@ export default function AdminDashboardPage() {
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <Avatar className="w-9 h-9 ring-1 ring-hairline">
-                                {avatarUrl && <AvatarImage src={avatarUrl} alt={trimmedName || 'KOL'} />}
+                                {avatarUrl && <AvatarImage src={resolveMediaUrl(avatarUrl)} alt={trimmedName || 'KOL'} />}
                                 <AvatarFallback className="bg-surface-soft text-ink text-xs font-bold">
                                   {avatarInitials || '—'}
                                 </AvatarFallback>

@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { KOLDetailModal } from '@/components/kol-detail-modal';
 import { KOLCard } from '@/components/kol-card';
 import { formatMinPrice } from '@/lib/utils';
+import { resolveMediaUrl } from '@/lib/api/client';
 
 export default function KOLProfilesPage() {
   const [kols, setKols] = useState<KolSummaryResponse[]>([]);
@@ -163,7 +164,7 @@ export default function KOLProfilesPage() {
                         <div className="flex items-center gap-3">
                           {kol.avatarUrl ? (
                             /* eslint-disable-next-line @next/next/no-img-element */
-                            <img src={kol.avatarUrl} alt={kol.displayName} className="w-10 h-10 rounded-full object-cover" />
+                            <img src={resolveMediaUrl(kol.avatarUrl)} alt={kol.displayName} className="w-10 h-10 rounded-full object-cover" />
                           ) : (
                             <div className="grid place-items-center w-10 h-10 rounded-full bg-ink text-on-dark font-bold text-sm">
                               {kol.displayName[0]}

@@ -36,6 +36,7 @@ import {
   type KolSearchCriteria,
 } from '@/lib/api/ai-assistant';
 import { formatMinPrice } from '@/lib/utils';
+import { resolveMediaUrl } from '@/lib/api/client';
 
 type Message = {
   id: string;
@@ -1050,11 +1051,12 @@ function EmptyResults({
 
 function Avatar({ name, src, size = 'md' }: { name: string; src?: string | null; size?: 'md' | 'lg' }) {
   const sizeClass = size === 'lg' ? 'h-14 w-14' : 'h-14 w-14 sm:h-16 sm:w-16';
+  const resolvedSrc = resolveMediaUrl(src) || null;
   return (
     <div className={`${sizeClass} shrink-0 overflow-hidden rounded-full bg-secondary-bg`}>
-      {src ? (
+      {resolvedSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={name} className="h-full w-full object-cover" />
+        <img src={resolvedSrc} alt={name} className="h-full w-full object-cover" />
       ) : (
         <div className="grid h-full w-full place-items-center bg-ink text-xl font-bold text-on-dark">
           {name[0]?.toUpperCase() ?? 'K'}

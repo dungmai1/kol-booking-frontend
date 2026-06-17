@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/sheet';
 import { PaginationBar } from '@/components/pagination-bar';
 import { adminApi } from '@/lib/api/admin';
-import { ApiError } from '@/lib/api/client';
+import { ApiError, resolveMediaUrl } from '@/lib/api/client';
 import type { BrandProfileResponse, PageResponse } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
@@ -261,7 +261,7 @@ export default function AdminBrandReviewPage() {
                           {brand.logoUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
-                              src={brand.logoUrl}
+                              src={resolveMediaUrl(brand.logoUrl)}
                               alt={brand.companyName}
                               className="w-10 h-10 rounded-full object-cover shrink-0 bg-surface-card"
                             />
@@ -362,7 +362,7 @@ export default function AdminBrandReviewPage() {
                   {detailTarget.logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={detailTarget.logoUrl}
+                      src={resolveMediaUrl(detailTarget.logoUrl)}
                       alt={detailTarget.companyName}
                       className="w-14 h-14 rounded-full object-cover shrink-0 bg-surface-card"
                     />

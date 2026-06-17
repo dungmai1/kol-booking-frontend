@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { KolSummaryResponse, KolPublicResponse } from '@/lib/api/types';
 import { BookingFormDialog } from './booking-form';
 import { formatMinPrice } from '@/lib/utils';
+import { resolveMediaUrl } from '@/lib/api/client';
 
 interface KOLDetailModalProps {
   kol: KolSummaryResponse;
@@ -60,7 +61,7 @@ export function KOLDetailModal({ kol, onClose }: KOLDetailModalProps) {
         <div className="relative aspect-[16/8] bg-secondary-bg">
           {kol.avatarUrl ? (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={kol.avatarUrl} alt={kol.displayName} className="absolute inset-0 w-full h-full object-cover" />
+            <img src={resolveMediaUrl(kol.avatarUrl)} alt={kol.displayName} className="absolute inset-0 w-full h-full object-cover" />
           ) : (
             <div className="absolute inset-0 grid place-items-center" style={{ background: 'linear-gradient(150deg, #f6dccb 0%, #c47a55 100%)' }}>
               <span className="font-display font-extrabold text-on-dark text-[80px]">{kol.displayName[0]}</span>

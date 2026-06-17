@@ -72,6 +72,26 @@ async function refreshAccessToken(): Promise<string | null> {
   return null;
 }
 
+/**
+ * Refresh the access token if it has become invalid (401).
+ * Joins an in-flight refresh so only one HTTP round-trip is made
+ * even when multiple callers (SSE hook + regular API) hit 401 simultaneously.
+ * Returns the new access token on success, or null if refresh failed.
+ */
+export async function refreshIfExpired(): Promise<string | null> {
+  if (isRefreshing) {
+    return new Promise<string | null>((resolve) => {
+      refreshQueue.push(resolve);
+    });
+  }
+  isRefreshing = true;
+  const newToken = await refreshAccessToken();
+  refreshQueue.forEach((cb) => cb(newToken));
+  refreshQueue = [];
+  isRefreshing = false;
+  return newToken;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,

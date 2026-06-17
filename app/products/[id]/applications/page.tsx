@@ -14,6 +14,7 @@ import {
   UserCheck,
   ExternalLink,
   Inbox,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ApplicationStatusPill } from '@/components/product-status-pill';
@@ -21,7 +22,7 @@ import { PaginationBar } from '@/components/pagination-bar';
 import { productsApi } from '@/lib/api/products';
 import { applicationsApi } from '@/lib/api/applications';
 import { useAuth } from '@/contexts/AuthContext';
-import { ApiError } from '@/lib/api/client';
+import { ApiError, resolveMediaUrl } from '@/lib/api/client';
 import type {
   ProductResponse,
   ProductApplicationResponse,
@@ -36,6 +37,7 @@ const STATUS_TABS: { value: ApplicationStatus | 'ALL'; label: string }[] = [
   { value: 'ALL', label: 'Tất cả' },
   { value: 'PENDING', label: 'Chờ duyệt' },
   { value: 'SHORTLISTED', label: 'Danh sách rút gọn' },
+  { value: 'COUNTER_OFFERED', label: 'Đang thương lượng' },
   { value: 'ACCEPTED', label: 'Đã duyệt' },
   { value: 'REJECTED', label: 'Từ chối' },
 ];
@@ -61,6 +63,11 @@ export default function ProductApplicantsPage({ params }: { params: Promise<{ id
   const [rejectFor, setRejectFor] = useState<ProductApplicationResponse | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejecting, setRejecting] = useState(false);
+
+  const [counterFor, setCounterFor] = useState<ProductApplicationResponse | null>(null);
+  const [counterPrice, setCounterPrice] = useState('');
+  const [counterError, setCounterError] = useState('');
+  const [countering, setCountering] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -148,6 +155,26 @@ export default function ProductApplicantsPage({ params }: { params: Promise<{ id
       setError(err instanceof ApiError ? err.message : 'Không thể từ chối ứng tuyển.');
     } finally {
       setRejecting(false);
+    }
+  }
+
+  async function submitCounterOffer() {
+    if (!counterFor) return;
+    const price = Number(counterPrice.replace(/[^0-9]/g, ''));
+    if (!price || price < 1000) {
+      setCounterError('Vui lòng nhập giá hợp lệ (≥ 1,000 VND)');
+      return;
+    }
+    setCountering(true);
+    setCounterError('');
+    try {
+      patchItem(await applicationsApi.counterOffer(counterFor.id, price));
+      setCounterFor(null);
+      setCounterPrice('');
+    } catch (err) {
+      setCounterError(err instanceof ApiError ? err.message : 'Không thể gửi giá thương lượng.');
+    } finally {
+      setCountering(false);
     }
   }
 
@@ -273,6 +300,11 @@ export default function ProductApplicantsPage({ params }: { params: Promise<{ id
                     setRejectReason('');
                     setRejectFor(a);
                   }}
+                  onCounterOffer={() => {
+                    setCounterPrice('');
+                    setCounterError('');
+                    setCounterFor(a);
+                  }}
                 />
               ))}
             </ul>
@@ -280,6 +312,55 @@ export default function ProductApplicantsPage({ params }: { params: Promise<{ id
           </>
         )}
       </main>
+
+      {/* Counter-offer modal */}
+      {counterFor && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm px-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => !countering && setCounterFor(null)}
+        >
+          <div className="bg-canvas rounded-2xl shadow-xl w-full max-w-[440px] p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-display font-bold text-xl text-ink mb-1">Thương lượng giá</h2>
+            <p className="text-sm text-mute mb-1">
+              KOL <span className="font-semibold text-ink">{counterFor.kolDisplayName}</span> đề xuất:{' '}
+              {counterFor.proposedPrice != null ? vnd.format(counterFor.proposedPrice) : '—'}
+            </p>
+            <p className="text-sm text-mute mb-4">Nhập mức giá bạn muốn đề nghị lại:</p>
+            <input
+              type="number"
+              value={counterPrice}
+              onChange={(e) => { setCounterPrice(e.target.value); setCounterError(''); }}
+              min={1000}
+              step={1000}
+              placeholder="VD: 5000000"
+              className="w-full px-3 py-2.5 rounded-xl border border-hairline bg-surface-soft focus:bg-canvas focus:border-ink focus:outline-none text-sm mb-1"
+            />
+            {counterError && <p className="text-xs text-pin-red mb-3">{counterError}</p>}
+            {!counterError && <div className="mb-3" />}
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCounterFor(null)}
+                disabled={countering}
+                className="btn-pin-secondary !rounded-full disabled:opacity-50"
+              >
+                Huỷ
+              </button>
+              <button
+                type="button"
+                onClick={submitCounterOffer}
+                disabled={countering}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 disabled:opacity-50"
+              >
+                {countering ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
+                Gửi giá thương lượng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reject modal */}
       {rejectFor && (
@@ -335,6 +416,7 @@ function ApplicantCard({
   onShortlist,
   onAccept,
   onReject,
+  onCounterOffer,
 }: {
   app: ProductApplicationResponse;
   rank?: number;
@@ -342,10 +424,12 @@ function ApplicantCard({
   onShortlist: () => void;
   onAccept: () => void;
   onReject: () => void;
+  onCounterOffer: () => void;
 }) {
   const canShortlist = app.status === 'PENDING';
-  const canAccept = app.status === 'PENDING' || app.status === 'SHORTLISTED';
-  const canReject = app.status === 'PENDING' || app.status === 'SHORTLISTED';
+  const canCounterOffer = (app.status === 'PENDING' || app.status === 'SHORTLISTED') && app.proposedPrice != null && app.proposedPrice > 0;
+  const canAccept = app.status === 'PENDING' || app.status === 'SHORTLISTED' || app.status === 'COUNTER_OFFERED';
+  const canReject = app.status === 'PENDING' || app.status === 'SHORTLISTED' || app.status === 'COUNTER_OFFERED';
   const initial = (app.kolDisplayName ?? 'K').charAt(0).toUpperCase();
 
   return (
@@ -359,7 +443,7 @@ function ApplicantCard({
         <div className="w-12 h-12 rounded-full bg-surface-card overflow-hidden flex-shrink-0 grid place-items-center">
           {app.kolAvatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={app.kolAvatarUrl} alt={app.kolDisplayName ?? ''} className="w-full h-full object-cover" />
+            <img src={resolveMediaUrl(app.kolAvatarUrl)} alt={app.kolDisplayName ?? ''} className="w-full h-full object-cover" />
           ) : (
             <span className="font-bold text-ink">{initial}</span>
           )}
@@ -402,6 +486,9 @@ function ApplicantCard({
             {app.proposedPrice != null && app.proposedPrice > 0 && (
               <span className="font-semibold text-ink">Giá đề xuất: {vnd.format(app.proposedPrice)}</span>
             )}
+            {app.brandCounterPrice != null && app.brandCounterPrice > 0 && (
+              <span className="font-semibold text-amber-600">Giá thương lượng: {vnd.format(app.brandCounterPrice)}</span>
+            )}
             {app.bookingId && (
               <Link
                 href={`/bookings/${app.bookingId}`}
@@ -416,7 +503,7 @@ function ApplicantCard({
         </div>
       </div>
 
-      {(canShortlist || canAccept || canReject) && (
+      {(canShortlist || canCounterOffer || canAccept || canReject) && (
         <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-hairline-soft">
           {canShortlist && (
             <button
@@ -427,6 +514,17 @@ function ApplicantCard({
             >
               <ListChecks className="w-4 h-4" />
               Danh sách rút gọn
+            </button>
+          )}
+          {canCounterOffer && (
+            <button
+              type="button"
+              onClick={onCounterOffer}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors disabled:opacity-50"
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+              Thương lượng
             </button>
           )}
           {canReject && (

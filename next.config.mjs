@@ -7,8 +7,8 @@ const nextConfig = {
     unoptimized: true,
   },
   async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1';
-    let origin = 'http://localhost:8080';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8081/api/v1';
+    let origin = 'http://localhost:8081';
     try {
       origin = new URL(apiUrl).origin;
     } catch {
