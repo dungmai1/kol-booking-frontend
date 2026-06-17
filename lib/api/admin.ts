@@ -112,6 +112,14 @@ export const adminApi = {
     return api.post(`/admin/users/${id}/unban`);
   },
 
+  deleteUser(id: number): Promise<void> {
+    return api.delete(`/admin/users/${id}`);
+  },
+
+  createUser(data: { email: string; password: string; role: 'KOL' | 'BRAND' }): Promise<AdminUserResponse> {
+    return api.post('/admin/users', data);
+  },
+
   // ─── KOL Approval ────────────────────────────────────────────────────────────
 
   getPendingKols(params: { status?: string; page?: number; size?: number } = {}): Promise<PageResponse<KolProfileResponse>> {
@@ -125,6 +133,10 @@ export const adminApi = {
 
   rejectKol(id: number, data: AdminRejectRequest): Promise<void> {
     return api.post(`/admin/kols/${id}/reject`, data);
+  },
+
+  getKol(id: number): Promise<KolProfileResponse> {
+    return api.get(`/admin/kols/${id}`);
   },
 
   // ─── Brand Approval ───────────────────────────────────────────────────────────

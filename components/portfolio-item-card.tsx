@@ -7,6 +7,7 @@ import {
 } from '@/lib/portfolio/media';
 import type { KolPortfolioItemResponse } from '@/lib/api/types';
 import { TikTokPortfolioPlayer } from '@/components/tiktok-portfolio-player';
+import { resolveMediaUrl } from '@/lib/api/client';
 
 type Variant = 'grid' | 'compact' | 'editor';
 
@@ -43,7 +44,7 @@ export function PortfolioItemCard({ item, variant = 'grid', className = '' }: Po
 
   const media = isImage ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={item.mediaUrl} alt={item.title} className="h-full w-full object-cover" />
+    <img src={resolveMediaUrl(item.mediaUrl)} alt={item.title} className="h-full w-full object-cover" />
   ) : tiktok ? (
     <TikTokPortfolioPlayer url={item.mediaUrl} title={item.title} compact={compact} />
   ) : directVideo ? (
@@ -100,7 +101,7 @@ export function PortfolioMediaPreview({
   if (mediaType === 'IMAGE') {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={mediaUrl} alt="preview" className="h-full w-full object-cover" />
+      <img src={resolveMediaUrl(mediaUrl)} alt="preview" className="h-full w-full object-cover" />
     );
   }
 

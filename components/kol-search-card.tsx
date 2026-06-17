@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Heart, Star } from 'lucide-react';
 import type { KolSummaryResponse, Platform } from '@/lib/api/types';
 import { brandApi } from '@/lib/api/brand';
+import { resolveMediaUrl } from '@/lib/api/client';
 
 const PLATFORM_LABEL: Record<Platform, string> = {
   TIKTOK: 'TikTok',
@@ -75,7 +76,7 @@ export function KolSearchCard({
         {kol.avatarUrl ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
-            src={kol.avatarUrl}
+            src={resolveMediaUrl(kol.avatarUrl)}
             alt={kol.displayName}
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             loading="lazy"

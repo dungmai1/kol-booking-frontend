@@ -21,7 +21,7 @@ import { ProductStatusPill } from '@/components/product-status-pill';
 import { PaginationBar } from '@/components/pagination-bar';
 import { productsApi } from '@/lib/api/products';
 import { useAuth } from '@/contexts/AuthContext';
-import { ApiError } from '@/lib/api/client';
+import { ApiError, resolveMediaUrl } from '@/lib/api/client';
 import { useBrandProfileGate } from '@/lib/hooks/use-brand-profile-gate';
 import type { ProductResponse } from '@/lib/api/types';
 import { vnd, formatDate } from '@/lib/products/meta';
@@ -146,7 +146,7 @@ export default function ManageProductsPage() {
                   <div className="w-full sm:w-28 h-24 sm:h-20 rounded-xl bg-surface-card overflow-hidden flex-shrink-0">
                     {p.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.imageUrl} alt={p.title} className="w-full h-full object-cover" />
+                      <img src={resolveMediaUrl(p.imageUrl)} alt={p.title} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full grid place-items-center text-mute">
                         <PackageOpen className="w-6 h-6" />

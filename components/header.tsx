@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bot, Menu, X, Search, LogOut, User, LayoutDashboard, Settings, Megaphone, ClipboardList, ShieldCheck, BarChart2, Wallet } from 'lucide-react';
+import { Bot, Menu, X, Search, LogOut, User, LayoutDashboard, Settings, Megaphone, ClipboardList, ShieldCheck, BarChart2, Wallet, FileText } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { NotificationBell } from '@/components/notification-bell';
@@ -185,6 +185,9 @@ export function Header() {
                         </Link>
                         <Link href="/kol-dashboard/analytics" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
                           <BarChart2 className="w-4 h-4" /> Analytics
+                        </Link>
+                        <Link href="/kol-dashboard/media-kit" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
+                          <FileText className="w-4 h-4" /> Media Kit
                         </Link>
                       </>
                     )}

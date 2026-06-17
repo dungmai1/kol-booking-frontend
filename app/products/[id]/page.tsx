@@ -28,7 +28,7 @@ import { productsApi } from '@/lib/api/products';
 import { brandApi } from '@/lib/api/brand';
 import { kolApi } from '@/lib/api/kol';
 import { useAuth } from '@/contexts/AuthContext';
-import { ApiError } from '@/lib/api/client';
+import { ApiError, resolveMediaUrl } from '@/lib/api/client';
 import type { ProductResponse } from '@/lib/api/types';
 import { brandProfilePath } from '@/lib/brands/display';
 import { PLATFORM_LABEL, vnd, formatFollowers, formatDate, daysUntil } from '@/lib/products/meta';
@@ -204,7 +204,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               <div className="relative aspect-[16/9] bg-surface-card">
                 {product.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={product.imageUrl} alt={product.title} className="w-full h-full object-cover" />
+                  <img src={resolveMediaUrl(product.imageUrl)} alt={product.title} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full grid place-items-center text-mute">
                     <ImageIcon className="w-12 h-12" />

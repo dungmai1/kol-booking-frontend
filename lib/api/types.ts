@@ -73,9 +73,11 @@ export type ProductStatus = 'OPEN' | 'CLOSED';
 export type ApplicationStatus =
   | 'PENDING'
   | 'SHORTLISTED'
+  | 'COUNTER_OFFERED'
   | 'ACCEPTED'
   | 'REJECTED'
-  | 'WITHDRAWN';
+  | 'WITHDRAWN'
+  | 'BOOKING_CANCELLED';
 
 export type WithdrawStatus = 'PENDING' | 'APPROVED' | 'PAID' | 'REJECTED';
 
@@ -99,6 +101,7 @@ export type NotificationType =
   | 'NEW_MESSAGE'
   | 'PRODUCT_APPLICATION_RECEIVED'
   | 'APPLICATION_SHORTLISTED'
+  | 'APPLICATION_COUNTER_OFFERED'
   | 'APPLICATION_ACCEPTED'
   | 'APPLICATION_REJECTED';
 
@@ -355,11 +358,11 @@ export interface SubmittedDeliverableResponse {
 export interface BookingResponse {
   id: number;
   brandProfileId: number;
-  /** Denormalized for list/detail display (optional until backend embeds summary). */
-  brandCompanyName?: string | null;
+  /** Snapshotted at booking creation — stable even if brand later changes name. */
+  brandCompanyName: string | null;
   kolProfileId: number;
-  /** Denormalized KOL display name (optional until backend embeds summary). */
-  kolDisplayName?: string | null;
+  /** Snapshotted at booking creation — stable even if KOL later changes name. */
+  kolDisplayName: string | null;
   campaignTitle: string;
   campaignBrief: string;
   deliverables: string;
@@ -563,6 +566,7 @@ export interface ProductApplicationResponse {
   kolMinPrice: number | null;
   message: string | null;
   proposedPrice: number | null;
+  brandCounterPrice: number | null;
   status: ApplicationStatus;
   bookingId: number | null;
   rejectReason: string | null;

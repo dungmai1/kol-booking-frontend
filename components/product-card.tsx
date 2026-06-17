@@ -3,6 +3,7 @@ import { Users, CalendarClock, Briefcase, ImageIcon } from 'lucide-react';
 import type { ProductResponse } from '@/lib/api/types';
 import { ProductStatusPill } from '@/components/product-status-pill';
 import { brandProfilePath } from '@/lib/brands/display';
+import { resolveMediaUrl } from '@/lib/api/client';
 import {
   PLATFORM_LABEL,
   vnd,
@@ -28,7 +29,7 @@ export function ProductCard({ product }: { product: ProductResponse }) {
         {product.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={product.imageUrl}
+            src={resolveMediaUrl(product.imageUrl)}
             alt={product.title}
             className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
           />

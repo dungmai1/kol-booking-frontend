@@ -10,6 +10,8 @@ import {
   Undo2,
   ArrowRight,
   CalendarClock,
+  Check,
+  X,
 } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ApplicationStatusPill } from '@/components/product-status-pill';
@@ -91,6 +93,34 @@ export default function MyApplicationsPage() {
     }
   }
 
+  async function doAcceptCounter(a: ProductApplicationResponse) {
+    if (!window.confirm('Chấp nhận giá thương lượng của brand? Một booking sẽ được tạo tự động.')) return;
+    setBusyId(a.id);
+    setError('');
+    try {
+      const updated = await applicationsApi.acceptCounter(a.id);
+      setItems((list) => list.map((x) => (x.id === a.id ? updated : x)));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Không thể chấp nhận giá thương lượng.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function doRejectCounter(a: ProductApplicationResponse) {
+    if (!window.confirm('Từ chối giá thương lượng? Ứng tuyển sẽ trở về trạng thái chờ duyệt.')) return;
+    setBusyId(a.id);
+    setError('');
+    try {
+      const updated = await applicationsApi.rejectCounter(a.id);
+      setItems((list) => list.map((x) => (x.id === a.id ? updated : x)));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Không thể từ chối giá thương lượng.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   if (authLoading || user?.role !== 'KOL') {
     return (
       <div className="min-h-screen bg-surface-soft">
@@ -141,8 +171,10 @@ export default function MyApplicationsPage() {
             <ul className="space-y-3">
               {items.map((a) => {
                 const canWithdraw = a.status === 'PENDING' || a.status === 'SHORTLISTED';
+                const hasCounterOffer = a.status === 'COUNTER_OFFERED' && a.brandCounterPrice != null && a.brandCounterPrice > 0;
+                const busy = busyId === a.id;
                 return (
-                  <li key={a.id} className="bg-canvas rounded-2xl border border-hairline p-4">
+                  <li key={a.id} className={`bg-canvas rounded-2xl border p-4 ${hasCounterOffer ? 'border-amber-400' : 'border-hairline'}`}>
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -163,14 +195,46 @@ export default function MyApplicationsPage() {
                         <button
                           type="button"
                           onClick={() => doWithdraw(a)}
-                          disabled={busyId === a.id}
+                          disabled={busy}
                           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-ink bg-surface-card hover:bg-secondary-bg transition-colors disabled:opacity-50 flex-shrink-0"
                         >
-                          {busyId === a.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Undo2 className="w-4 h-4" />}
+                          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Undo2 className="w-4 h-4" />}
                           Rút
                         </button>
                       )}
                     </div>
+
+                    {/* Counter-offer banner */}
+                    {hasCounterOffer && (
+                      <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 mb-3">
+                        <p className="text-sm font-bold text-amber-800 mb-0.5">Brand đã gửi giá thương lượng</p>
+                        <p className="text-sm text-amber-700 mb-3">
+                          Giá đề xuất của bạn: <span className="font-semibold">{a.proposedPrice != null ? vnd.format(a.proposedPrice) : '—'}</span>
+                          {' · '}
+                          Giá brand đề nghị: <span className="font-semibold">{vnd.format(a.brandCounterPrice!)}</span>
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => doAcceptCounter(a)}
+                            disabled={busy}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-on-dark bg-ink hover:bg-charcoal transition-colors disabled:opacity-50"
+                          >
+                            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                            Chấp nhận
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => doRejectCounter(a)}
+                            disabled={busy}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-pin-red bg-pin-red/10 hover:bg-pin-red/20 transition-colors disabled:opacity-50"
+                          >
+                            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                            Từ chối
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {a.message && (
                       <p className="text-sm text-body bg-surface-soft rounded-xl px-3 py-2 mb-2 whitespace-pre-wrap">
@@ -178,7 +242,7 @@ export default function MyApplicationsPage() {
                       </p>
                     )}
                     <div className="flex flex-wrap items-center gap-3 text-xs">
-                      {a.proposedPrice != null && a.proposedPrice > 0 && (
+                      {a.proposedPrice != null && a.proposedPrice > 0 && !hasCounterOffer && (
                         <span className="font-semibold text-ink">Giá đề xuất: {vnd.format(a.proposedPrice)}</span>
                       )}
                       {a.bookingId && (

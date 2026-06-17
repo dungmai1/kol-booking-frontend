@@ -23,17 +23,21 @@ export const PRODUCT_STATUS_CLASS: Record<ProductStatus, string> = {
 export const APPLICATION_STATUS_LABEL: Record<ApplicationStatus, string> = {
   PENDING: 'Chờ duyệt',
   SHORTLISTED: 'Trong danh sách rút gọn',
+  COUNTER_OFFERED: 'Đang thương lượng',
   ACCEPTED: 'Đã duyệt',
   REJECTED: 'Đã từ chối',
   WITHDRAWN: 'Đã rút',
+  BOOKING_CANCELLED: 'Đặt lịch bị hủy',
 };
 
 export const APPLICATION_STATUS_CLASS: Record<ApplicationStatus, string> = {
   PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
   SHORTLISTED: 'bg-violet-50 text-violet-700 border-violet-200',
+  COUNTER_OFFERED: 'bg-orange-50 text-orange-700 border-orange-300',
   ACCEPTED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   REJECTED: 'bg-red-50 text-red-700 border-red-200',
   WITHDRAWN: 'bg-gray-100 text-gray-600 border-gray-200',
+  BOOKING_CANCELLED: 'bg-gray-100 text-gray-500 border-gray-200',
 };
 
 export const TOP_BY_OPTIONS: { value: TopApplicantsBy; label: string }[] = [

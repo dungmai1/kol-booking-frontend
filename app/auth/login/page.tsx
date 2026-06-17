@@ -42,6 +42,10 @@ export default function LoginPage() {
         router.push('/auth/check-email?resent=login');
         return;
       }
+      // router.refresh() clears Next.js client-side router cache so the
+      // newly-authenticated user's data (profile images, personalised UI)
+      // is fetched fresh instead of served from the previous session's cache.
+      router.refresh();
       if (tokens.role === 'ADMIN') router.push('/admin');
       else if (tokens.role === 'KOL') router.push('/kol-dashboard/me');
       else router.push('/dashboard');

@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { BookingFormDialog } from '@/components/booking-form';
 import { PortfolioItemCard } from '@/components/portfolio-item-card';
 import { ReviewListItem } from '@/components/review-list-item';
+import { resolveMediaUrl } from '@/lib/api/client';
 
 const PLATFORM_GLYPH: Record<string, string> = {
   TIKTOK: 'TT',
@@ -133,11 +134,11 @@ export default function KOLDetailPage({ params }: { params: Promise<{ id: string
               >
                 {kol.coverUrl && (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={kol.coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-50" />
+                  <img src={resolveMediaUrl(kol.coverUrl)} alt="" className="absolute inset-0 w-full h-full object-cover opacity-50" />
                 )}
                 {kol.avatarUrl ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={kol.avatarUrl} alt={kol.displayName} className="absolute inset-0 w-full h-full object-cover" />
+                  <img src={resolveMediaUrl(kol.avatarUrl)} alt={kol.displayName} className="absolute inset-0 w-full h-full object-cover" />
                 ) : (
                   <div className="absolute inset-0 grid place-items-center">
                     <span className="font-display font-extrabold text-on-dark text-[120px]">{kol.displayName[0]}</span>
