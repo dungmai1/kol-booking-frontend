@@ -9,6 +9,7 @@ import {
   Calendar,
   CheckCircle2,
   CreditCard,
+  ExternalLink,
   Hash,
   Loader2,
   MessageSquare,
@@ -47,6 +48,7 @@ import type {
   PricingPackageType,
   ReviewDirection,
   ReviewResponse,
+  SubmittedDeliverableResponse,
 } from '@/lib/api/types';
 import {
   BOOKING_STATUS_COLORS,
@@ -1107,6 +1109,11 @@ function DetailTab({
           </div>
         </section>
 
+        {/* Submitted deliverables — visible to both sides when content has been submitted */}
+        {booking.submittedDeliverables && booking.submittedDeliverables.length > 0 && (
+          <SubmittedDeliverablesSection deliverables={booking.submittedDeliverables} />
+        )}
+
         {/* Reviews — only when booking is COMPLETED */}
         {showReviewSection && (
           <section className="pin-card p-5 md:p-6">
@@ -1262,6 +1269,72 @@ function DetailRow({
       </p>
       {children}
     </div>
+  );
+}
+
+function SubmittedDeliverablesSection({
+  deliverables,
+}: {
+  deliverables: SubmittedDeliverableResponse[];
+}) {
+  return (
+    <section className="pin-card p-5 md:p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Upload className="w-5 h-5 text-ink" />
+        <h2 className="font-display font-bold text-lg text-ink">Nội dung KOL đã nộp</h2>
+      </div>
+      <div className="space-y-3">
+        {deliverables.map((d) => (
+          <div
+            key={d.id}
+            className="rounded-2xl border border-hairline bg-canvas p-4 space-y-2"
+          >
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="px-2 py-0.5 rounded-full bg-surface-card font-bold text-ink">
+                {d.type}
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-surface-card font-bold text-ink">
+                {d.platform}
+              </span>
+              <span
+                className={`px-2 py-0.5 rounded-full font-bold ${
+                  d.status === 'APPROVED'
+                    ? 'bg-green-100 text-green-700'
+                    : d.status === 'REJECTED'
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-amber-100 text-amber-700'
+                }`}
+              >
+                {d.status === 'SUBMITTED'
+                  ? 'Chờ duyệt'
+                  : d.status === 'APPROVED'
+                    ? 'Đã duyệt'
+                    : d.status === 'REJECTED'
+                      ? 'Đã từ chối'
+                      : d.status}
+              </span>
+              {d.submittedAt && (
+                <span className="text-mute ml-auto">{formatDateTime(d.submittedAt)}</span>
+              )}
+            </div>
+            <a
+              href={d.submittedUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm font-bold text-ink hover:text-pin-red transition-colors break-all"
+            >
+              <ExternalLink className="w-4 h-4 shrink-0" />
+              {d.submittedUrl}
+            </a>
+            {d.note && (
+              <p className="text-sm text-body whitespace-pre-wrap leading-relaxed border-t border-hairline-soft pt-2 mt-1">
+                {d.note}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
