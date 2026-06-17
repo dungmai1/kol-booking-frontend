@@ -12,6 +12,7 @@ import {
   TrendingUp,
   TrendingDown,
   AlertCircle,
+  AlertTriangle,
   CalendarRange,
   ArrowUpRight,
   Star,
@@ -628,28 +629,10 @@ export default function AdminDashboardPage() {
           const delta = deltaInfo(value, prev);
           return (
             <div key={kpi.key} className="rounded-2xl border border-hairline bg-surface-card p-5">
-              {/* Icon + delta row */}
-              <div className="flex items-start justify-between">
-                <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${kpi.iconBg}`}
-                >
-                  <kpi.icon className={`w-6 h-6 ${kpi.iconColor}`} />
-                </div>
-                {!overviewLoading && !overviewError && delta && (
-                  <span
-                    className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full shrink-0 ${
-                      delta.dir === 'up'
-                        ? 'bg-green-50 text-green-700'
-                        : delta.dir === 'down'
-                          ? 'bg-red-50 text-red-600'
-                          : 'bg-gray-100 text-mute'
-                    }`}
-                  >
-                    {delta.dir === 'up' && <TrendingUp className="w-3 h-3" />}
-                    {delta.dir === 'down' && <TrendingDown className="w-3 h-3" />}
-                    {delta.pct.toFixed(1)}%
-                  </span>
-                )}
+              <div
+                className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${kpi.iconBg}`}
+              >
+                <kpi.icon className={`w-6 h-6 ${kpi.iconColor}`} />
               </div>
               {/* Label + value */}
               <div className="mt-4">
@@ -671,92 +654,56 @@ export default function AdminDashboardPage() {
         })}
       </section>
 
-      {/* ── Operational highlights (dark banner like reference) ─────────────── */}
+      {/* ── Operational highlights ─────────────────────────────────────────── */}
       <section
-        className="rounded-2xl overflow-hidden grid grid-cols-1 sm:grid-cols-3"
-        style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #0f172a 100%)' }}
+        className="grid grid-cols-1 sm:grid-cols-3 gap-4"
         aria-label="Cảnh báo vận hành"
       >
         {/* 1 — Tranh chấp */}
-        <div className="p-5 border-b sm:border-b-0 sm:border-r" style={{ background: 'rgba(239,68,68,0.1)', borderColor: 'rgba(255,255,255,0.1)' }}>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse shrink-0" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-red-400">Tranh chấp đang mở</span>
-          </div>
-          {overviewLoading ? (
-            <div className="h-10 w-20 rounded-lg bg-white/10 animate-pulse mb-2" />
-          ) : (
-            <div className="text-4xl font-bold text-white leading-none tabular-nums">
-              {compactNumber(overview?.disputeCount ?? 0)}
+        <div className="rounded-2xl border border-hairline bg-surface-card p-5">
+          <div className="flex items-start justify-between">
+            <p className="text-xs text-mute font-medium uppercase tracking-wider">TRANH CHẤP ĐANG MỞ</p>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-red-50">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
             </div>
-          )}
-          <div className="mt-3 pt-3 flex items-center justify-between text-xs" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            <span className="text-white/50">Booking cần admin xử lý</span>
+          </div>
+          <div className="mt-4">
+            <div className="text-[22px] font-bold text-ink leading-tight tabular-nums">
+              {overviewLoading ? <Skeleton className="h-7 w-12" /> : compactNumber(overview?.disputeCount ?? 0)}
+            </div>
+            <p className="text-xs text-mute mt-1">Booking cần admin xử lý</p>
           </div>
         </div>
 
-        {/* 2 — Hồ sơ chờ duyệt */}
-        <div className="p-5 border-b sm:border-b-0 sm:border-r" style={{ background: 'rgba(99,102,241,0.1)', borderColor: 'rgba(255,255,255,0.1)' }}>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse shrink-0" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">Hồ sơ chờ duyệt</span>
-          </div>
-          <div className="flex">
-            <div className="flex-1 pr-4 mr-4" style={{ borderRight: '1px solid rgba(255,255,255,0.1)' }}>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1">KOL</div>
-              {overviewLoading ? (
-                <div className="h-8 w-12 rounded-lg bg-white/10 animate-pulse" />
-              ) : (
-                <div className="text-3xl font-bold text-white tabular-nums leading-none">{compactNumber(overview?.pendingKolApprovals ?? 0)}</div>
-              )}
-              <div className="text-[10px] text-white/40 mt-1">PENDING_REVIEW</div>
-            </div>
-            <div className="flex-1">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1">BRAND</div>
-              {overviewLoading ? (
-                <div className="h-8 w-12 rounded-lg bg-white/10 animate-pulse" />
-              ) : (
-                <div className="text-3xl font-bold text-white tabular-nums leading-none">{compactNumber(overview?.pendingBrandApprovals ?? 0)}</div>
-              )}
-              <div className="text-[10px] text-white/40 mt-1">PENDING_REVIEW</div>
+        {/* 2 — KOL chờ duyệt */}
+        <div className="rounded-2xl border border-hairline bg-surface-card p-5">
+          <div className="flex items-start justify-between">
+            <p className="text-xs text-mute font-medium uppercase tracking-wider">KOL CHỜ DUYỆT</p>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-indigo-50">
+              <UserCheck className="w-5 h-5 text-indigo-500" />
             </div>
           </div>
-          <div className="mt-3 pt-3 flex items-center justify-between text-xs" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            <span className="text-white/50">Tổng chờ duyệt</span>
-            <span className="font-bold text-white tabular-nums">
-              {overviewLoading ? '—' : compactNumber((overview?.pendingKolApprovals ?? 0) + (overview?.pendingBrandApprovals ?? 0))}
-            </span>
+          <div className="mt-4">
+            <div className="text-[22px] font-bold text-ink leading-tight tabular-nums">
+              {overviewLoading ? <Skeleton className="h-7 w-12" /> : compactNumber(overview?.pendingKolApprovals ?? 0)}
+            </div>
+            <p className="text-xs text-mute mt-1">Hồ sơ PENDING_REVIEW</p>
           </div>
         </div>
 
-        {/* 3 — Hiệu suất kỳ này */}
-        <div className="p-5" style={{ background: 'rgba(16,185,129,0.08)' }}>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Hiệu suất kỳ này</span>
-          </div>
-          <div className="flex">
-            <div className="flex-1 pr-4 mr-4" style={{ borderRight: '1px solid rgba(255,255,255,0.1)' }}>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1">Doanh thu</div>
-              {overviewLoading ? (
-                <div className="h-8 w-20 rounded-lg bg-white/10 animate-pulse" />
-              ) : (
-                <div className="text-xl font-bold text-white tabular-nums leading-tight">{compactVnd(overview?.totalRevenue ?? 0)}</div>
-              )}
-              <div className="text-[10px] text-white/40 mt-1">Phí nền tảng</div>
-            </div>
-            <div className="flex-1">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-sky-400 mb-1">Active</div>
-              {overviewLoading ? (
-                <div className="h-8 w-12 rounded-lg bg-white/10 animate-pulse" />
-              ) : (
-                <div className="text-3xl font-bold text-white tabular-nums leading-none">{compactNumber(overview?.activeBookings ?? 0)}</div>
-              )}
-              <div className="text-[10px] text-white/40 mt-1">Booking đang chạy</div>
+        {/* 3 — Brand chờ duyệt */}
+        <div className="rounded-2xl border border-hairline bg-surface-card p-5">
+          <div className="flex items-start justify-between">
+            <p className="text-xs text-mute font-medium uppercase tracking-wider">BRAND CHỜ DUYỆT</p>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-violet-50">
+              <Building2 className="w-5 h-5 text-violet-500" />
             </div>
           </div>
-          <div className="mt-3 pt-3 text-xs text-white/50" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            Khoảng phân tích: {currentRangeLabel}
+          <div className="mt-4">
+            <div className="text-[22px] font-bold text-ink leading-tight tabular-nums">
+              {overviewLoading ? <Skeleton className="h-7 w-12" /> : compactNumber(overview?.pendingBrandApprovals ?? 0)}
+            </div>
+            <p className="text-xs text-mute mt-1">Hồ sơ PENDING_REVIEW</p>
           </div>
         </div>
       </section>
