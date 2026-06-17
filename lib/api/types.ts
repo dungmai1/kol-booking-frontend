@@ -340,6 +340,18 @@ export interface BrandPublicResponse {
 
 // ─── Bookings ─────────────────────────────────────────────────────────────────
 
+export type DeliverableStatus = 'PENDING' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+
+export interface SubmittedDeliverableResponse {
+  id: number;
+  type: PricingPackageType;
+  platform: Platform;
+  submittedUrl: string;
+  note: string | null;
+  submittedAt: string | null;
+  status: DeliverableStatus;
+}
+
 export interface BookingResponse {
   id: number;
   brandProfileId: number;
@@ -366,6 +378,7 @@ export interface BookingResponse {
   invoiceUrl: string | null;
   createdAt: string;
   updatedAt: string;
+  submittedDeliverables: SubmittedDeliverableResponse[];
 }
 
 export interface CreateBookingRequest {
