@@ -34,7 +34,7 @@ function VerifyEmailContent() {
         setTimeout(() => {
           if (role === 'ADMIN') router.push('/admin');
           else if (role === 'KOL') router.push('/kol-dashboard/me');
-          else router.push('/dashboard');
+          else router.push('/');
         }, 2000);
       })
       .catch((err) => {

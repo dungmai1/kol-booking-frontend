@@ -9,6 +9,17 @@ const nextConfig = {
   async redirects() {
     return [
       { source: '/login', destination: '/auth/login', permanent: true },
+      // Email links from backend use /api/v1/auth/* — map to frontend auth pages (query string preserved).
+      {
+        source: '/api/v1/auth/verify-email',
+        destination: '/auth/verify-email',
+        permanent: false,
+      },
+      {
+        source: '/api/v1/auth/reset-password',
+        destination: '/reset-password',
+        permanent: false,
+      },
     ];
   },
   async rewrites() {

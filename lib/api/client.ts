@@ -126,6 +126,7 @@ async function request<T>(
         path.startsWith('/auth/register') ||
         path.startsWith('/auth/check-email') ||
         path.startsWith('/auth/verify-email') ||
+        path.startsWith('/auth/email-verified') ||
         path.startsWith('/auth/forgot-password') ||
         path.startsWith('/reset-password');
       if (!isPublicAuthPage) {

@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 const UNVERIFIED_ALLOWED_PREFIXES = [
   '/auth/check-email',
   '/auth/verify-email',
+  '/auth/email-verified',
   '/reset-password',
 ];
 

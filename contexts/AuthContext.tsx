@@ -27,6 +27,8 @@ interface AuthContextValue {
   register: (data: RegisterRequest) => Promise<AuthTokens>;
   logout: () => Promise<void>;
   markEmailVerified: () => void;
+  /** Save tokens after backend redirect (e.g. /auth/email-verified#accessToken=...). */
+  establishSessionFromTokens: (tokens: AuthTokens, emailVerified?: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -127,6 +129,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser((prev) => (prev ? { ...prev, emailVerified: true } : null));
   }, []);
 
+  const establishSessionFromTokens = useCallback((tokens: AuthTokens, emailVerified = true) => {
+    saveTokens(tokens);
+    setUser({
+      userId: tokens.userId,
+      email: tokens.email,
+      role: tokens.role,
+      emailVerified,
+    });
+  }, []);
+
   const logout = useCallback(async (): Promise<void> => {
     const refreshToken = getRefreshToken();
     if (refreshToken) {
@@ -150,6 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         markEmailVerified,
+        establishSessionFromTokens,
       }}
     >
       {children}
