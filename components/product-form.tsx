@@ -8,6 +8,8 @@ import { filesApi } from '@/lib/api/files';
 import type { CategoryResponse, Platform, ProductResponse, ProductCreateRequest } from '@/lib/api/types';
 import { PLATFORM_LABEL, PLATFORM_OPTIONS } from '@/lib/products/meta';
 import { ACCEPTED_IMAGE_ACCEPT, validateUploadFile } from '@/lib/uploads/validate';
+import { CurrencyInput } from '@/components/currency-input';
+import { parsePriceDigits, priceToDigits, validatePriceDigits } from '@/lib/currency-input';
 
 interface ProductFormProps {
   initial?: ProductResponse | null;
@@ -37,7 +39,7 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? '');
-  const [budget, setBudget] = useState(initial?.budget != null ? String(initial.budget) : '');
+  const [budget, setBudget] = useState(priceToDigits(initial?.budget));
   const [categoryId, setCategoryId] = useState(initial?.categoryId != null ? String(initial.categoryId) : '');
   const [platform, setPlatform] = useState<string>(initial?.requiredPlatform ?? '');
   const [minFollowers, setMinFollowers] = useState(initial?.minFollowers != null ? String(initial.minFollowers) : '');
@@ -79,11 +81,7 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
   }
 
   function validateBudget(v: string): string {
-    if (!v) return '';
-    const n = Number(v);
-    if (isNaN(n)) return 'Ngân sách không phải là số hợp lệ.';
-    if (n <= 0) return 'Ngân sách phải lớn hơn 0.';
-    return '';
+    return validatePriceDigits(v, { fieldLabel: 'Ngân sách' });
   }
 
   function validateSlots(v: string): string {
@@ -157,7 +155,7 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
       title: title.trim(),
       description: description.trim() || undefined,
       imageUrl: imageUrl.trim() || undefined,
-      budget: budget ? Number(budget) : undefined,
+      budget: budget ? parsePriceDigits(budget) ?? undefined : undefined,
       categoryId: categoryId ? Number(categoryId) : undefined,
       requiredPlatform: (platform as Platform) || undefined,
       minFollowers: minFollowers ? Number(minFollowers) : undefined,
@@ -253,14 +251,11 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
         {/* Budget */}
         <div>
           <label className={labelClass}>Ngân sách (VND)</label>
-          <input
-            type="number"
-            min={0}
-            step={1000}
+          <CurrencyInput
             value={budget}
-            onChange={(e) => { setBudget(e.target.value); if (budgetError) setBudgetError(''); }}
-            onBlur={() => setBudgetError(validateBudget(budget))}
-            placeholder="VD: 5000000"
+            onValueChange={(digits) => { setBudget(digits); if (budgetError) setBudgetError(''); }}
+            onValidate={setBudgetError}
+            validateOptions={{ fieldLabel: 'Ngân sách' }}
             className={budgetError ? inputErrorClass : inputClass}
           />
           {budgetError && <p className="text-xs text-red-600 mt-1">{budgetError}</p>}

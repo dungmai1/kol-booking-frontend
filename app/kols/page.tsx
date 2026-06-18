@@ -16,6 +16,7 @@ import type {
   PageResponse,
   Platform,
 } from '@/lib/api/types';
+import { formatPriceDigits, handlePriceInputChange } from '@/lib/currency-input';
 
 const PLATFORMS: Platform[] = ['TIKTOK', 'INSTAGRAM', 'YOUTUBE', 'FACEBOOK'];
 const PLATFORM_LABEL: Record<Platform, string> = {
@@ -445,6 +446,7 @@ function FilterPanel({
       {/* Price range (VND) */}
       <FilterSection title="Khoảng giá (VND)">
         <RangeRow
+          currency
           minValue={filters.minPrice}
           maxValue={filters.maxPrice}
           minPlaceholder="Tối thiểu"
@@ -578,6 +580,7 @@ function RangeRow({
   maxPlaceholder,
   onMinChange,
   onMaxChange,
+  currency = false,
 }: {
   minValue: number | '';
   maxValue: number | '';
@@ -585,26 +588,41 @@ function RangeRow({
   maxPlaceholder: string;
   onMinChange: (v: number | '') => void;
   onMaxChange: (v: number | '') => void;
+  currency?: boolean;
 }) {
+  function displayValue(value: number | ''): string | number {
+    if (value === '') return '';
+    return currency ? formatPriceDigits(String(value)) : value;
+  }
+
+  function parseValue(raw: string): number | '' {
+    if (raw === '') return '';
+    if (currency) {
+      const digits = handlePriceInputChange(raw);
+      return digits === '' ? '' : Number(digits);
+    }
+    return Number(raw);
+  }
+
   return (
     <div className="flex items-center gap-2">
       <input
-        type="number"
+        type={currency ? 'text' : 'number'}
         inputMode="numeric"
-        min={0}
+        min={currency ? undefined : 0}
         placeholder={minPlaceholder}
-        value={minValue}
-        onChange={(e) => onMinChange(e.target.value === '' ? '' : Number(e.target.value))}
+        value={displayValue(minValue)}
+        onChange={(e) => onMinChange(parseValue(e.target.value))}
         className="pin-input w-full h-10 text-sm"
       />
       <span className="text-mute text-sm shrink-0">–</span>
       <input
-        type="number"
+        type={currency ? 'text' : 'number'}
         inputMode="numeric"
-        min={0}
+        min={currency ? undefined : 0}
         placeholder={maxPlaceholder}
-        value={maxValue}
-        onChange={(e) => onMaxChange(e.target.value === '' ? '' : Number(e.target.value))}
+        value={displayValue(maxValue)}
+        onChange={(e) => onMaxChange(parseValue(e.target.value))}
         className="pin-input w-full h-10 text-sm"
       />
     </div>

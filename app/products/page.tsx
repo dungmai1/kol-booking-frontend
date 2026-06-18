@@ -11,6 +11,7 @@ import { categoriesApi } from '@/lib/api/categories';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ProductResponse, CategoryResponse, Platform } from '@/lib/api/types';
 import { PLATFORM_LABEL, PLATFORM_OPTIONS } from '@/lib/products/meta';
+import { CurrencyInput } from '@/components/currency-input';
 
 const PAGE_SIZE = 12;
 
@@ -172,19 +173,15 @@ export default function ProductsBrowsePage() {
                 ))}
               </select>
 
-              <input
-                type="number"
-                min={0}
+              <CurrencyInput
                 value={draft.minBudget}
-                onChange={(e) => setDraft((d) => ({ ...d, minBudget: e.target.value }))}
+                onValueChange={(digits) => setDraft((d) => ({ ...d, minBudget: digits }))}
                 placeholder="Ngân sách từ"
                 className="md:col-span-1 h-11 px-3 rounded-xl border border-hairline bg-surface-soft focus:border-ink focus:outline-none text-sm"
               />
-              <input
-                type="number"
-                min={0}
+              <CurrencyInput
                 value={draft.maxBudget}
-                onChange={(e) => setDraft((d) => ({ ...d, maxBudget: e.target.value }))}
+                onValueChange={(digits) => setDraft((d) => ({ ...d, maxBudget: digits }))}
                 placeholder="đến"
                 className="md:col-span-1 h-11 px-3 rounded-xl border border-hairline bg-surface-soft focus:border-ink focus:outline-none text-sm"
               />

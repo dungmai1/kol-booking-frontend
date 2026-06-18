@@ -23,6 +23,8 @@ import { productsApi } from '@/lib/api/products';
 import { applicationsApi } from '@/lib/api/applications';
 import { useAuth } from '@/contexts/AuthContext';
 import { ApiError, resolveMediaUrl } from '@/lib/api/client';
+import { CurrencyInput } from '@/components/currency-input';
+import { parsePriceDigits, validatePriceDigits } from '@/lib/currency-input';
 import type {
   ProductResponse,
   ProductApplicationResponse,
@@ -160,8 +162,13 @@ export default function ProductApplicantsPage({ params }: { params: Promise<{ id
 
   async function submitCounterOffer() {
     if (!counterFor) return;
-    const price = Number(counterPrice.replace(/[^0-9]/g, ''));
-    if (!price || price < 1000) {
+    const priceErr = validatePriceDigits(counterPrice, { required: true, min: 1000, fieldLabel: 'Giá thương lượng' });
+    if (priceErr) {
+      setCounterError(priceErr);
+      return;
+    }
+    const price = parsePriceDigits(counterPrice);
+    if (price == null) {
       setCounterError('Vui lòng nhập giá hợp lệ (≥ 1,000 VND)');
       return;
     }
@@ -328,13 +335,11 @@ export default function ProductApplicantsPage({ params }: { params: Promise<{ id
               {counterFor.proposedPrice != null ? vnd.format(counterFor.proposedPrice) : '—'}
             </p>
             <p className="text-sm text-mute mb-4">Nhập mức giá bạn muốn đề nghị lại:</p>
-            <input
-              type="number"
+            <CurrencyInput
               value={counterPrice}
-              onChange={(e) => { setCounterPrice(e.target.value); setCounterError(''); }}
-              min={1000}
-              step={1000}
-              placeholder="VD: 5000000"
+              onValueChange={(digits) => { setCounterPrice(digits); setCounterError(''); }}
+              onValidate={setCounterError}
+              validateOptions={{ required: true, min: 1000, fieldLabel: 'Giá thương lượng' }}
               className="w-full px-3 py-2.5 rounded-xl border border-hairline bg-surface-soft focus:bg-canvas focus:border-ink focus:outline-none text-sm mb-1"
             />
             {counterError && <p className="text-xs text-pin-red mb-3">{counterError}</p>}

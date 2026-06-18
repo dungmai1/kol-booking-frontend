@@ -46,6 +46,8 @@ import {
   Card, CardHeader, CardContent, CardTitle, CardDescription, CardFooter,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/currency-input';
+import { parsePriceDigits, validatePriceDigits } from '@/lib/currency-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -990,17 +992,21 @@ function ChannelDialog({ onSubmit }: { onSubmit: (data: CreateChannelRequest) =>
 function PackageDialog({ onSubmit }: { onSubmit: (data: CreatePackageRequest) => Promise<void> }) {
   const [type, setType] = useState<PricingPackageType>('POST');
   const [platform, setPlatform] = useState<Platform>('TIKTOK');
-  const [price, setPrice] = useState<string>('0');
+  const [price, setPrice] = useState('');
+  const [priceError, setPriceError] = useState('');
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const priceNum = Number(price);
-  const pricePreview = Number.isFinite(priceNum) && priceNum > 0 ? vnd.format(priceNum) : '—';
+  const priceNum = parsePriceDigits(price);
+  const pricePreview = priceNum != null && priceNum > 0 ? vnd.format(priceNum) : '—';
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!description.trim()) { toast.error('Mô tả không được trống'); return; }
-    if (!Number.isFinite(priceNum) || priceNum <= 0) { toast.error('Giá phải lớn hơn 0'); return; }
+    const err = validatePriceDigits(price, { required: true, fieldLabel: 'Giá' });
+    setPriceError(err);
+    if (err) return;
+    if (priceNum == null || priceNum <= 0) { toast.error('Giá phải lớn hơn 0'); return; }
     setBusy(true);
     try {
       await onSubmit({
@@ -1047,7 +1053,15 @@ function PackageDialog({ onSubmit }: { onSubmit: (data: CreatePackageRequest) =>
         </div>
         <div>
           <Label htmlFor="pk-price" className="mb-2 block">Giá (VND)</Label>
-          <Input id="pk-price" type="number" min={0} value={price} onChange={(e) => setPrice(e.target.value)} />
+          <CurrencyInput
+            id="pk-price"
+            value={price}
+            onValueChange={(digits) => { setPrice(digits); if (priceError) setPriceError(''); }}
+            onValidate={setPriceError}
+            validateOptions={{ required: true, fieldLabel: 'Giá' }}
+            className={priceError ? 'border-red-500' : undefined}
+          />
+          {priceError && <p className="text-xs text-red-600 mt-1">{priceError}</p>}
           <p className="text-xs text-mute mt-1">Hiển thị: {pricePreview}</p>
         </div>
         <div>

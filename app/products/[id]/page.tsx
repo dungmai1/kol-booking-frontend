@@ -29,6 +29,8 @@ import { brandApi } from '@/lib/api/brand';
 import { kolApi } from '@/lib/api/kol';
 import { useAuth } from '@/contexts/AuthContext';
 import { ApiError, resolveMediaUrl } from '@/lib/api/client';
+import { CurrencyInput } from '@/components/currency-input';
+import { parsePriceDigits, validatePriceDigits } from '@/lib/currency-input';
 import type { ProductResponse } from '@/lib/api/types';
 import { brandProfilePath } from '@/lib/brands/display';
 import { PLATFORM_LABEL, vnd, formatFollowers, formatDate, daysUntil } from '@/lib/products/meta';
@@ -50,6 +52,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   // Apply form state (KOL)
   const [message, setMessage] = useState('');
   const [proposedPrice, setProposedPrice] = useState('');
+  const [proposedPriceError, setProposedPriceError] = useState('');
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState('');
   const [applied, setApplied] = useState(false);
@@ -104,12 +107,17 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   async function handleApply(e: React.FormEvent) {
     e.preventDefault();
     if (!product) return;
+
+    const priceErr = validatePriceDigits(proposedPrice, { fieldLabel: 'Giá đề xuất' });
+    setProposedPriceError(priceErr);
+    if (priceErr) return;
+
     setApplying(true);
     setApplyError('');
     try {
       await productsApi.apply(product.id, {
         message: message.trim() || undefined,
-        proposedPrice: proposedPrice ? Number(proposedPrice) : undefined,
+        proposedPrice: proposedPrice ? parsePriceDigits(proposedPrice) ?? undefined : undefined,
       });
       setApplied(true);
       setProduct((p) => (p ? { ...p, hasApplied: true, applicationCount: p.applicationCount + 1 } : p));
@@ -292,10 +300,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   kolApproved={kolApproved}
                   message={message}
                   proposedPrice={proposedPrice}
+                  proposedPriceError={proposedPriceError}
                   applying={applying}
                   error={applyError}
                   onMessage={setMessage}
-                  onPrice={setProposedPrice}
+                  onPrice={(v) => { setProposedPrice(v); if (proposedPriceError) setProposedPriceError(''); }}
+                  onPriceValidate={setProposedPriceError}
                   onSubmit={handleApply}
                 />
               ) : isBrand ? (
@@ -407,10 +417,12 @@ function KolApplyPanel({
   kolApproved,
   message,
   proposedPrice,
+  proposedPriceError,
   applying,
   error,
   onMessage,
   onPrice,
+  onPriceValidate,
   onSubmit,
 }: {
   isOpen: boolean;
@@ -418,10 +430,12 @@ function KolApplyPanel({
   kolApproved: boolean | null;
   message: string;
   proposedPrice: string;
+  proposedPriceError: string;
   applying: boolean;
   error: string;
   onMessage: (v: string) => void;
   onPrice: (v: string) => void;
+  onPriceValidate: (error: string) => void;
   onSubmit: (e: React.FormEvent) => void;
 }) {
   if (applied) {
@@ -477,15 +491,17 @@ function KolApplyPanel({
       </div>
       <div>
         <label className="block text-xs font-semibold text-ink mb-1.5">Giá đề xuất (tuỳ chọn)</label>
-        <input
-          type="number"
-          min={0}
-          step={1000}
+        <CurrencyInput
           value={proposedPrice}
-          onChange={(e) => onPrice(e.target.value)}
+          onValueChange={onPrice}
+          onValidate={onPriceValidate}
+          validateOptions={{ fieldLabel: 'Giá đề xuất' }}
           placeholder="Để trống nếu theo ngân sách"
-          className="w-full px-3 py-2.5 rounded-xl border border-hairline bg-surface-soft focus:bg-canvas focus:border-ink focus:outline-none text-sm"
+          className={`w-full px-3 py-2.5 rounded-xl border bg-surface-soft focus:bg-canvas focus:outline-none text-sm ${
+            proposedPriceError ? 'border-pin-red focus:border-pin-red' : 'border-hairline focus:border-ink'
+          }`}
         />
+        {proposedPriceError && <p className="text-xs text-pin-red mt-1">{proposedPriceError}</p>}
         <p className="text-[11px] text-mute mt-1">Nếu được duyệt, giá này sẽ là ngân sách của booking.</p>
       </div>
       {error && <p className="text-sm text-pin-red font-medium">{error}</p>}

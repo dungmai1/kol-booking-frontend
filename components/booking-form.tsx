@@ -30,6 +30,12 @@ import { ApiError } from '@/lib/api/client';
 import { isPendingReview, isProfileApproved } from '@/lib/profile-status';
 import { useAuth } from '@/contexts/AuthContext';
 import { PLATFORM_FEE_RATE, kolPayout, platformFee } from '@/lib/bookings/status';
+import {
+  formatPriceDigits,
+  handlePriceInputChange,
+  priceToDigits,
+  PRICE_INPUT_PLACEHOLDER,
+} from '@/lib/currency-input';
 
 interface BookingFormDialogProps {
   kolProfileId: number;
@@ -46,11 +52,6 @@ const vnd = new Intl.NumberFormat('vi-VN', {
   currency: 'VND',
   maximumFractionDigits: 0,
 });
-
-function formatThousands(digits: string): string {
-  if (!digits) return '';
-  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-}
 
 function todayISO(): string {
   const d = new Date();
@@ -76,9 +77,7 @@ export function BookingFormDialog({
   const [campaignTitle, setCampaignTitle] = useState('');
   const [campaignBrief, setCampaignBrief] = useState('');
   const [deliverables, setDeliverables] = useState('');
-  const [budgetDigits, setBudgetDigits] = useState(
-    defaultBudget ? String(Math.round(defaultBudget)) : '',
-  );
+  const [budgetDigits, setBudgetDigits] = useState(priceToDigits(defaultBudget));
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -94,7 +93,7 @@ export function BookingFormDialog({
     setCampaignTitle('');
     setCampaignBrief('');
     setDeliverables('');
-    setBudgetDigits(defaultBudget ? String(Math.round(defaultBudget)) : '');
+    setBudgetDigits(priceToDigits(defaultBudget));
     setStartDate('');
     setEndDate('');
     setError('');
@@ -295,11 +294,11 @@ export function BookingFormDialog({
                 id="bf-budget"
                 type="text"
                 inputMode="numeric"
-                value={formatThousands(budgetDigits)}
+                value={formatPriceDigits(budgetDigits)}
                 onChange={(e) =>
-                  setBudgetDigits(e.target.value.replace(/\D/g, ''))
+                  setBudgetDigits(handlePriceInputChange(e.target.value))
                 }
-                placeholder="VD: 10.000.000"
+                placeholder={PRICE_INPUT_PLACEHOLDER}
                 required
               />
               {budget > 0 && (

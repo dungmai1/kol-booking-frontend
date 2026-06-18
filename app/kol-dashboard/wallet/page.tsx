@@ -18,6 +18,8 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { walletApi } from '@/lib/api/wallet';
 import { withdrawalsApi } from '@/lib/api/withdrawals';
+import { CurrencyInput } from '@/components/currency-input';
+import { parsePriceDigits, validatePriceDigits } from '@/lib/currency-input';
 import { useAuth } from '@/contexts/AuthContext';
 import type {
   WalletResponse,
@@ -175,12 +177,16 @@ export default function KolWalletPage() {
   // ─── Withdraw field validators ─────────────────────────────────────────────
 
   function validateWithdrawAmount(v: string, balanceAvailable: number): string {
-    if (!v.trim()) return 'Vui lòng nhập số tiền.';
-    const n = Number(v);
-    if (isNaN(n) || !Number.isFinite(n)) return 'Số tiền không phải là số hợp lệ.';
-    if (n <= 0) return 'Số tiền phải lớn hơn 0.';
-    if (n < 10_000) return 'Số tiền rút tối thiểu là 10.000 VND.';
-    if (n > balanceAvailable) return `Số tiền vượt quá số dư khả dụng (${vnd.format(balanceAvailable)}).`;
+    const baseErr = validatePriceDigits(v, {
+      required: true,
+      min: 10_000,
+      fieldLabel: 'Số tiền',
+    });
+    if (baseErr) return baseErr;
+    const n = parsePriceDigits(v);
+    if (n != null && n > balanceAvailable) {
+      return `Số tiền vượt quá số dư khả dụng (${vnd.format(balanceAvailable)}).`;
+    }
     return '';
   }
 
@@ -235,7 +241,8 @@ export default function KolWalletPage() {
 
     if (aErr || bnErr || baErr || anErr) return;
 
-    const amount = Number(form.amount);
+    const amount = parsePriceDigits(form.amount);
+    if (amount == null) return;
     setSubmitting(true);
     setForm((prev) => ({ ...prev, error: '' }));
     try {
@@ -616,15 +623,11 @@ export default function KolWalletPage() {
                 <label className="text-xs uppercase tracking-wide text-gray-500 font-bold mb-1.5 block">
                   Số tiền muốn rút <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="number"
-                  min={10000}
-                  step={1000}
+                <CurrencyInput
                   autoFocus
-                  placeholder="VD: 1000000 (tối thiểu 10.000)"
                   value={form.amount}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, amount: e.target.value, amountError: '', error: '' }))
+                  onValueChange={(digits) =>
+                    setForm((prev) => ({ ...prev, amount: digits, amountError: '', error: '' }))
                   }
                   onBlur={() =>
                     setForm((prev) => ({
@@ -632,6 +635,7 @@ export default function KolWalletPage() {
                       amountError: validateWithdrawAmount(prev.amount, wallet?.balanceAvailable ?? 0),
                     }))
                   }
+                  placeholder="VD: 1,000,000 (tối thiểu 10,000)"
                   disabled={submitting}
                   className={`w-full px-3 py-2.5 rounded-xl border focus:outline-none text-sm disabled:opacity-50 ${
                     form.amountError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-gray-900'

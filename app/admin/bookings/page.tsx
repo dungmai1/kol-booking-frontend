@@ -22,6 +22,8 @@ import { BookingStatusPill } from '@/components/booking-status-pill';
 import { PaginationBar } from '@/components/pagination-bar';
 import { adminApi } from '@/lib/api/admin';
 import { ApiError } from '@/lib/api/client';
+import { CurrencyInput } from '@/components/currency-input';
+import { parsePriceDigits, priceToDigits, validatePriceDigits } from '@/lib/currency-input';
 import { bookingBrandLabel, bookingKolLabel } from '@/lib/bookings/display';
 import { BOOKING_STATUS_LABEL, bookingCommission } from '@/lib/bookings/status';
 import type { BookingResponse, BookingStatus } from '@/lib/api/types';
@@ -142,21 +144,26 @@ export default function AdminBookingsPage() {
   function openResolve(booking: BookingResponse) {
     setResolveFor(booking);
     setResolution('REFUND_TO_BRAND');
-    setAmount(String(defaultAmountForResolution(booking, 'REFUND_TO_BRAND')));
+    setAmount(priceToDigits(defaultAmountForResolution(booking, 'REFUND_TO_BRAND')));
     setNote('');
   }
 
   function handleResolutionChange(next: DisputeResolution) {
     setResolution(next);
     if (resolveFor) {
-      setAmount(String(defaultAmountForResolution(resolveFor, next)));
+      setAmount(priceToDigits(defaultAmountForResolution(resolveFor, next)));
     }
   }
 
   async function submitResolve() {
     if (!resolveFor) return;
-    const parsed = Number(amount);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
+    const amountErr = validatePriceDigits(amount, { required: true, fieldLabel: 'Số tiền' });
+    if (amountErr) {
+      setError(amountErr);
+      return;
+    }
+    const parsed = parsePriceDigits(amount);
+    if (parsed == null || parsed <= 0) {
       setError('Vui lòng nhập số tiền hợp lệ.');
       return;
     }
@@ -373,12 +380,10 @@ export default function AdminBookingsPage() {
                 <label htmlFor="resolve-amount" className="block text-sm font-bold text-ink mb-2">
                   Số tiền (VND)
                 </label>
-                <input
+                <CurrencyInput
                   id="resolve-amount"
-                  type="number"
-                  min={1}
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onValueChange={setAmount}
                   className="w-full px-3 py-2.5 rounded-xl border border-hairline bg-surface-soft focus:bg-canvas focus:border-ink focus:outline-none text-sm"
                 />
                 <p className="text-xs text-mute mt-1">
