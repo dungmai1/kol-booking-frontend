@@ -21,7 +21,7 @@ export interface PageResponse<T> {
 
 export type Role = 'ADMIN' | 'BRAND' | 'KOL';
 
-export type UserStatus = 'PENDING_VERIFICATION' | 'ACTIVE' | 'BANNED';
+export type UserStatus = 'PENDING_VERIFICATION' | 'ACTIVE' | 'BANNED' | 'INACTIVE';
 
 /** After submit, backend returns `PENDING_REVIEW` (legacy alias: `SUBMITTED`). */
 export type ProfileStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';

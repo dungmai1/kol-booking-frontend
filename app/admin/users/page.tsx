@@ -67,6 +67,7 @@ const STATUS_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
   { value: 'ACTIVE', label: 'Đang hoạt động' },
   { value: 'BANNED', label: 'Đã bị cấm' },
   { value: 'PENDING_VERIFICATION', label: 'Chờ xác minh' },
+  { value: 'INACTIVE', label: 'Đã xoá' },
 ];
 
 const ROLE_BADGE: Record<Role, string> = {
@@ -85,12 +86,14 @@ const STATUS_PILL: Record<UserStatus, string> = {
   ACTIVE: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
   BANNED: 'bg-rose-100 text-rose-700 border border-rose-200',
   PENDING_VERIFICATION: 'bg-amber-100 text-amber-700 border border-amber-200',
+  INACTIVE: 'bg-gray-100 text-gray-500 border border-gray-200',
 };
 
 const STATUS_LABEL: Record<UserStatus, string> = {
   ACTIVE: 'Hoạt động',
   BANNED: 'Bị cấm',
   PENDING_VERIFICATION: 'Chờ xác minh',
+  INACTIVE: 'Đã xoá',
 };
 
 function formatDate(iso: string): string {
@@ -510,22 +513,24 @@ export default function AdminUsersPage() {
                                   Chờ người dùng xác minh
                                 </span>
                               )}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setConfirmTarget({ user: u, action: 'delete' })
-                                }
-                                disabled={isRowPending}
-                                title="Xoá tài khoản"
-                                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200 hover:bg-rose-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                              >
-                                {isRowPending ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                )}
-                                Xoá
-                              </button>
+                              {u.status !== 'INACTIVE' && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setConfirmTarget({ user: u, action: 'delete' })
+                                  }
+                                  disabled={isRowPending}
+                                  title="Xoá tài khoản"
+                                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200 hover:bg-rose-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  {isRowPending ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  )}
+                                  Xoá
+                                </button>
+                              )}
                             </>
                           )}
                         </div>
@@ -725,18 +730,20 @@ export default function AdminUsersPage() {
                         Chờ người dùng xác minh email trước khi thực hiện hành động.
                       </p>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDetailTarget(null);
-                        setConfirmTarget({ user: detailTarget, action: 'delete' });
-                      }}
-                      disabled={isDetailPending}
-                      className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold bg-rose-100 text-rose-700 border border-rose-200 hover:bg-rose-200 disabled:opacity-50 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Xoá tài khoản
-                    </button>
+                    {detailTarget.status !== 'INACTIVE' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDetailTarget(null);
+                          setConfirmTarget({ user: detailTarget, action: 'delete' });
+                        }}
+                        disabled={isDetailPending}
+                        className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold bg-rose-100 text-rose-700 border border-rose-200 hover:bg-rose-200 disabled:opacity-50 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Xoá tài khoản
+                      </button>
+                    )}
                   </div>
                 )}
               </>
