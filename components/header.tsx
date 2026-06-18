@@ -6,6 +6,8 @@ import { Bot, Menu, X, Search, LogOut, User, LayoutDashboard, Settings, Megaphon
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { NotificationBell } from '@/components/notification-bell';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useUserAvatar } from '@/hooks/use-user-avatar';
 
 /**
  * Pinterest primary-nav: red wordmark left, centered pill search bar,
@@ -13,6 +15,7 @@ import { NotificationBell } from '@/components/notification-bell';
  */
 export function Header() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { avatarSrc, label, initials } = useUserAvatar(user?.email, user?.role);
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -132,10 +135,15 @@ export function Header() {
               <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="grid place-items-center w-10 h-10 rounded-full bg-ink text-on-dark font-bold text-sm hover:bg-charcoal transition-colors"
+                  className="rounded-full hover:opacity-90 transition-opacity"
                   aria-label="Tài khoản"
                 >
-                  {user?.email?.[0]?.toUpperCase() ?? 'U'}
+                  <Avatar className="w-10 h-10">
+                    {avatarSrc && <AvatarImage src={avatarSrc} alt={label || 'Tài khoản'} />}
+                    <AvatarFallback className="bg-ink text-on-dark font-bold text-sm">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
                 </button>
                 {userMenuOpen && (
                   <div className="absolute right-0 mt-2 w-60 bg-canvas rounded-[16px] py-2 z-50 border border-hairline shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)]">
