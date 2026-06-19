@@ -17,7 +17,7 @@ const nextConfig = {
       },
       {
         source: '/api/v1/auth/reset-password',
-        destination: '/reset-password',
+        destination: '/auth/reset-password',
         permanent: false,
       },
     ];

@@ -10,6 +10,7 @@ const UNVERIFIED_ALLOWED_PREFIXES = [
   '/auth/check-email',
   '/auth/verify-email',
   '/auth/email-verified',
+  '/auth/reset-password',
   '/reset-password',
 ];
 

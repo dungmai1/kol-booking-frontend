@@ -184,6 +184,7 @@ async function request<T>(
         pathname.startsWith('/auth/verify-email') ||
         pathname.startsWith('/auth/email-verified') ||
         pathname.startsWith('/auth/forgot-password') ||
+        pathname.startsWith('/auth/reset-password') ||
         pathname.startsWith('/reset-password');
       if (!isPublicAuthPage) {
         window.location.href = '/auth/login';
