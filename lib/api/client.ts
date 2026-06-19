@@ -111,6 +111,30 @@ export class ApiError extends Error {
   }
 }
 
+/** Public auth routes where 401 means invalid input/credentials, not an expired session. */
+function isPublicAuthPath(path: string): boolean {
+  return (
+    path === '/auth/login' ||
+    path === '/auth/register' ||
+    path === '/auth/forgot-password' ||
+    path === '/auth/reset-password' ||
+    path === '/auth/verify-email' ||
+    path === '/auth/resend-verification'
+  );
+}
+
+async function errorFromResponse(res: Response): Promise<ApiError> {
+  try {
+    const json: ApiResponse<unknown> = await res.json();
+    if (!json.success) {
+      return new ApiError(res.status, json.errorCode, json.message ?? 'Đã xảy ra lỗi');
+    }
+  } catch {
+    // non-JSON or empty body
+  }
+  return new ApiError(res.status, 'UNAUTHORIZED', 'Phiên đăng nhập hết hạn');
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -126,8 +150,12 @@ async function request<T>(
 
   const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
 
-  // Handle 401 with token refresh
+  // Handle 401 with token refresh (skip for public auth routes and when no refresh token)
   if (res.status === 401 && retry) {
+    if (isPublicAuthPath(path) || !getRefreshToken()) {
+      throw await errorFromResponse(res);
+    }
+
     let newToken: string | null = null;
 
     if (isRefreshing) {
@@ -148,15 +176,15 @@ async function request<T>(
 
     // Refresh failed – redirect to login (skip if already on a public auth page)
     if (typeof window !== 'undefined') {
-      const path = window.location.pathname;
+      const pathname = window.location.pathname;
       const isPublicAuthPage =
-        path.startsWith('/auth/login') ||
-        path.startsWith('/auth/register') ||
-        path.startsWith('/auth/check-email') ||
-        path.startsWith('/auth/verify-email') ||
-        path.startsWith('/auth/email-verified') ||
-        path.startsWith('/auth/forgot-password') ||
-        path.startsWith('/reset-password');
+        pathname.startsWith('/auth/login') ||
+        pathname.startsWith('/auth/register') ||
+        pathname.startsWith('/auth/check-email') ||
+        pathname.startsWith('/auth/verify-email') ||
+        pathname.startsWith('/auth/email-verified') ||
+        pathname.startsWith('/auth/forgot-password') ||
+        pathname.startsWith('/reset-password');
       if (!isPublicAuthPage) {
         window.location.href = '/auth/login';
       }
