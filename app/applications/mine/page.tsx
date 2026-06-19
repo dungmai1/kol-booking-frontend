@@ -12,16 +12,20 @@ import {
   CalendarClock,
   Check,
   X,
+  MessageSquare,
 } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ApplicationStatusPill } from '@/components/product-status-pill';
 import { PaginationBar } from '@/components/pagination-bar';
+import { ApplicationNegotiationChat } from '@/components/application-negotiation-chat';
 import { applicationsApi } from '@/lib/api/applications';
 import { productsApi } from '@/lib/api/products';
 import { useAuth } from '@/contexts/AuthContext';
 import { ApiError } from '@/lib/api/client';
-import type { ProductApplicationResponse } from '@/lib/api/types';
+import type { ProductApplicationResponse, ApplicationStatus } from '@/lib/api/types';
 import { vnd, formatDate } from '@/lib/products/meta';
+
+const TERMINAL_STATUSES: ApplicationStatus[] = ['WITHDRAWN', 'REJECTED', 'BOOKING_CANCELLED'];
 
 const PAGE_SIZE = 12;
 
@@ -35,6 +39,10 @@ export default function MyApplicationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [rejectCounterFor, setRejectCounterFor] = useState<ProductApplicationResponse | null>(null);
+  const [rejectCounterReply, setRejectCounterReply] = useState('');
+  const [rejectCounterSubmitting, setRejectCounterSubmitting] = useState(false);
+  const [chatFor, setChatFor] = useState<ProductApplicationResponse | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -107,17 +115,22 @@ export default function MyApplicationsPage() {
     }
   }
 
-  async function doRejectCounter(a: ProductApplicationResponse) {
-    if (!window.confirm('Từ chối giá thương lượng? Ứng tuyển sẽ trở về trạng thái chờ duyệt.')) return;
-    setBusyId(a.id);
+  async function submitRejectCounter() {
+    if (!rejectCounterFor) return;
+    setRejectCounterSubmitting(true);
     setError('');
     try {
-      const updated = await applicationsApi.rejectCounter(a.id);
-      setItems((list) => list.map((x) => (x.id === a.id ? updated : x)));
+      const updated = await applicationsApi.rejectCounter(
+        rejectCounterFor.id,
+        rejectCounterReply.trim() || undefined,
+      );
+      setItems((list) => list.map((x) => (x.id === rejectCounterFor.id ? updated : x)));
+      setRejectCounterFor(null);
+      setRejectCounterReply('');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Không thể từ chối giá thương lượng.');
     } finally {
-      setBusyId(null);
+      setRejectCounterSubmitting(false);
     }
   }
 
@@ -170,7 +183,7 @@ export default function MyApplicationsPage() {
           <>
             <ul className="space-y-3">
               {items.map((a) => {
-                const canWithdraw = a.status === 'PENDING' || a.status === 'SHORTLISTED';
+                const canWithdraw = a.status === 'PENDING' || a.status === 'SHORTLISTED' || a.status === 'COUNTER_OFFERED';
                 const hasCounterOffer = a.status === 'COUNTER_OFFERED' && a.brandCounterPrice != null && a.brandCounterPrice > 0;
                 const busy = busyId === a.id;
                 return (
@@ -208,11 +221,17 @@ export default function MyApplicationsPage() {
                     {hasCounterOffer && (
                       <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 mb-3">
                         <p className="text-sm font-bold text-amber-800 mb-0.5">Brand đã gửi giá thương lượng</p>
-                        <p className="text-sm text-amber-700 mb-3">
+                        <p className="text-sm text-amber-700 mb-2">
                           Giá đề xuất của bạn: <span className="font-semibold">{a.proposedPrice != null ? vnd.format(a.proposedPrice) : '—'}</span>
                           {' · '}
                           Giá brand đề nghị: <span className="font-semibold">{vnd.format(a.brandCounterPrice!)}</span>
                         </p>
+                        {a.brandNegotiationNote && (
+                          <p className="text-sm text-amber-700 bg-amber-100 rounded-lg px-3 py-2 mb-3 whitespace-pre-wrap">
+                            <span className="font-semibold">Ghi chú brand: </span>{a.brandNegotiationNote}
+                          </p>
+                        )}
+                        {!a.brandNegotiationNote && <div className="mb-3" />}
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
@@ -225,14 +244,21 @@ export default function MyApplicationsPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => doRejectCounter(a)}
+                            onClick={() => { setRejectCounterFor(a); setRejectCounterReply(''); }}
                             disabled={busy}
                             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-pin-red bg-pin-red/10 hover:bg-pin-red/20 transition-colors disabled:opacity-50"
                           >
-                            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                            <X className="w-4 h-4" />
                             Từ chối
                           </button>
                         </div>
+                      </div>
+                    )}
+
+                    {a.status === 'PENDING' && a.kolNegotiationReply && (
+                      <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 mb-2">
+                        <p className="text-xs font-semibold text-blue-700 mb-0.5">Phản hồi của bạn gửi brand:</p>
+                        <p className="text-sm text-blue-800 whitespace-pre-wrap">{a.kolNegotiationReply}</p>
                       </div>
                     )}
 
@@ -256,6 +282,19 @@ export default function MyApplicationsPage() {
                       )}
                       {a.rejectReason && <span className="text-pin-red">Lý do từ chối: {a.rejectReason}</span>}
                     </div>
+                    {/* Chat button — available for all non-ACCEPTED/COMPLETED applications */}
+                    {a.status !== 'ACCEPTED' && (
+                      <div className="mt-3 pt-3 border-t border-hairline-soft flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setChatFor(a)}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-ink bg-surface-card hover:bg-secondary-bg transition-colors"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          Chat thương lượng
+                        </button>
+                      </div>
+                    )}
                   </li>
                 );
               })}
@@ -264,6 +303,100 @@ export default function MyApplicationsPage() {
           </>
         )}
       </main>
+
+      {/* Reject counter-offer modal with optional reply message */}
+      {rejectCounterFor && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm px-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => !rejectCounterSubmitting && setRejectCounterFor(null)}
+        >
+          <div
+            className="bg-canvas rounded-2xl shadow-xl w-full max-w-[440px] p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="font-display font-bold text-xl text-ink mb-1">Từ chối giá thương lượng</h2>
+            <p className="text-sm text-mute mb-1">
+              Giá brand đề nghị:{' '}
+              <span className="font-semibold text-ink">
+                {rejectCounterFor.brandCounterPrice != null ? vnd.format(rejectCounterFor.brandCounterPrice) : '—'}
+              </span>
+            </p>
+            <p className="text-sm text-mute mb-3">
+              Bạn có thể gửi kèm lý do hoặc đề xuất giá mới để brand xem xét:
+            </p>
+            <textarea
+              value={rejectCounterReply}
+              onChange={(e) => setRejectCounterReply(e.target.value)}
+              rows={3}
+              maxLength={2000}
+              placeholder="Ghi chú hoặc đề xuất giá khác… (tuỳ chọn)"
+              className="w-full px-3 py-2.5 rounded-xl border border-hairline bg-surface-soft focus:bg-canvas focus:border-ink focus:outline-none text-sm resize-none mb-1"
+            />
+            <p className="text-xs text-mute text-right mb-4">{rejectCounterReply.length}/2000</p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setRejectCounterFor(null)}
+                disabled={rejectCounterSubmitting}
+                className="btn-pin-secondary !rounded-full disabled:opacity-50"
+              >
+                Huỷ
+              </button>
+              <button
+                type="button"
+                onClick={submitRejectCounter}
+                disabled={rejectCounterSubmitting}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-pin-red text-on-dark text-sm font-bold hover:opacity-90 disabled:opacity-50"
+              >
+                {rejectCounterSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                Từ chối & gửi phản hồi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Negotiation chat modal */}
+      {chatFor && user && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm px-4 py-8"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setChatFor(null)}
+        >
+          <div
+            className="bg-canvas rounded-2xl shadow-xl w-full max-w-[560px] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-hairline">
+              <div>
+                <h2 className="font-display font-bold text-lg text-ink">Chat thương lượng</h2>
+                <p className="text-xs text-mute mt-0.5">
+                  {titles[chatFor.productId] ?? `Sản phẩm #${chatFor.productId}`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setChatFor(null)}
+                className="text-mute hover:text-ink transition-colors p-1 rounded-lg hover:bg-surface-card"
+                aria-label="Đóng"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <ApplicationNegotiationChat
+                applicationId={chatFor.id}
+                currentUserId={user.userId}
+                currentUserRole="KOL"
+                isTerminal={TERMINAL_STATUSES.includes(chatFor.status)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

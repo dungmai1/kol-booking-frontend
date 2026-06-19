@@ -409,6 +409,16 @@ export interface BookingMessageResponse {
   createdAt: string;
 }
 
+/** A chat message sent during the negotiation phase of a product application. */
+export interface ApplicationMessageResponse {
+  id: number;
+  applicationId: number;
+  senderUserId: number;
+  senderRole: 'KOL' | 'BRAND';
+  content: string;
+  createdAt: string;
+}
+
 export interface SendMessageRequest {
   content: string;
   attachmentUrl?: string;
@@ -577,6 +587,8 @@ export interface ProductApplicationResponse {
   message: string | null;
   proposedPrice: number | null;
   brandCounterPrice: number | null;
+  brandNegotiationNote: string | null;
+  kolNegotiationReply: string | null;
   status: ApplicationStatus;
   bookingId: number | null;
   rejectReason: string | null;
