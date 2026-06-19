@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { authApi } from '@/lib/api/auth';
@@ -13,9 +13,11 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
  * canvas surface, 32px radius, 32px padding, double-ring focus inputs,
  * Pinterest-red "Continue", and a soft cream scrim under the modal.
  */
-export default function LoginPage() {
+function LoginForm() {
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const blockedNotice = searchParams.get('blocked') === '1';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -88,6 +90,15 @@ export default function LoginPage() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {blockedNotice && (
+              <div
+                role="alert"
+                className="rounded-md px-4 py-3 text-sm font-bold"
+                style={{ background: '#FEE2E2', color: 'var(--error)', border: '1px solid #FCA5A5' }}
+              >
+                Tài khoản của bạn đã bị cấm hoặc vô hiệu hóa. Vui lòng liên hệ hỗ trợ nếu cần trợ giúp.
+              </div>
+            )}
             {error && (
               <div
                 role="alert"
@@ -158,6 +169,20 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-surface-soft grid place-items-center">
+          <Loader2 className="w-10 h-10 text-pin-red animate-spin" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }
 

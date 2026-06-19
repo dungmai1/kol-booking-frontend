@@ -7,18 +7,40 @@ import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { authApi } from '@/lib/api/auth';
 import { ApiError } from '@/lib/api/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { getPostAuthRedirectPath } from '@/lib/auth/post-auth-redirect';
+import { parseHashAuthTokens } from '@/lib/auth/parse-hash-tokens';
+import {
+  hasHashAuthSession,
+  parseEmailVerificationToken,
+} from '@/lib/auth/parse-verification-token';
 
 type Status = 'loading' | 'success' | 'error' | 'missing';
 
 function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, markEmailVerified } = useAuth();
+  const { user, establishSessionFromTokens } = useAuth();
   const [status, setStatus] = useState<Status>('loading');
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    const token = searchParams.get('token');
+    // Backend GET redirect may land here with tokens in the hash.
+    const hashTokens = parseHashAuthTokens();
+    if (hashTokens) {
+      window.history.replaceState(null, '', window.location.pathname);
+      establishSessionFromTokens(hashTokens, true);
+      setStatus('success');
+      const redirectTo = getPostAuthRedirectPath(hashTokens.role);
+      const timer = window.setTimeout(() => router.replace(redirectTo), 1500);
+      return () => window.clearTimeout(timer);
+    }
+
+    if (hasHashAuthSession()) {
+      router.replace('/auth/email-verified');
+      return;
+    }
+
+    const token = parseEmailVerificationToken(searchParams);
     if (!token) {
       setStatus('missing');
       return;
@@ -26,19 +48,19 @@ function VerifyEmailContent() {
 
     authApi
       .verifyEmail({ token })
-      .then(() => {
-        markEmailVerified();
+      .then((tokens) => {
+        establishSessionFromTokens(tokens, true);
         setStatus('success');
-        // Redirect after 2 seconds
-        const role = user?.role;
-        setTimeout(() => {
-          if (role === 'ADMIN') router.push('/admin');
-          else if (role === 'KOL') router.push('/kol-dashboard/me');
-          else router.push('/');
-        }, 2000);
+        const role = tokens.role ?? user?.role;
+        const redirectTo = getPostAuthRedirectPath(role);
+        setTimeout(() => router.replace(redirectTo), 1500);
       })
       .catch((err) => {
-        setErrorMsg(err instanceof ApiError ? err.message : 'Đường dẫn xác nhận không hợp lệ hoặc đã hết hạn.');
+        setErrorMsg(
+          err instanceof ApiError
+            ? err.message
+            : 'Đường dẫn xác nhận không hợp lệ hoặc đã hết hạn.',
+        );
         setStatus('error');
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,7 +96,7 @@ function VerifyEmailContent() {
                 Xác nhận thành công!
               </h1>
               <p className="text-mute text-sm leading-relaxed">
-                Email của bạn đã được xác nhận. Đang chuyển hướng vào trang chủ…
+                Email của bạn đã được xác nhận. Đang chuyển hướng…
               </p>
             </>
           )}
@@ -92,7 +114,7 @@ function VerifyEmailContent() {
               </p>
               <div className="flex flex-col gap-3">
                 <Link href="/auth/check-email" className="btn-pin-primary !rounded-full !py-3 justify-center">
-                  Về trang kiểm tra email
+                  Gửi lại email xác nhận
                 </Link>
                 <Link href="/auth/login" className="text-sm font-bold text-ink hover:text-pin-red">
                   Quay lại đăng nhập
@@ -112,8 +134,8 @@ function VerifyEmailContent() {
               <p className="text-mute text-sm leading-relaxed mb-6">
                 Không tìm thấy mã xác nhận trong đường dẫn này.
               </p>
-              <Link href="/auth/login" className="text-sm font-bold text-ink hover:text-pin-red">
-                Quay lại đăng nhập
+              <Link href="/auth/check-email" className="btn-pin-primary !rounded-full !py-3 justify-center">
+                Gửi lại email xác nhận
               </Link>
             </>
           )}

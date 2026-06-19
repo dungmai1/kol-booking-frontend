@@ -39,8 +39,8 @@ export const authApi = {
     clearTokens();
   },
 
-  verifyEmail(data: VerifyEmailRequest): Promise<void> {
-    return api.post('/auth/verify-email', data);
+  verifyEmail(data: VerifyEmailRequest): Promise<AuthTokens> {
+    return api.post<AuthTokens>('/auth/verify-email', data);
   },
 
   /**

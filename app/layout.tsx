@@ -3,6 +3,7 @@ import { Inter, Manrope } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { EmailVerificationGate } from '@/components/email-verification-gate'
+import { AccountStatusGate } from '@/components/account-status-gate'
 import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
@@ -49,7 +50,9 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <AuthProvider>
-          <EmailVerificationGate>{children}</EmailVerificationGate>
+          <AccountStatusGate>
+            <EmailVerificationGate>{children}</EmailVerificationGate>
+          </AccountStatusGate>
         </AuthProvider>
         <Toaster position="top-right" richColors />
         {process.env.NODE_ENV === 'production' && <Analytics />}

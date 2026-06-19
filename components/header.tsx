@@ -200,6 +200,11 @@ export function Header() {
                       </>
                     )}
                     <div className="border-t border-hairline-soft mt-1 pt-1">
+                      {(user?.role === 'KOL' || user?.role === 'BRAND') && (
+                        <Link href="/account" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold">
+                          <Settings className="w-4 h-4" /> Tài khoản
+                        </Link>
+                      )}
                       <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2.5 text-ink hover:bg-surface-card text-sm font-semibold text-left">
                         <LogOut className="w-4 h-4" /> Đăng xuất
                       </button>

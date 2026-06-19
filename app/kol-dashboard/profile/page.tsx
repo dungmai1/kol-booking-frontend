@@ -63,6 +63,11 @@ import {
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  maxAllowedDateOfBirth,
+  MIN_KOL_AGE_YEARS,
+  validateDateOfBirth,
+} from '@/lib/validation/date-of-birth';
 
 // ───────────────────────────── Constants ─────────────────────────────
 
@@ -124,6 +129,7 @@ export default function KolProfileEditPage() {
   // Basic-info form state
   const [form, setForm] = useState<UpdateKolProfileRequest>({});
   const [dob, setDob] = useState<Date | undefined>();
+  const [dobError, setDobError] = useState<string | null>(null);
   const [slugError, setSlugError] = useState<string | null>(null);
   const [bioError, setBioError] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -235,6 +241,12 @@ export default function KolProfileEditPage() {
     }
     if (bioError) {
       toast.error(bioError);
+      return;
+    }
+    const dobErr = validateDateOfBirth(dob);
+    setDobError(dobErr);
+    if (dobErr) {
+      toast.error(dobErr);
       return;
     }
     setIsSaving(true);
@@ -631,13 +643,22 @@ export default function KolProfileEditPage() {
                         <Calendar
                           mode="single"
                           selected={dob}
-                          onSelect={setDob}
+                          onSelect={(date) => {
+                            setDob(date);
+                            setDobError(validateDateOfBirth(date));
+                          }}
                           captionLayout="dropdown"
                           fromYear={1950}
-                          toYear={new Date().getFullYear()}
+                          toYear={new Date().getFullYear() - MIN_KOL_AGE_YEARS}
+                          disabled={(date) =>
+                            date > maxAllowedDateOfBirth() ||
+                            date < new Date(new Date().getFullYear() - 100, 0, 1)
+                          }
                         />
                       </PopoverContent>
                     </Popover>
+                    <p className="text-xs text-mute mt-1.5">Từ {MIN_KOL_AGE_YEARS} tuổi trở lên (tuỳ chọn).</p>
+                    {dobError && <p className="text-xs text-red-600 mt-1">{dobError}</p>}
                   </div>
 
                   <div>

@@ -14,9 +14,11 @@ interface TikTokPortfolioPlayerProps {
   url: string;
   title: string;
   compact?: boolean;
+  /** Inline thumbnail only — no fullscreen dialog (e.g. inside another modal). */
+  previewOnly?: boolean;
 }
 
-export function TikTokPortfolioPlayer({ url, title, compact }: TikTokPortfolioPlayerProps) {
+export function TikTokPortfolioPlayer({ url, title, compact, previewOnly }: TikTokPortfolioPlayerProps) {
   const videoId = extractTikTokVideoId(url);
   const embedUrl = getTikTokEmbedUrl(url);
   const [open, setOpen] = useState(false);
@@ -42,9 +44,35 @@ export function TikTokPortfolioPlayer({ url, title, compact }: TikTokPortfolioPl
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex min-h-[200px] flex-col items-center justify-center gap-2 bg-surface-card p-4 text-center text-sm font-semibold text-pin-red"
+        className={`flex flex-col items-center justify-center gap-2 bg-surface-card p-4 text-center text-sm font-semibold text-pin-red ${
+          previewOnly ? 'min-h-[120px] rounded-xl' : 'min-h-[200px]'
+        }`}
       >
         Xem trên TikTok <ExternalLink className="h-4 w-4" />
+      </a>
+    );
+  }
+
+  if (previewOnly) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="relative flex min-h-[120px] w-full items-end overflow-hidden rounded-xl bg-zinc-900"
+        aria-label={`Mở video TikTok: ${title}`}
+      >
+        {thumb ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={thumb} alt={title} className="absolute inset-0 h-full w-full object-cover opacity-90" />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900" />
+        )}
+        <span className="relative z-10 flex w-full items-center justify-center gap-2 bg-black/50 px-3 py-2 text-xs font-semibold text-white">
+          <Play className="h-4 w-4 fill-white text-white" />
+          Mở trên TikTok
+          <ExternalLink className="h-3.5 w-3.5" />
+        </span>
       </a>
     );
   }

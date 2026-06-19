@@ -198,7 +198,18 @@ async function request<T>(
   const json: ApiResponse<T> = await res.json();
 
   if (!json.success) {
-    throw new ApiError(res.status, json.errorCode, json.message ?? 'Đã xảy ra lỗi');
+    const apiError = new ApiError(res.status, json.errorCode, json.message ?? 'Đã xảy ra lỗi');
+    if (
+      typeof window !== 'undefined' &&
+      (json.errorCode === 'ACCOUNT_BANNED' || json.errorCode === 'ACCOUNT_INACTIVE')
+    ) {
+      clearTokens();
+      const pathname = window.location.pathname;
+      if (!pathname.startsWith('/auth/login')) {
+        window.location.href = '/auth/login?blocked=1';
+      }
+    }
+    throw apiError;
   }
 
   return json.data as T;

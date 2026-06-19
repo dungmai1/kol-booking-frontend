@@ -10,12 +10,13 @@ import {
 } from 'react';
 import { authApi } from '@/lib/api/auth';
 import { getAccessToken, getRefreshToken, clearTokens, saveTokens } from '@/lib/api/client';
-import type { AuthTokens, LoginRequest, RegisterRequest, Role } from '@/lib/api/types';
+import type { AuthTokens, LoginRequest, RegisterRequest, Role, UserStatus } from '@/lib/api/types';
 
 interface AuthUser {
   userId: number;
   email: string;
   role: Role;
+  status: UserStatus;
   emailVerified: boolean;
 }
 
@@ -66,6 +67,7 @@ function userFromToken(token: string): AuthUser | null {
     userId,
     email,
     role: payload.role as Role,
+    status: 'ACTIVE',
     emailVerified: false, // JWT doesn't include this; getMe() will set the real value
   };
 }
@@ -89,7 +91,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .getMe()
       .then((me) => {
         if (cancelled) return;
-        setUser({ userId: me.id, email: me.email, role: me.role, emailVerified: me.emailVerified });
+        setUser({
+          userId: me.id,
+          email: me.email,
+          role: me.role,
+          status: me.status,
+          emailVerified: me.emailVerified,
+        });
       })
       .catch(() => {
         if (cancelled) return;
@@ -110,23 +118,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (data: LoginRequest): Promise<AuthTokens & { emailVerified: boolean }> => {
     const tokens = await authApi.login(data);
     let emailVerified = false;
+    let status: UserStatus = 'ACTIVE';
     try {
       const me = await authApi.getMe();
       emailVerified = me.emailVerified;
-    } catch { /* fallback to false */ }
-    setUser({ userId: tokens.userId, email: tokens.email, role: tokens.role, emailVerified });
+      status = me.status;
+    } catch { /* fallback to defaults */ }
+    setUser({
+      userId: tokens.userId,
+      email: tokens.email,
+      role: tokens.role,
+      status,
+      emailVerified,
+    });
     return { ...tokens, emailVerified };
   }, []);
 
   const register = useCallback(async (data: RegisterRequest): Promise<AuthTokens> => {
     const tokens = await authApi.register(data);
     saveTokens(tokens);
-    setUser({ userId: tokens.userId, email: tokens.email, role: tokens.role, emailVerified: false });
+    setUser({
+      userId: tokens.userId,
+      email: tokens.email,
+      role: tokens.role,
+      status: 'PENDING_VERIFICATION',
+      emailVerified: false,
+    });
     return tokens;
   }, []);
 
   const markEmailVerified = useCallback(() => {
-    setUser((prev) => (prev ? { ...prev, emailVerified: true } : null));
+    setUser((prev) =>
+      prev
+        ? { ...prev, emailVerified: true, status: prev.status === 'PENDING_VERIFICATION' ? 'ACTIVE' : prev.status }
+        : null,
+    );
   }, []);
 
   const establishSessionFromTokens = useCallback((tokens: AuthTokens, emailVerified = true) => {
@@ -135,8 +161,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userId: tokens.userId,
       email: tokens.email,
       role: tokens.role,
+      status: 'ACTIVE',
       emailVerified,
     });
+    authApi
+      .getMe()
+      .then((me) => {
+        setUser({
+          userId: me.id,
+          email: me.email,
+          role: me.role,
+          status: me.status,
+          emailVerified: me.emailVerified,
+        });
+      })
+      .catch(() => {});
   }, []);
 
   const logout = useCallback(async (): Promise<void> => {

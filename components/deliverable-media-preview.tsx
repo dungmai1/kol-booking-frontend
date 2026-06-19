@@ -40,7 +40,7 @@ export function DeliverableMediaPreview({
   if (isTikTokUrl(trimmed)) {
     return (
       <div className={`overflow-hidden rounded-xl border border-hairline ${className}`}>
-        <TikTokPortfolioPlayer url={trimmed} title="Xem trước TikTok" compact />
+        <TikTokPortfolioPlayer url={trimmed} title="Xem trước TikTok" compact previewOnly />
       </div>
     );
   }

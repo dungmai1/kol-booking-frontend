@@ -14,6 +14,7 @@ export { notificationsApi } from './notifications';
 export { categoriesApi } from './categories';
 export { filesApi } from './files';
 export { adminApi } from './admin';
+export { usersApi } from './users';
 export { aiAssistantApi } from './ai-assistant';
 export type {
   AiChatRequest,

@@ -750,7 +750,7 @@ export default function BookingDetailPage({
           aria-labelledby="submit-deliverable-title"
         >
           <div
-            className="pin-card w-full max-w-[520px] p-5 md:p-6"
+            className="pin-card w-full max-w-[520px] max-h-[min(90vh,720px)] overflow-y-auto p-5 md:p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 mb-4">
