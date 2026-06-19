@@ -22,10 +22,6 @@ export const applicationsApi = {
 
   // ─── Brand ───────────────────────────────────────────────────────────────────
 
-  shortlist(id: number): Promise<ProductApplicationResponse> {
-    return api.post(`/applications/${id}/shortlist`);
-  },
-
   /** Accepts the applicant → backend creates a PENDING booking and links it back. */
   accept(id: number): Promise<ProductApplicationResponse> {
     return api.post(`/applications/${id}/accept`);

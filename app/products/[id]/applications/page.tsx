@@ -38,7 +38,6 @@ const PAGE_SIZE = 12;
 const STATUS_TABS: { value: ApplicationStatus | 'ALL'; label: string }[] = [
   { value: 'ALL', label: 'Tất cả' },
   { value: 'PENDING', label: 'Chờ duyệt' },
-  { value: 'SHORTLISTED', label: 'Danh sách rút gọn' },
   { value: 'COUNTER_OFFERED', label: 'Đang thương lượng' },
   { value: 'ACCEPTED', label: 'Đã duyệt' },
   { value: 'REJECTED', label: 'Từ chối' },
@@ -118,18 +117,6 @@ export default function ProductApplicantsPage({ params }: { params: Promise<{ id
 
   function patchItem(updated: ProductApplicationResponse) {
     setItems((list) => list.map((x) => (x.id === updated.id ? updated : x)));
-  }
-
-  async function doShortlist(a: ProductApplicationResponse) {
-    setBusyId(a.id);
-    setError('');
-    try {
-      patchItem(await applicationsApi.shortlist(a.id));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Không thể đưa vào danh sách rút gọn.');
-    } finally {
-      setBusyId(null);
-    }
   }
 
   async function doAccept(a: ProductApplicationResponse) {
@@ -301,7 +288,6 @@ export default function ProductApplicantsPage({ params }: { params: Promise<{ id
                   app={a}
                   rank={mode === 'top' ? idx + 1 : undefined}
                   busy={busyId === a.id}
-                  onShortlist={() => doShortlist(a)}
                   onAccept={() => doAccept(a)}
                   onReject={() => {
                     setRejectReason('');
@@ -418,7 +404,6 @@ function ApplicantCard({
   app,
   rank,
   busy,
-  onShortlist,
   onAccept,
   onReject,
   onCounterOffer,
@@ -426,12 +411,10 @@ function ApplicantCard({
   app: ProductApplicationResponse;
   rank?: number;
   busy: boolean;
-  onShortlist: () => void;
   onAccept: () => void;
   onReject: () => void;
   onCounterOffer: () => void;
 }) {
-  const canShortlist = app.status === 'PENDING';
   const canCounterOffer = (app.status === 'PENDING' || app.status === 'SHORTLISTED') && app.proposedPrice != null && app.proposedPrice > 0;
   const canAccept = app.status === 'PENDING' || app.status === 'SHORTLISTED' || app.status === 'COUNTER_OFFERED';
   const canReject = app.status === 'PENDING' || app.status === 'SHORTLISTED' || app.status === 'COUNTER_OFFERED';
@@ -508,19 +491,8 @@ function ApplicantCard({
         </div>
       </div>
 
-      {(canShortlist || canCounterOffer || canAccept || canReject) && (
+      {(canCounterOffer || canAccept || canReject) && (
         <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-hairline-soft">
-          {canShortlist && (
-            <button
-              type="button"
-              onClick={onShortlist}
-              disabled={busy}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 transition-colors disabled:opacity-50"
-            >
-              <ListChecks className="w-4 h-4" />
-              Danh sách rút gọn
-            </button>
-          )}
           {canCounterOffer && (
             <button
               type="button"

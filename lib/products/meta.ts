@@ -22,7 +22,7 @@ export const PRODUCT_STATUS_CLASS: Record<ProductStatus, string> = {
 
 export const APPLICATION_STATUS_LABEL: Record<ApplicationStatus, string> = {
   PENDING: 'Chờ duyệt',
-  SHORTLISTED: 'Trong danh sách rút gọn',
+  SHORTLISTED: 'Chờ duyệt',
   COUNTER_OFFERED: 'Đang thương lượng',
   ACCEPTED: 'Đã duyệt',
   REJECTED: 'Đã từ chối',
@@ -32,7 +32,7 @@ export const APPLICATION_STATUS_LABEL: Record<ApplicationStatus, string> = {
 
 export const APPLICATION_STATUS_CLASS: Record<ApplicationStatus, string> = {
   PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
-  SHORTLISTED: 'bg-violet-50 text-violet-700 border-violet-200',
+  SHORTLISTED: 'bg-amber-50 text-amber-700 border-amber-200',
   COUNTER_OFFERED: 'bg-orange-50 text-orange-700 border-orange-300',
   ACCEPTED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   REJECTED: 'bg-red-50 text-red-700 border-red-200',
