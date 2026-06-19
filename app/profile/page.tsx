@@ -5,7 +5,7 @@ import { Header } from '@/components/header';
 import { Badge } from '@/components/ui/badge';
 import { BrandPublicHero, type BrandPublicHeroData } from '@/components/brand-public-hero';
 import { useAuth } from '@/contexts/AuthContext';
-import { authApi, brandApi, filesApi } from '@/lib/api';
+import { brandApi, filesApi } from '@/lib/api';
 import { ApiError, resolveMediaUrl } from '@/lib/api/client';
 import { brandProfilePath } from '@/lib/brands/display';
 import {
@@ -23,20 +23,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ACCEPTED_IMAGE_ACCEPT, validateUploadFile } from '@/lib/uploads/validate';
 
-const MAX_NAME_LENGTH = 100;
 const MAX_ADDRESS_LENGTH = 255;
 const MAX_BIO_LENGTH = 500;
 const MAX_TAX_CODE_LENGTH = 20;
 const MAX_WEBSITE_LENGTH = 500;
 
-const PHONE_RE = /^0\d{9,10}$/;
-
 const COUNTRIES = ['Việt Nam', 'Thái Lan', 'Indonesia', 'Philippines', 'Singapore', 'Malaysia'] as const;
 
 type ProfileForm = {
-  fullName: string;
-  email: string;
-  phone: string;
   country: string;
   bio: string;
   company: string;
@@ -64,14 +58,6 @@ function isValidWebsite(website: string): boolean {
 }
 
 function validateForm(data: ProfileForm): string | null {
-  const name = data.fullName.trim();
-  if (name.length > MAX_NAME_LENGTH) {
-    return `Họ và tên tối đa ${MAX_NAME_LENGTH} ký tự.`;
-  }
-  const phone = data.phone.trim();
-  if (phone && !PHONE_RE.test(phone)) {
-    return 'Số điện thoại phải bắt đầu bằng 0 và có 10–11 chữ số.';
-  }
   if (data.address.trim().length > MAX_ADDRESS_LENGTH) {
     return `Địa chỉ tối đa ${MAX_ADDRESS_LENGTH} ký tự.`;
   }
@@ -90,11 +76,8 @@ function validateForm(data: ProfileForm): string | null {
   return null;
 }
 
-function toForm(brand: Awaited<ReturnType<typeof brandApi.getMyProfile>>, email: string): ProfileForm {
+function toForm(brand: Awaited<ReturnType<typeof brandApi.getMyProfile>>): ProfileForm {
   return {
-    fullName: brand.contactName ?? '',
-    email,
-    phone: brand.contactPhone ?? '',
     country: brand.country ?? 'Việt Nam',
     bio: brand.bio ?? '',
     company: brand.companyName ?? '',
@@ -108,8 +91,6 @@ function toForm(brand: Awaited<ReturnType<typeof brandApi.getMyProfile>>, email:
 
 function toUpdatePayload(formData: ProfileForm) {
   return {
-    contactName: formData.fullName.trim() || undefined,
-    contactPhone: formData.phone.trim() || undefined,
     companyName: formData.company.trim() || undefined,
     industry: formData.industry || undefined,
     taxCode: formData.taxCode.trim() || undefined,
@@ -133,9 +114,6 @@ export default function ProfilePage() {
   const isBrand = user?.role === 'BRAND';
 
   const [formData, setFormData] = useState<ProfileForm>({
-    fullName: '',
-    email: '',
-    phone: '',
     country: 'Việt Nam',
     bio: '',
     company: '',
@@ -178,9 +156,9 @@ export default function ProfilePage() {
     async function loadProfile() {
       try {
         if (user?.role === 'BRAND') {
-          const [me, brand] = await Promise.all([authApi.getMe(), brandApi.getMyProfile()]);
+          const brand = await brandApi.getMyProfile();
           if (!mounted) return;
-          const loaded = toForm(brand, me.email);
+          const loaded = toForm(brand);
           setFormData(loaded);
           setSavedData(loaded);
           setBrandStatus(normalizeProfileStatus(brand.status));
@@ -203,12 +181,8 @@ export default function ProfilePage() {
           return;
         }
 
-        const me = await authApi.getMe();
         if (!mounted) return;
         const loaded: ProfileForm = {
-          fullName: '',
-          email: me.email,
-          phone: '',
           country: 'Việt Nam',
           bio: '',
           company: '',
@@ -279,7 +253,7 @@ export default function ProfilePage() {
     setIsSaving(true);
     try {
       const updated = await brandApi.updateMyProfile(toUpdatePayload(formData));
-      const next = toForm(updated, formData.email);
+      const next = toForm(updated);
       setFormData(next);
       setSavedData(next);
       setBrandStatus(normalizeProfileStatus(updated.status));
@@ -299,11 +273,7 @@ export default function ProfilePage() {
       return;
     }
     if (!formData.company.trim()) {
-      toast.error('Vui lòng nhập tên thương hiệu trước khi gửi duyệt.');
-      return;
-    }
-    if (!formData.fullName.trim()) {
-      toast.error('Vui lòng nhập họ và tên liên hệ trước khi gửi duyệt.');
+      toast.error('Vui lòng nhập tên thương hiệu (trường có dấu *) trước khi gửi duyệt.');
       return;
     }
 
@@ -311,10 +281,9 @@ export default function ProfilePage() {
     try {
       const updated = await brandApi.updateMyProfile({
         ...toUpdatePayload(formData),
-        contactName: formData.fullName.trim(),
         companyName: formData.company.trim(),
       });
-      const next = toForm(updated, formData.email);
+      const next = toForm(updated);
       setFormData(next);
       setSavedData(next);
 
@@ -349,10 +318,8 @@ export default function ProfilePage() {
   const avatarSrc = resolveMediaUrl(formData.logoUrl);
 
   const showSubmitBrand = isBrand && brandStatus !== null && canSubmitProfile(brandStatus);
-  const canSubmitBrand =
-    showSubmitBrand &&
-    formData.company.trim().length > 0 &&
-    formData.fullName.trim().length > 0;
+  const hasCompanyName = formData.company.trim().length > 0;
+  const canSubmitBrand = showSubmitBrand && hasCompanyName;
 
   if (authLoading || isLoading || user?.role === 'KOL' || user?.role === 'ADMIN') {
     return (
@@ -382,7 +349,7 @@ export default function ProfilePage() {
           </div>
           <p className="text-mute mt-2 max-w-2xl">
             {isBrand
-              ? 'Chỉnh sửa thông tin hiển thị công khai trên trang thương hiệu. Các trường bên dưới map trực tiếp với nội dung KOL và người dùng thấy trên hồ sơ công khai.'
+              ? 'Chỉnh sửa thông tin hiển thị công khai trên trang thương hiệu. Các trường có dấu * là bắt buộc trước khi gửi duyệt.'
               : 'Quản lý thông tin tài khoản của bạn.'}
           </p>
 
@@ -402,8 +369,19 @@ export default function ProfilePage() {
               <div className="text-sm">
                 <p className="font-bold text-amber-700">Hồ sơ chưa đủ điều kiện gửi duyệt</p>
                 <p className="text-amber-700 mt-1">
-                  Cần nhập <strong>Tên thương hiệu</strong> và <strong>Họ và tên</strong> liên hệ trước khi gửi.
+                  Hoàn thành các trường có dấu <span className="text-pin-red font-bold">*</span> bên dưới, lưu
+                  thay đổi rồi nhấn &quot;Gửi duyệt&quot;.
                 </p>
+                <ul className="mt-2 space-y-0.5 text-amber-700">
+                  <li className="flex items-center gap-2">
+                    {hasCompanyName ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <span className="w-4 h-4 rounded-full border-2 border-amber-400" />
+                    )}
+                    Tên thương hiệu <span className="text-pin-red">*</span>
+                  </li>
+                </ul>
               </div>
             </div>
           )}
@@ -435,7 +413,7 @@ export default function ProfilePage() {
           {!isBrand ? (
             <div className="bg-canvas rounded-md border border-hairline p-8 text-center max-w-3xl">
               <p className="text-mute mb-4">Trang này dành cho tài khoản Brand.</p>
-              <p className="text-sm text-mute">Email: {formData.email || '—'}</p>
+              <p className="text-sm text-mute">Email: {user?.email || '—'}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
@@ -471,7 +449,7 @@ export default function ProfilePage() {
                   ) : (
                     'trang công khai'
                   )}
-                  . Các trường liên hệ không hiển thị công khai.
+                  .
                 </p>
               </section>
 
@@ -479,7 +457,7 @@ export default function ProfilePage() {
                 <section className="bg-canvas rounded-md border border-hairline p-8">
                   <SectionHeader
                     title="Thông tin hiển thị công khai"
-                    description="Các trường này map trực tiếp với nội dung trên trang /brand/{id}."
+                    description="Nội dung hiển thị trên trang /brand/{id}. Trường có dấu * bắt buộc trước khi gửi duyệt."
                   />
                   <div className="space-y-5">
                     <Field
@@ -525,7 +503,11 @@ export default function ProfilePage() {
                     <Field
                       label="Tên thương hiệu"
                       required={showSubmitBrand}
-                      hint="Tiêu đề chính trên hồ sơ công khai (companyName)."
+                      hint={
+                        showSubmitBrand
+                          ? 'Bắt buộc (*) — tiêu đề chính trên hồ sơ công khai. Cần điền trước khi gửi duyệt.'
+                          : 'Tiêu đề chính trên hồ sơ công khai.'
+                      }
                     >
                       <input
                         type="text"
@@ -598,44 +580,6 @@ export default function ProfilePage() {
                   </div>
                 </section>
 
-                <section className="bg-canvas rounded-md border border-hairline p-8">
-                  <SectionHeader
-                    title="Thông tin liên hệ riêng tư"
-                    description="Không hiển thị trên trang /brand/{id}. Dùng để admin và nền tảng liên hệ với bạn."
-                  />
-                  <div className="space-y-5">
-                    <Field label="Họ và tên liên hệ" required={showSubmitBrand} hint="contactName — chỉ dùng nội bộ.">
-                      <input
-                        type="text"
-                        name="fullName"
-                        value={formData.fullName}
-                        onChange={handleChange}
-                        maxLength={MAX_NAME_LENGTH}
-                        className="pin-input"
-                      />
-                    </Field>
-                    <Field label="Email" hint="Tài khoản đăng nhập, không hiển thị công khai.">
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        readOnly
-                        className="pin-input opacity-60 cursor-not-allowed"
-                      />
-                    </Field>
-                    <Field label="Số điện thoại" hint="contactPhone — chỉ dùng nội bộ.">
-                      <input
-                        type="tel"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleChange}
-                        placeholder="0xxxxxxxxx"
-                        className="pin-input"
-                      />
-                    </Field>
-                  </div>
-                </section>
-
                 <div className="flex flex-wrap gap-3">
                   <button
                     type="submit"
@@ -650,7 +594,7 @@ export default function ProfilePage() {
                       type="button"
                       onClick={() => void handleSubmitForReview()}
                       disabled={isSubmitting || isSaving || isUploading || !canSubmitBrand}
-                      title={!canSubmitBrand ? 'Cần tên thương hiệu và họ tên liên hệ' : undefined}
+                      title={!canSubmitBrand ? 'Cần nhập Tên thương hiệu (trường có dấu *)' : undefined}
                       className="btn-pin-secondary !rounded-full flex-1 min-w-[140px] !py-3 inline-flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
