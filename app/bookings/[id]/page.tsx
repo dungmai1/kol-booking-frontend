@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  AlertTriangle,
   ArrowLeft,
   Calendar,
   CheckCircle2,
@@ -17,14 +16,21 @@ import {
   PenSquare,
   Receipt,
   RefreshCw,
-  ShieldAlert,
   Sparkles,
   Star,
   Upload,
   XCircle,
 } from 'lucide-react';
 import { filesApi } from '@/lib/api/files';
-import { ACCEPTED_IMAGE_ACCEPT, validateUploadFile } from '@/lib/uploads/validate';
+import { isValidContentUrl, resolveMediaUrl } from '@/lib/api/client';
+import {
+  ACCEPTED_IMAGE_ACCEPT,
+  ACCEPTED_IMAGE_TYPES,
+  ACCEPTED_VIDEO_ACCEPT,
+  validateUploadFile,
+} from '@/lib/uploads/validate';
+import { DeliverableMediaPreview } from '@/components/deliverable-media-preview';
+import { isPreviewableDeliverableUrl } from '@/lib/portfolio/media';
 import { Header } from '@/components/header';
 import {
   Dialog,
@@ -121,8 +127,8 @@ export default function BookingDetailPage({
   const [deliverableUploading, setDeliverableUploading] = useState(false);
   const deliverableFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Dispute dialog (BRAND only, when status === 'DELIVERED').
-  const [disputeDialog, setDisputeDialog] = useState<{
+  // Revision request dialog (BRAND only, when status === 'DELIVERED').
+  const [revisionDialog, setRevisionDialog] = useState<{
     open: boolean;
     reason: string;
     reasonError: string;
@@ -275,29 +281,35 @@ export default function BookingDetailPage({
     }
   }
 
-  function openDisputeDialog() {
-    setDisputeDialog({ open: true, reason: '', reasonError: '' });
+  function openRevisionDialog() {
+    setRevisionDialog({ open: true, reason: '', reasonError: '' });
   }
 
-  async function handleDisputeSubmit() {
-    const reason = disputeDialog.reason.trim();
+  async function handleRevisionSubmit() {
+    const reason = revisionDialog.reason.trim();
     if (!reason) {
-      setDisputeDialog((p) => ({ ...p, reasonError: 'Vui lòng nhập lý do tranh chấp.' }));
+      setRevisionDialog((p) => ({ ...p, reasonError: 'Vui lòng nhập feedback chỉnh sửa.' }));
       return;
     }
-    if (reason.length < 20) {
-      setDisputeDialog((p) => ({ ...p, reasonError: 'Lý do phải có ít nhất 20 ký tự.' }));
+    if (reason.length < 10) {
+      setRevisionDialog((p) => ({
+        ...p,
+        reasonError: 'Feedback phải có ít nhất 10 ký tự.',
+      }));
       return;
     }
     if (!booking) return;
-    setActionLoading('dispute');
-    setDisputeDialog((p) => ({ ...p, open: false }));
+    setActionLoading('request-revision');
+    setRevisionDialog((p) => ({ ...p, open: false }));
     try {
-      await bookingsApi.dispute(booking.id, reason);
+      await bookingsApi.requestRevision(booking.id, { reason });
+      toast.success('Đã gửi yêu cầu chỉnh sửa cho KOL.');
       await fetchBooking();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Gửi tranh chấp thất bại.';
-      window.alert(message);
+      const message =
+        err instanceof Error ? err.message : 'Gửi yêu cầu chỉnh sửa thất bại.';
+      toast.error(message);
+      setRevisionDialog((p) => ({ ...p, open: true, reason }));
     } finally {
       setActionLoading(null);
     }
@@ -357,7 +369,12 @@ export default function BookingDetailPage({
   ) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const validationError = validateUploadFile(file, 'image');
+    const kind = ACCEPTED_IMAGE_TYPES.includes(
+      file.type as (typeof ACCEPTED_IMAGE_TYPES)[number],
+    )
+      ? 'image'
+      : 'video';
+    const validationError = validateUploadFile(file, kind);
     if (validationError) {
       toast.error(validationError);
       e.target.value = '';
@@ -371,7 +388,9 @@ export default function BookingDetailPage({
         submittedUrl: res.url,
         error: '',
       }));
-      toast.success('Đã tải lên tệp nội dung.');
+      toast.success(
+        kind === 'video' ? 'Đã tải lên video.' : 'Đã tải lên ảnh nội dung.',
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Tải lên thất bại.';
       toast.error(message);
@@ -387,6 +406,13 @@ export default function BookingDetailPage({
     const idRaw = deliverableForm.deliverableId.trim();
     if (!url) {
       setDeliverableForm((prev) => ({ ...prev, error: 'Vui lòng nhập đường dẫn nội dung.' }));
+      return;
+    }
+    if (!isValidContentUrl(url)) {
+      setDeliverableForm((prev) => ({
+        ...prev,
+        error: 'Đường dẫn phải là link https:// hoặc tệp đã tải lên.',
+      }));
       return;
     }
     const deliverableId = Number(idRaw);
@@ -554,6 +580,26 @@ export default function BookingDetailPage({
               <p className="text-body">{booking.cancelReason}</p>
             </div>
           )}
+          {booking.revisionFeedback && booking.status === 'IN_PROGRESS' && (
+            <div
+              className="mt-3 rounded-2xl px-4 py-3 text-sm"
+              style={{
+                background: BOOKING_STATUS_COLORS.PENDING.soft,
+                border: `1px solid ${BOOKING_STATUS_COLORS.PENDING.border}`,
+              }}
+            >
+              <p className="font-bold text-ink mb-1 flex items-center gap-1.5">
+                <PenSquare className="w-4 h-4" />
+                Brand yêu cầu chỉnh sửa
+                {booking.revisionRequestedAt && (
+                  <span className="font-normal text-mute ml-auto text-xs">
+                    {formatDateTime(booking.revisionRequestedAt)}
+                  </span>
+                )}
+              </p>
+              <p className="text-body whitespace-pre-wrap">{booking.revisionFeedback}</p>
+            </div>
+          )}
         </header>
 
         {/* Tabs */}
@@ -595,10 +641,10 @@ export default function BookingDetailPage({
             onCancel={handleCancel}
             onApprove={handleApprove}
             onRejectDelivery={handleRejectDelivery}
+            onRequestRevision={openRevisionDialog}
             onAccept={handleAccept}
             onReject={handleReject}
             onSubmitDeliverable={openDeliverableForm}
-            onDispute={openDisputeDialog}
             myReview={myReview}
             otherReview={otherReview}
             onReviewSuccess={setMyReview}
@@ -608,84 +654,87 @@ export default function BookingDetailPage({
         )}
       </main>
 
-      {/* Dispute dialog — BRAND flow when booking is DELIVERED */}
+      {/* Revision request dialog — BRAND flow when booking is DELIVERED */}
       <Dialog
-        open={disputeDialog.open}
-        onOpenChange={(open) => !open && setDisputeDialog((p) => ({ ...p, open: false }))}
+        open={revisionDialog.open}
+        onOpenChange={(open) => !open && setRevisionDialog((p) => ({ ...p, open: false }))}
       >
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-700">
-              <AlertTriangle className="w-5 h-5" />
-              Gửi khiếu nại tranh chấp
+            <DialogTitle className="flex items-center gap-2 text-ink">
+              <PenSquare className="w-5 h-5" />
+              Yêu cầu chỉnh sửa nội dung
             </DialogTitle>
             <DialogDescription>
-              Mô tả rõ vấn đề với nội dung được giao. Admin sẽ xem xét và phân xử trong vòng 3-5
-              ngày làm việc. Trong thời gian tranh chấp, ngân sách sẽ được tạm giữ.
+              Gửi feedback cụ thể để KOL chỉnh sửa và nộp lại. Ngân sách vẫn được giữ cho đến khi
+              bạn chấp nhận nội dung hoặc từ chối/hoàn tiền.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 py-2">
             <div>
               <label className="block text-sm font-bold text-ink mb-1.5">
-                Lý do khiếu nại <span className="text-pin-red">*</span>
+                Feedback chỉnh sửa <span className="text-pin-red">*</span>
               </label>
               <Textarea
-                value={disputeDialog.reason}
+                value={revisionDialog.reason}
                 onChange={(e) => {
                   const val = e.target.value;
-                  if (val.length <= 2000)
-                    setDisputeDialog((p) => ({
+                  if (val.length <= 2000) {
+                    setRevisionDialog((p) => ({
                       ...p,
                       reason: val,
-                      reasonError: val.trim().length > 0 && val.trim().length < 20
-                        ? 'Lý do phải có ít nhất 20 ký tự.'
-                        : '',
+                      reasonError:
+                        val.trim().length > 0 && val.trim().length < 10
+                          ? 'Feedback phải có ít nhất 10 ký tự.'
+                          : '',
                     }));
+                  }
                 }}
-                placeholder="Mô tả vấn đề: nội dung không đúng yêu cầu, chất lượng kém, thiếu deliverable…"
-                className={`min-h-[120px] resize-none${disputeDialog.reasonError ? ' border-red-500' : ''}`}
+                placeholder="VD: Logo bị che khuất ở giây 0:05, cần nhắc rõ tên sản phẩm, tone màu sáng hơn…"
+                className={`min-h-[120px] resize-none${revisionDialog.reasonError ? ' border-red-500' : ''}`}
                 maxLength={2000}
               />
               <div className="flex justify-between mt-1">
-                {disputeDialog.reasonError ? (
-                  <p className="text-xs text-red-600">{disputeDialog.reasonError}</p>
+                {revisionDialog.reasonError ? (
+                  <p className="text-xs text-red-600">{revisionDialog.reasonError}</p>
                 ) : (
                   <span />
                 )}
-                <p className="text-xs text-mute">{disputeDialog.reason.length}/2000</p>
+                <p className="text-xs text-mute">{revisionDialog.reason.length}/2000</p>
               </div>
             </div>
 
-            <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-              <p className="font-bold mb-1">Lưu ý quan trọng</p>
-              <ul className="list-disc list-inside space-y-1 text-xs">
-                <li>Tranh chấp chỉ có thể gửi 1 lần cho mỗi đơn hàng.</li>
-                <li>Cung cấp bằng chứng rõ ràng để tăng khả năng thắng kiện.</li>
-                <li>Kết quả phân xử của Admin là quyết định cuối cùng.</li>
-              </ul>
+            <div className="rounded-xl bg-surface-card border border-hairline px-4 py-3 text-sm text-body">
+              <p className="font-bold text-ink mb-1">Khác với từ chối nội dung</p>
+              <p className="text-xs leading-relaxed">
+                Yêu cầu chỉnh sửa giữ nguyên đơn hàng và cho KOL cơ hội nộp lại. Chỉ dùng{' '}
+                <strong>Từ chối nội dung</strong> khi muốn hủy hoàn toàn và hoàn tiền về ví.
+              </p>
             </div>
           </div>
 
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
-              onClick={() => setDisputeDialog((p) => ({ ...p, open: false }))}
-              disabled={actionLoading === 'dispute'}
+              onClick={() => setRevisionDialog((p) => ({ ...p, open: false }))}
+              disabled={actionLoading === 'request-revision'}
             >
               Huỷ
             </Button>
             <Button
-              onClick={handleDisputeSubmit}
-              disabled={actionLoading === 'dispute' || disputeDialog.reason.trim().length < 20}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
+              onClick={handleRevisionSubmit}
+              disabled={
+                actionLoading === 'request-revision' ||
+                revisionDialog.reason.trim().length < 10
+              }
             >
-              {actionLoading === 'dispute' ? (
+              {actionLoading === 'request-revision' ? (
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
               ) : (
-                <ShieldAlert className="w-4 h-4 mr-2" />
+                <PenSquare className="w-4 h-4 mr-2" />
               )}
-              Gửi khiếu nại
+              Gửi feedback
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -710,11 +759,23 @@ export default function BookingDetailPage({
                   id="submit-deliverable-title"
                   className="font-display font-extrabold text-xl text-ink"
                 >
-                  Nộp giao nội dung
+                  {booking?.revisionFeedback?.trim()
+                    ? 'Nộp lại nội dung'
+                    : 'Nộp giao nội dung'}
                 </h2>
                 <p className="text-sm text-mute mt-1">
-                  Gửi nội dung đã hoàn thiện để Brand nghiệm thu. Brand chấp nhận hoặc im lặng 3 ngày → bạn nhận tiền tự động.
+                  {booking?.revisionFeedback?.trim()
+                    ? 'Brand đã gửi feedback chỉnh sửa. Upload phiên bản mới để họ xem lại.'
+                    : 'Gửi nội dung đã hoàn thiện để Brand xem trước và nghiệm thu. Brand chấp nhận hoặc im lặng 3 ngày → bạn nhận tiền tự động.'}
                 </p>
+                {booking?.revisionFeedback?.trim() && (
+                  <div className="mt-3 rounded-xl border border-hairline bg-surface-card px-3 py-2.5 text-sm">
+                    <p className="text-xs uppercase tracking-wide text-mute font-bold mb-1">
+                      Feedback từ Brand
+                    </p>
+                    <p className="text-body whitespace-pre-wrap">{booking.revisionFeedback}</p>
+                  </div>
+                )}
               </div>
               <button
                 type="button"
@@ -740,10 +801,10 @@ export default function BookingDetailPage({
                 </label>
                 <div className="flex gap-2">
                   <input
-                    type="url"
+                    type="text"
                     required
                     autoFocus
-                    placeholder="https://..."
+                    placeholder="https://... hoặc tải file lên"
                     maxLength={500}
                     value={deliverableForm.submittedUrl}
                     onChange={(e) => {
@@ -769,7 +830,7 @@ export default function BookingDetailPage({
                   <input
                     ref={deliverableFileInputRef}
                     type="file"
-                    accept={ACCEPTED_IMAGE_ACCEPT}
+                    accept={`${ACCEPTED_IMAGE_ACCEPT},${ACCEPTED_VIDEO_ACCEPT}`}
                     className="hidden"
                     onChange={handleDeliverableFileUpload}
                   />
@@ -780,7 +841,7 @@ export default function BookingDetailPage({
                       actionLoading === 'submit-deliverable' || deliverableUploading
                     }
                     className="btn-pin-secondary shrink-0 disabled:opacity-50"
-                    title="Tải ảnh lên"
+                    title="Tải ảnh hoặc video lên"
                   >
                     {deliverableUploading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -790,8 +851,16 @@ export default function BookingDetailPage({
                   </button>
                 </div>
                 <p className="text-xs text-mute mt-1">
-                  Dán link bài đăng/video/story/Drive — hoặc bấm tải ảnh để upload trực tiếp (tối đa 5MB).
+                  Dán link bài đăng/video/story/Drive — hoặc bấm tải lên để chọn ảnh (tối đa 5MB) hoặc video MP4 (tối đa 100MB) từ máy tính.
                 </p>
+                {isPreviewableDeliverableUrl(deliverableForm.submittedUrl) && (
+                  <div className="mt-3">
+                    <p className="text-xs uppercase tracking-wide text-mute font-bold mb-1.5">
+                      Xem trước
+                    </p>
+                    <DeliverableMediaPreview url={deliverableForm.submittedUrl} />
+                  </div>
+                )}
               </div>
 
               <div>
@@ -939,10 +1008,10 @@ interface DetailTabProps {
   onCancel: () => void;
   onApprove: () => void;
   onRejectDelivery: () => void;
+  onRequestRevision: () => void;
   onAccept: () => void;
   onReject: () => void;
   onSubmitDeliverable: () => void;
-  onDispute: () => void;
   myReview: ReviewResponse | null;
   otherReview: ReviewResponse | null;
   onReviewSuccess: (review: ReviewResponse) => void;
@@ -956,10 +1025,10 @@ function DetailTab({
   onCancel,
   onApprove,
   onRejectDelivery,
+  onRequestRevision,
   onAccept,
   onReject,
   onSubmitDeliverable,
-  onDispute,
   myReview,
   otherReview,
   onReviewSuccess,
@@ -1017,6 +1086,20 @@ function DetailTab({
           Chấp nhận & thanh toán KOL
         </button>,
         <button
+          key="request-revision"
+          type="button"
+          onClick={onRequestRevision}
+          disabled={actionLoading !== null}
+          className="btn-pin-secondary disabled:opacity-50"
+        >
+          {actionLoading === 'request-revision' ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <PenSquare className="w-4 h-4" />
+          )}
+          Yêu cầu chỉnh sửa
+        </button>,
+        <button
           key="reject-delivery"
           type="button"
           onClick={onRejectDelivery}
@@ -1029,20 +1112,6 @@ function DetailTab({
             <XCircle className="w-4 h-4" />
           )}
           Từ chối nội dung
-        </button>,
-        <button
-          key="dispute"
-          type="button"
-          onClick={onDispute}
-          disabled={actionLoading !== null}
-          className="btn-pin-secondary disabled:opacity-50 !border-amber-400 !text-amber-700 hover:!bg-amber-50"
-        >
-          {actionLoading === 'dispute' ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <ShieldAlert className="w-4 h-4" />
-          )}
-          Khiếu nại tranh chấp
         </button>,
       );
     }
@@ -1108,6 +1177,7 @@ function DetailTab({
       );
     }
     if (booking.status === 'IN_PROGRESS') {
+      const isResubmit = Boolean(booking.revisionFeedback?.trim());
       kolActions.push(
         <button
           key="submit-deliverable"
@@ -1118,10 +1188,12 @@ function DetailTab({
         >
           {actionLoading === 'submit-deliverable' ? (
             <Loader2 className="w-4 h-4 animate-spin" />
+          ) : isResubmit ? (
+            <RefreshCw className="w-4 h-4" />
           ) : (
             <Upload className="w-4 h-4" />
           )}
-          Nộp giao nội dung
+          {isResubmit ? 'Nộp lại nội dung' : 'Nộp giao nội dung'}
         </button>,
       );
     }
@@ -1183,7 +1255,10 @@ function DetailTab({
 
         {/* Submitted deliverables — visible to both sides when content has been submitted */}
         {booking.submittedDeliverables && booking.submittedDeliverables.length > 0 && (
-          <SubmittedDeliverablesSection deliverables={booking.submittedDeliverables} />
+          <SubmittedDeliverablesSection
+            deliverables={booking.submittedDeliverables}
+            revisionFeedback={booking.revisionFeedback}
+          />
         )}
 
         {/* Reviews — only when booking is COMPLETED */}
@@ -1305,7 +1380,7 @@ function DetailTab({
                     : branched
                       ? 'Đơn đã kết thúc, không phát sinh giao dịch.'
                       : booking.status === 'DELIVERED'
-                        ? 'Chấp nhận để giải ngân cho KOL. Từ chối → hoàn tiền về ví. Im lặng 3 ngày → hệ thống tự thanh toán KOL.'
+                        ? 'Chấp nhận, yêu cầu chỉnh sửa, hoặc từ chối. Im lặng 3 ngày → hệ thống tự thanh toán KOL.'
                         : 'Tiền được giữ trong escrow sau khi Brand thanh toán.'}
               </p>
             </div>
@@ -1346,22 +1421,48 @@ function DetailRow({
 
 function SubmittedDeliverablesSection({
   deliverables,
+  revisionFeedback,
 }: {
   deliverables: SubmittedDeliverableResponse[];
+  revisionFeedback?: string | null;
 }) {
+  const sorted = [...deliverables].sort((a, b) => {
+    const aTime = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+    const bTime = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+    return bTime - aTime;
+  });
+  const versionById = new Map(
+    [...deliverables]
+      .sort((a, b) => {
+        const aTime = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+        const bTime = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+        return aTime - bTime;
+      })
+      .map((d, index) => [d.id, index + 1] as const),
+  );
+
   return (
     <section className="pin-card p-5 md:p-6">
       <div className="flex items-center gap-2 mb-4">
         <Upload className="w-5 h-5 text-ink" />
         <h2 className="font-display font-bold text-lg text-ink">Nội dung KOL đã nộp</h2>
+        {sorted.length > 1 && (
+          <span className="text-xs text-mute ml-auto">{sorted.length} lần nộp</span>
+        )}
       </div>
       <div className="space-y-3">
-        {deliverables.map((d) => (
+        {sorted.map((d) => {
+          const version = versionById.get(d.id) ?? 1;
+          const feedback = d.brandFeedback?.trim();
+          return (
           <div
             key={d.id}
             className="rounded-2xl border border-hairline bg-canvas p-4 space-y-2"
           >
             <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="px-2 py-0.5 rounded-full bg-ink text-on-dark font-bold">
+                Lần nộp #{version}
+              </span>
               <span className="px-2 py-0.5 rounded-full bg-surface-card font-bold text-ink">
                 {d.type}
               </span>
@@ -1382,30 +1483,53 @@ function SubmittedDeliverablesSection({
                   : d.status === 'APPROVED'
                     ? 'Đã duyệt'
                     : d.status === 'REJECTED'
-                      ? 'Đã từ chối'
+                      ? 'Cần chỉnh sửa'
                       : d.status}
               </span>
               {d.submittedAt && (
                 <span className="text-mute ml-auto">{formatDateTime(d.submittedAt)}</span>
               )}
             </div>
-            <a
-              href={d.submittedUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm font-bold text-ink hover:text-pin-red transition-colors break-all"
-            >
-              <ExternalLink className="w-4 h-4 shrink-0" />
-              {d.submittedUrl}
-            </a>
+            {feedback && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm">
+                <p className="text-xs uppercase tracking-wide font-bold text-amber-800 mb-1 flex items-center gap-1">
+                  <PenSquare className="w-3.5 h-3.5" />
+                  Feedback Brand
+                </p>
+                <p className="text-amber-900 whitespace-pre-wrap">{feedback}</p>
+              </div>
+            )}
+            {d.submittedUrl && (
+              <>
+                <DeliverableMediaPreview url={d.submittedUrl} />
+                <a
+                  href={resolveMediaUrl(d.submittedUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-bold text-ink hover:text-pin-red transition-colors break-all"
+                >
+                  <ExternalLink className="w-4 h-4 shrink-0" />
+                  {d.submittedUrl}
+                </a>
+              </>
+            )}
             {d.note && (
               <p className="text-sm text-body whitespace-pre-wrap leading-relaxed border-t border-hairline-soft pt-2 mt-1">
+                <span className="text-xs uppercase tracking-wide text-mute font-bold block mb-1">
+                  Ghi chú KOL
+                </span>
                 {d.note}
               </p>
             )}
           </div>
-        ))}
+        );
+        })}
       </div>
+      {revisionFeedback?.trim() && (
+        <p className="text-xs text-mute mt-4">
+          Feedback chỉnh sửa mới nhất cũng hiển thị ở banner phía trên cho KOL.
+        </p>
+      )}
     </section>
   );
 }

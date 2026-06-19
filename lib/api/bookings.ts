@@ -5,6 +5,7 @@ import type {
   CreateBookingRequest,
   SendMessageRequest,
   SubmitDeliverableRequest,
+  RequestRevisionRequest,
   PageResponse,
 } from './types';
 
@@ -53,6 +54,11 @@ export const bookingsApi = {
 
   rejectDelivery(id: number, reason?: string): Promise<BookingResponse> {
     return api.post(`/bookings/${id}/reject-delivery`, reason ? { reason } : undefined);
+  },
+
+  /** BRAND: request KOL to revise submitted content (DELIVERED → IN_PROGRESS). */
+  requestRevision(id: number, data: RequestRevisionRequest): Promise<BookingResponse> {
+    return api.post(`/bookings/${id}/request-revision`, data);
   },
 
   dispute(id: number, reason?: string): Promise<BookingResponse> {

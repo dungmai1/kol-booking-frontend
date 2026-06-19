@@ -90,6 +90,7 @@ export type NotificationType =
   | 'BOOKING_CANCELLED'
   | 'BOOKING_IN_PROGRESS'
   | 'DELIVERABLE_SUBMITTED'
+  | 'DELIVERY_REVISION_REQUESTED'
   | 'BOOKING_COMPLETED'
   | 'BOOKING_DISPUTED'
   | 'PAYMENT_SUCCESS'
@@ -353,6 +354,8 @@ export interface SubmittedDeliverableResponse {
   note: string | null;
   submittedAt: string | null;
   status: DeliverableStatus;
+  /** Brand feedback when revision was requested for this submission. */
+  brandFeedback?: string | null;
 }
 
 export interface BookingResponse {
@@ -378,6 +381,9 @@ export interface BookingResponse {
   status: BookingStatus;
   rejectReason: string | null;
   cancelReason: string | null;
+  /** Latest brand feedback asking KOL to revise content (cleared after re-submit). */
+  revisionFeedback: string | null;
+  revisionRequestedAt: string | null;
   invoiceUrl: string | null;
   createdAt: string;
   updatedAt: string;
@@ -414,6 +420,10 @@ export interface SubmitDeliverableRequest {
   platform: Platform;
   submittedUrl: string;
   note?: string;
+}
+
+export interface RequestRevisionRequest {
+  reason: string;
 }
 
 // ─── Reviews ──────────────────────────────────────────────────────────────────

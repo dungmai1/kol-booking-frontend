@@ -16,6 +16,19 @@ export function isDirectVideoUrl(url: string): boolean {
   return /\.(mp4|webm|mov|m3u8)(\?|$)/i.test(url.trim());
 }
 
+export function isDirectImageUrl(url: string): boolean {
+  return /\.(jpe?g|png|gif|webp)(\?|$)/i.test(url.trim());
+}
+
+export function isPreviewableDeliverableUrl(url: string): boolean {
+  const trimmed = url.trim();
+  return (
+    isDirectImageUrl(trimmed) ||
+    isDirectVideoUrl(trimmed) ||
+    isTikTokUrl(trimmed)
+  );
+}
+
 export function isTikTokUrl(url: string): boolean {
   return /tiktok\.com/i.test(url.trim());
 }

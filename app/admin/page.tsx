@@ -12,7 +12,6 @@ import {
   TrendingUp,
   TrendingDown,
   AlertCircle,
-  AlertTriangle,
   CalendarRange,
   ArrowUpRight,
   Star,
@@ -656,26 +655,10 @@ export default function AdminDashboardPage() {
 
       {/* ── Operational highlights ─────────────────────────────────────────── */}
       <section
-        className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 gap-4"
         aria-label="Cảnh báo vận hành"
       >
-        {/* 1 — Tranh chấp */}
-        <div className="rounded-2xl border border-hairline bg-surface-card p-5">
-          <div className="flex items-start justify-between">
-            <p className="text-xs text-mute font-medium uppercase tracking-wider">TRANH CHẤP ĐANG MỞ</p>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-red-50">
-              <AlertTriangle className="w-5 h-5 text-red-500" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="text-[22px] font-bold text-ink leading-tight tabular-nums">
-              {overviewLoading ? <Skeleton className="h-7 w-12" /> : compactNumber(overview?.disputeCount ?? 0)}
-            </div>
-            <p className="text-xs text-mute mt-1">Booking cần admin xử lý</p>
-          </div>
-        </div>
-
-        {/* 2 — KOL chờ duyệt */}
+        {/* 1 — KOL chờ duyệt */}
         <div className="rounded-2xl border border-hairline bg-surface-card p-5">
           <div className="flex items-start justify-between">
             <p className="text-xs text-mute font-medium uppercase tracking-wider">KOL CHỜ DUYỆT</p>

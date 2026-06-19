@@ -16,6 +16,14 @@ export function resolveMediaUrl(url: string | null | undefined): string {
   return url;
 }
 
+/** Accept absolute links or backend upload paths returned from `/files/upload`. */
+export function isValidContentUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  if (/^https?:\/\//i.test(trimmed)) return true;
+  return trimmed.startsWith('/uploads/');
+}
+
 const TOKEN_KEY = 'kol_access_token';
 const REFRESH_KEY = 'kol_refresh_token';
 

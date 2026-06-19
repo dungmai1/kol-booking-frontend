@@ -15,6 +15,7 @@ import {
   MessageSquare,
   Megaphone,
   ListChecks,
+  PenSquare,
   UserCheck,
   UserX,
   type LucideIcon,
@@ -30,6 +31,7 @@ export function notificationIcon(type: NotificationType): LucideIcon {
     case 'BOOKING_CANCELLED': return CalendarX;
     case 'BOOKING_IN_PROGRESS': return PlayCircle;
     case 'DELIVERABLE_SUBMITTED': return FileUp;
+    case 'DELIVERY_REVISION_REQUESTED': return PenSquare;
     case 'BOOKING_COMPLETED': return CheckCircle2;
     case 'BOOKING_DISPUTED': return AlertTriangle;
     case 'PAYMENT_SUCCESS': return Wallet;
@@ -53,6 +55,7 @@ export function notificationAccent(type: NotificationType): string {
     case 'BOOKING_CREATED':
     case 'BOOKING_IN_PROGRESS':
     case 'DELIVERABLE_SUBMITTED':
+    case 'DELIVERY_REVISION_REQUESTED':
       return 'bg-surface-card text-ink';
     case 'BOOKING_ACCEPTED':
     case 'BOOKING_COMPLETED':
@@ -90,6 +93,7 @@ export function notificationTypeLabel(type: NotificationType): string {
     case 'BOOKING_CANCELLED': return 'Đơn bị hủy';
     case 'BOOKING_IN_PROGRESS': return 'Đang thực hiện';
     case 'DELIVERABLE_SUBMITTED': return 'Đã giao kết quả';
+    case 'DELIVERY_REVISION_REQUESTED': return 'Yêu cầu chỉnh sửa';
     case 'BOOKING_COMPLETED': return 'Đơn hoàn thành';
     case 'BOOKING_DISPUTED': return 'Tranh chấp';
     case 'PAYMENT_SUCCESS': return 'Thanh toán thành công';
