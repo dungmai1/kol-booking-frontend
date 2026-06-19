@@ -15,10 +15,12 @@ import {
   ExternalLink,
   Inbox,
   ArrowLeftRight,
+  MessageSquare,
 } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ApplicationStatusPill } from '@/components/product-status-pill';
 import { PaginationBar } from '@/components/pagination-bar';
+import { ApplicationNegotiationChat } from '@/components/application-negotiation-chat';
 import { productsApi } from '@/lib/api/products';
 import { applicationsApi } from '@/lib/api/applications';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +34,8 @@ import type {
   TopApplicantsBy,
 } from '@/lib/api/types';
 import { vnd, formatFollowers, TOP_BY_OPTIONS } from '@/lib/products/meta';
+
+const TERMINAL_STATUSES: ApplicationStatus[] = ['WITHDRAWN', 'REJECTED', 'BOOKING_CANCELLED'];
 
 const PAGE_SIZE = 12;
 
@@ -67,8 +71,11 @@ export default function ProductApplicantsPage({ params }: { params: Promise<{ id
 
   const [counterFor, setCounterFor] = useState<ProductApplicationResponse | null>(null);
   const [counterPrice, setCounterPrice] = useState('');
+  const [counterNote, setCounterNote] = useState('');
   const [counterError, setCounterError] = useState('');
   const [countering, setCountering] = useState(false);
+
+  const [chatFor, setChatFor] = useState<ProductApplicationResponse | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -162,9 +169,10 @@ export default function ProductApplicantsPage({ params }: { params: Promise<{ id
     setCountering(true);
     setCounterError('');
     try {
-      patchItem(await applicationsApi.counterOffer(counterFor.id, price));
+      patchItem(await applicationsApi.counterOffer(counterFor.id, price, counterNote.trim() || undefined));
       setCounterFor(null);
       setCounterPrice('');
+      setCounterNote('');
     } catch (err) {
       setCounterError(err instanceof ApiError ? err.message : 'Không thể gửi giá thương lượng.');
     } finally {
@@ -296,8 +304,10 @@ export default function ProductApplicantsPage({ params }: { params: Promise<{ id
                   onCounterOffer={() => {
                     setCounterPrice('');
                     setCounterError('');
+                    setCounterNote('');
                     setCounterFor(a);
                   }}
+                  onChat={() => setChatFor(a)}
                 />
               ))}
             </ul>
@@ -329,7 +339,16 @@ export default function ProductApplicantsPage({ params }: { params: Promise<{ id
               className="w-full px-3 py-2.5 rounded-xl border border-hairline bg-surface-soft focus:bg-canvas focus:border-ink focus:outline-none text-sm mb-1"
             />
             {counterError && <p className="text-xs text-pin-red mb-3">{counterError}</p>}
-            {!counterError && <div className="mb-3" />}
+            {!counterError && <div className="mb-1" />}
+            <textarea
+              value={counterNote}
+              onChange={(e) => setCounterNote(e.target.value)}
+              rows={2}
+              maxLength={2000}
+              placeholder="Ghi chú kèm theo (tuỳ chọn)…"
+              className="w-full px-3 py-2.5 rounded-xl border border-hairline bg-surface-soft focus:bg-canvas focus:border-ink focus:outline-none text-sm resize-none mb-1"
+            />
+            <p className="text-xs text-mute text-right mb-3">{counterNote.length}/2000</p>
             <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
@@ -396,6 +415,50 @@ export default function ProductApplicantsPage({ params }: { params: Promise<{ id
           </div>
         </div>
       )}
+
+      {/* Negotiation chat modal */}
+      {chatFor && user && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm px-4 py-8"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setChatFor(null)}
+        >
+          <div
+            className="bg-canvas rounded-2xl shadow-xl w-full max-w-[560px] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-hairline">
+              <div>
+                <h2 className="font-display font-bold text-lg text-ink">
+                  Chat thương lượng
+                </h2>
+                <p className="text-xs text-mute mt-0.5">
+                  với KOL <span className="font-semibold text-ink">{chatFor.kolDisplayName ?? 'KOL'}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setChatFor(null)}
+                className="text-mute hover:text-ink transition-colors p-1 rounded-lg hover:bg-surface-card"
+                aria-label="Đóng"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {/* Chat panel */}
+            <div className="p-4">
+              <ApplicationNegotiationChat
+                applicationId={chatFor.id}
+                currentUserId={user.userId}
+                currentUserRole="BRAND"
+                isTerminal={TERMINAL_STATUSES.includes(chatFor.status)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -407,6 +470,7 @@ function ApplicantCard({
   onAccept,
   onReject,
   onCounterOffer,
+  onChat,
 }: {
   app: ProductApplicationResponse;
   rank?: number;
@@ -414,10 +478,13 @@ function ApplicantCard({
   onAccept: () => void;
   onReject: () => void;
   onCounterOffer: () => void;
+  onChat: () => void;
 }) {
   const canCounterOffer = (app.status === 'PENDING' || app.status === 'SHORTLISTED') && app.proposedPrice != null && app.proposedPrice > 0;
   const canAccept = app.status === 'PENDING' || app.status === 'SHORTLISTED' || app.status === 'COUNTER_OFFERED';
   const canReject = app.status === 'PENDING' || app.status === 'SHORTLISTED' || app.status === 'COUNTER_OFFERED';
+  // Show chat button for all non-rejected/non-withdrawn applications so history is accessible.
+  const canChat = app.status !== 'REJECTED' && app.status !== 'WITHDRAWN' && app.status !== 'BOOKING_CANCELLED';
   const initial = (app.kolDisplayName ?? 'K').charAt(0).toUpperCase();
 
   return (
@@ -477,6 +544,9 @@ function ApplicantCard({
             {app.brandCounterPrice != null && app.brandCounterPrice > 0 && (
               <span className="font-semibold text-amber-600">Giá thương lượng: {vnd.format(app.brandCounterPrice)}</span>
             )}
+            {app.brandNegotiationNote && (
+              <span className="text-amber-700 italic">Ghi chú: {app.brandNegotiationNote}</span>
+            )}
             {app.bookingId && (
               <Link
                 href={`/bookings/${app.bookingId}`}
@@ -487,12 +557,26 @@ function ApplicantCard({
               </Link>
             )}
             {app.rejectReason && <span className="text-pin-red">Lý do: {app.rejectReason}</span>}
+            {app.kolNegotiationReply && (
+              <span className="text-blue-600">Phản hồi KOL: {app.kolNegotiationReply}</span>
+            )}
           </div>
         </div>
       </div>
 
-      {(canCounterOffer || canAccept || canReject) && (
-        <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-hairline-soft">
+      {(canCounterOffer || canAccept || canReject || canChat) && (
+        <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-hairline-soft flex-wrap">
+          {canChat && (
+            <button
+              type="button"
+              onClick={onChat}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-ink bg-surface-card hover:bg-secondary-bg transition-colors disabled:opacity-50"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Nhắn tin
+            </button>
+          )}
           {canCounterOffer && (
             <button
               type="button"

@@ -22,7 +22,14 @@ export function useSse({ path, enabled, onEvent, onConnect, onDisconnect }: SseO
   const connect = useCallback(async () => {
     if (!mountedRef.current || !enabled) return;
     const token = getAccessToken();
-    if (!token) return;
+    if (!token) {
+      // Not yet authenticated — retry after backoff instead of giving up silently.
+      const delay = delayRef.current;
+      delayRef.current = Math.min(delay * 2, MAX_DELAY_MS);
+      await new Promise((r) => setTimeout(r, delay));
+      connect();
+      return;
+    }
 
     const controller = new AbortController();
     abortRef.current = controller;

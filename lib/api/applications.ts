@@ -1,6 +1,7 @@
 import { api } from './client';
 import type {
   ProductApplicationResponse,
+  ApplicationMessageResponse,
   RejectApplicationRequest,
   PageResponse,
 } from './types';
@@ -34,8 +35,8 @@ export const applicationsApi = {
   // ─── Price negotiation ───────────────────────────────────────────────────────
 
   /** Brand sends a counter-offer price to a KOL who proposed a price. */
-  counterOffer(id: number, counterPrice: number): Promise<ProductApplicationResponse> {
-    return api.post(`/applications/${id}/counter-offer`, { counterPrice });
+  counterOffer(id: number, counterPrice: number, negotiationNote?: string): Promise<ProductApplicationResponse> {
+    return api.post(`/applications/${id}/counter-offer`, { counterPrice, negotiationNote: negotiationNote || undefined });
   },
 
   /** KOL accepts the brand's counter-offer → triggers booking creation. */
@@ -44,7 +45,23 @@ export const applicationsApi = {
   },
 
   /** KOL rejects the brand's counter-offer → application reverts to PENDING. */
-  rejectCounter(id: number): Promise<ProductApplicationResponse> {
-    return api.post(`/applications/${id}/reject-counter`);
+  rejectCounter(id: number, replyMessage?: string): Promise<ProductApplicationResponse> {
+    return api.post(`/applications/${id}/reject-counter`, replyMessage ? { replyMessage } : undefined);
+  },
+
+  // ─── Negotiation chat ────────────────────────────────────────────────────────
+
+  /** Paginated message history for an application's negotiation chat (newest first). */
+  listMessages(id: number, page = 0, size = 50): Promise<PageResponse<ApplicationMessageResponse>> {
+    return api.get(`/applications/${id}/messages?page=${page}&size=${size}`);
+  },
+
+  /**
+   * Send a message in the negotiation chat.
+   * Content is passed as a query param because the BE uses @RequestParam (not @RequestBody).
+   */
+  sendMessage(id: number, content: string): Promise<ApplicationMessageResponse> {
+    const qs = new URLSearchParams({ content });
+    return api.post(`/applications/${id}/messages?${qs.toString()}`);
   },
 };

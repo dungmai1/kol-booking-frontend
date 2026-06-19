@@ -84,6 +84,24 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     void load();
   }, [id, load]);
 
+  // Re-fetch when user returns to this page so hasApplied reflects any withdrawal.
+  // Covers: browser back-button (bfcache restore) + tab switch (visibility).
+  useEffect(() => {
+    if (Number.isNaN(id)) return;
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') void load();
+    };
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) void load();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('pageshow', handlePageShow);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, [id, load]);
+
   // Resolve viewer role context once product + auth are known.
   useEffect(() => {
     if (authLoading || !product || !user) return;
