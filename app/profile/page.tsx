@@ -102,6 +102,38 @@ function toUpdatePayload(formData: ProfileForm) {
   };
 }
 
+type BrandSubmitField = {
+  id: string;
+  label: string;
+  met: boolean;
+};
+
+function getBrandSubmitFields(data: ProfileForm): BrandSubmitField[] {
+  return [
+    { id: 'logo', label: 'Logo thương hiệu', met: data.logoUrl.trim().length > 0 },
+    { id: 'company', label: 'Tên thương hiệu', met: data.company.trim().length > 0 },
+    { id: 'industry', label: 'Ngành nghề', met: data.industry.trim().length > 0 },
+    { id: 'address', label: 'Địa chỉ', met: data.address.trim().length > 0 },
+    { id: 'country', label: 'Quốc gia', met: data.country.trim().length > 0 },
+    { id: 'bio', label: 'Giới thiệu', met: data.bio.trim().length > 0 },
+    { id: 'website', label: 'Website', met: data.website.trim().length > 0 },
+  ];
+}
+
+function isBrandProfileComplete(data: ProfileForm): boolean {
+  return getBrandSubmitFields(data).every((field) => field.met);
+}
+
+function validateBrandSubmit(data: ProfileForm): string | null {
+  const formError = validateForm(data);
+  if (formError) return formError;
+
+  const missing = getBrandSubmitFields(data).filter((field) => !field.met);
+  if (missing.length === 0) return null;
+
+  return `Vui lòng điền đầy đủ các trường bắt buộc (*): ${missing.map((field) => field.label).join(', ')}.`;
+}
+
 type PublicStats = {
   avgRating: number;
   reviewCount: number;
@@ -267,21 +299,22 @@ export default function ProfilePage() {
   }
 
   async function handleSubmitForReview() {
-    const error = validateForm(formData);
+    const error = validateBrandSubmit(formData);
     if (error) {
       toast.error(error);
-      return;
-    }
-    if (!formData.company.trim()) {
-      toast.error('Vui lòng nhập tên thương hiệu (trường có dấu *) trước khi gửi duyệt.');
       return;
     }
 
     setIsSubmitting(true);
     try {
       const updated = await brandApi.updateMyProfile({
-        ...toUpdatePayload(formData),
         companyName: formData.company.trim(),
+        industry: formData.industry,
+        logoUrl: formData.logoUrl,
+        address: formData.address.trim(),
+        country: formData.country,
+        bio: formData.bio.trim(),
+        website: formData.website.trim(),
       });
       const next = toForm(updated);
       setFormData(next);
@@ -318,8 +351,9 @@ export default function ProfilePage() {
   const avatarSrc = resolveMediaUrl(formData.logoUrl);
 
   const showSubmitBrand = isBrand && brandStatus !== null && canSubmitProfile(brandStatus);
-  const hasCompanyName = formData.company.trim().length > 0;
-  const canSubmitBrand = showSubmitBrand && hasCompanyName;
+  const brandSubmitFields = useMemo(() => getBrandSubmitFields(formData), [formData]);
+  const canSubmitBrand = showSubmitBrand && isBrandProfileComplete(formData);
+  const missingSubmitFields = brandSubmitFields.filter((field) => !field.met);
 
   if (authLoading || isLoading || user?.role === 'KOL' || user?.role === 'ADMIN') {
     return (
@@ -349,7 +383,7 @@ export default function ProfilePage() {
           </div>
           <p className="text-mute mt-2 max-w-2xl">
             {isBrand
-              ? 'Chỉnh sửa thông tin hiển thị công khai trên trang thương hiệu. Các trường có dấu * là bắt buộc trước khi gửi duyệt.'
+              ? 'Chỉnh sửa thông tin hiển thị công khai trên trang thương hiệu. Cần điền đầy đủ các trường có dấu * trước khi gửi duyệt.'
               : 'Quản lý thông tin tài khoản của bạn.'}
           </p>
 
@@ -369,18 +403,13 @@ export default function ProfilePage() {
               <div className="text-sm">
                 <p className="font-bold text-amber-700">Hồ sơ chưa đủ điều kiện gửi duyệt</p>
                 <p className="text-amber-700 mt-1">
-                  Hoàn thành các trường có dấu <span className="text-pin-red font-bold">*</span> bên dưới, lưu
+                  Điền đầy đủ các trường có dấu <span className="text-pin-red font-bold">*</span> bên dưới, lưu
                   thay đổi rồi nhấn &quot;Gửi duyệt&quot;.
                 </p>
                 <ul className="mt-2 space-y-0.5 text-amber-700">
-                  <li className="flex items-center gap-2">
-                    {hasCompanyName ? (
-                      <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    ) : (
-                      <span className="w-4 h-4 rounded-full border-2 border-amber-400" />
-                    )}
-                    Tên thương hiệu <span className="text-pin-red">*</span>
-                  </li>
+                  {brandSubmitFields.map((field) => (
+                    <SubmitRequirementItem key={field.id} met={field.met} label={field.label} />
+                  ))}
                 </ul>
               </div>
             </div>
@@ -457,12 +486,17 @@ export default function ProfilePage() {
                 <section className="bg-canvas rounded-md border border-hairline p-8">
                   <SectionHeader
                     title="Thông tin hiển thị công khai"
-                    description="Nội dung hiển thị trên trang /brand/{id}. Trường có dấu * bắt buộc trước khi gửi duyệt."
+                    description="Nội dung hiển thị trên trang /brand/{id}. Tất cả trường có dấu * phải được điền đầy đủ trước khi gửi duyệt."
                   />
                   <div className="space-y-5">
                     <Field
                       label="Logo thương hiệu"
-                      hint="Ảnh vuông hiển thị ở đầu hồ sơ công khai (logoUrl)."
+                      required={showSubmitBrand}
+                      hint={
+                        showSubmitBrand
+                          ? 'Bắt buộc (*) — tải logo và lưu thay đổi trước khi gửi duyệt.'
+                          : 'Ảnh vuông hiển thị ở đầu hồ sơ công khai.'
+                      }
                     >
                       <div className="flex items-center gap-6">
                         <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-secondary-bg border border-hairline shrink-0">
@@ -505,7 +539,7 @@ export default function ProfilePage() {
                       required={showSubmitBrand}
                       hint={
                         showSubmitBrand
-                          ? 'Bắt buộc (*) — tiêu đề chính trên hồ sơ công khai. Cần điền trước khi gửi duyệt.'
+                          ? 'Bắt buộc (*) — tiêu đề chính trên hồ sơ công khai.'
                           : 'Tiêu đề chính trên hồ sơ công khai.'
                       }
                     >
@@ -518,7 +552,15 @@ export default function ProfilePage() {
                       />
                     </Field>
 
-                    <Field label="Ngành nghề" hint="Hiển thị dạng nhãn bên cạnh tên thương hiệu (industry).">
+                    <Field
+                      label="Ngành nghề"
+                      required={showSubmitBrand}
+                      hint={
+                        showSubmitBrand
+                          ? 'Bắt buộc (*) — hiển thị dạng nhãn bên cạnh tên thương hiệu.'
+                          : 'Hiển thị dạng nhãn bên cạnh tên thương hiệu.'
+                      }
+                    >
                       <select name="industry" value={formData.industry} onChange={handleChange} className="pin-input">
                         <option value="">-- Chọn ngành nghề --</option>
                         <option>Thương mại điện tử</option>
@@ -531,7 +573,11 @@ export default function ProfilePage() {
                     </Field>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                      <Field label="Địa chỉ" hint="Hiển thị cùng quốc gia trên hồ sơ công khai (address).">
+                      <Field
+                        label="Địa chỉ"
+                        required={showSubmitBrand}
+                        hint={showSubmitBrand ? 'Bắt buộc (*) — hiển thị cùng quốc gia trên hồ sơ công khai.' : 'Hiển thị cùng quốc gia trên hồ sơ công khai.'}
+                      >
                         <input
                           type="text"
                           name="address"
@@ -541,7 +587,11 @@ export default function ProfilePage() {
                           className="pin-input"
                         />
                       </Field>
-                      <Field label="Quốc gia" hint="Bổ sung vị trí trên hồ sơ công khai (country).">
+                      <Field
+                        label="Quốc gia"
+                        required={showSubmitBrand}
+                        hint={showSubmitBrand ? 'Bắt buộc (*) — bổ sung vị trí trên hồ sơ công khai.' : 'Bổ sung vị trí trên hồ sơ công khai.'}
+                      >
                         <select name="country" value={formData.country} onChange={handleChange} className="pin-input">
                           {COUNTRIES.map((c) => (
                             <option key={c} value={c}>
@@ -552,7 +602,15 @@ export default function ProfilePage() {
                       </Field>
                     </div>
 
-                    <Field label="Giới thiệu" hint="Đoạn mô tả ngắn dưới tên thương hiệu (bio).">
+                    <Field
+                      label="Giới thiệu"
+                      required={showSubmitBrand}
+                      hint={
+                        showSubmitBrand
+                          ? 'Bắt buộc (*) — mô tả ngắn về thương hiệu hiển thị dưới tên.'
+                          : 'Đoạn mô tả ngắn dưới tên thương hiệu.'
+                      }
+                    >
                       <textarea
                         name="bio"
                         value={formData.bio}
@@ -565,7 +623,12 @@ export default function ProfilePage() {
 
                     <Field
                       label="Website"
-                      hint="Liên kết website hiển thị trên hồ sơ công khai (website). Có thể nhập thecoffeehouse.com hoặc https://..."
+                      required={showSubmitBrand}
+                      hint={
+                        showSubmitBrand
+                          ? 'Bắt buộc (*) — liên kết website hiển thị trên hồ sơ công khai. Có thể nhập thecoffeehouse.com hoặc https://...'
+                          : 'Liên kết website hiển thị trên hồ sơ công khai. Có thể nhập thecoffeehouse.com hoặc https://...'
+                      }
                     >
                       <input
                         type="text"
@@ -594,7 +657,11 @@ export default function ProfilePage() {
                       type="button"
                       onClick={() => void handleSubmitForReview()}
                       disabled={isSubmitting || isSaving || isUploading || !canSubmitBrand}
-                      title={!canSubmitBrand ? 'Cần nhập Tên thương hiệu (trường có dấu *)' : undefined}
+                      title={
+                        !canSubmitBrand
+                          ? `Cần điền đầy đủ: ${missingSubmitFields.map((field) => field.label).join(', ')}`
+                          : undefined
+                      }
                       className="btn-pin-secondary !rounded-full flex-1 min-w-[140px] !py-3 inline-flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -616,6 +683,19 @@ export default function ProfilePage() {
         </div>
       </main>
     </>
+  );
+}
+
+function SubmitRequirementItem({ met, label }: { met: boolean; label: string }) {
+  return (
+    <li className="flex items-center gap-2">
+      {met ? (
+        <CheckCircle2 className="w-4 h-4 text-green-600" />
+      ) : (
+        <span className="w-4 h-4 rounded-full border-2 border-amber-400" />
+      )}
+      {label} <span className="text-pin-red">*</span>
+    </li>
   );
 }
 
