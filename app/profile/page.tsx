@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ACCEPTED_IMAGE_ACCEPT, validateUploadFile } from '@/lib/uploads/validate';
+import { LocationSelect } from '@/components/location-select';
 
 const MAX_ADDRESS_LENGTH = 255;
 const MAX_BIO_LENGTH = 500;
@@ -572,35 +573,35 @@ export default function ProfilePage() {
                       </select>
                     </Field>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                      <Field
-                        label="Địa chỉ"
+                    <Field
+                      label="Địa chỉ"
+                      required={showSubmitBrand}
+                      hint={
+                        showSubmitBrand
+                          ? 'Bắt buộc (*) — chọn tỉnh/thành, phường/xã rồi nhập số nhà, tên đường.'
+                          : 'Chọn tỉnh/thành, phường/xã rồi nhập số nhà, tên đường.'
+                      }
+                    >
+                      <LocationSelect
+                        value={formData.address}
+                        onChange={(v) => setFormData((prev) => ({ ...prev, address: v }))}
                         required={showSubmitBrand}
-                        hint={showSubmitBrand ? 'Bắt buộc (*) — hiển thị cùng quốc gia trên hồ sơ công khai.' : 'Hiển thị cùng quốc gia trên hồ sơ công khai.'}
-                      >
-                        <input
-                          type="text"
-                          name="address"
-                          value={formData.address}
-                          onChange={handleChange}
-                          maxLength={MAX_ADDRESS_LENGTH}
-                          className="pin-input"
-                        />
-                      </Field>
-                      <Field
-                        label="Quốc gia"
-                        required={showSubmitBrand}
-                        hint={showSubmitBrand ? 'Bắt buộc (*) — bổ sung vị trí trên hồ sơ công khai.' : 'Bổ sung vị trí trên hồ sơ công khai.'}
-                      >
-                        <select name="country" value={formData.country} onChange={handleChange} className="pin-input">
-                          {COUNTRIES.map((c) => (
-                            <option key={c} value={c}>
-                              {c}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                    </div>
+                      />
+                    </Field>
+
+                    <Field
+                      label="Quốc gia"
+                      required={showSubmitBrand}
+                      hint={showSubmitBrand ? 'Bắt buộc (*) — bổ sung vị trí trên hồ sơ công khai.' : 'Bổ sung vị trí trên hồ sơ công khai.'}
+                    >
+                      <select name="country" value={formData.country} onChange={handleChange} className="pin-input">
+                        {COUNTRIES.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
 
                     <Field
                       label="Giới thiệu"
