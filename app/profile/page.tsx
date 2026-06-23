@@ -23,6 +23,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ACCEPTED_IMAGE_ACCEPT, validateUploadFile } from '@/lib/uploads/validate';
 import { LocationSelect } from '@/components/location-select';
+import { isCompleteVietnamAddress } from '@/lib/location/address';
 
 const MAX_ADDRESS_LENGTH = 255;
 const MAX_BIO_LENGTH = 500;
@@ -59,6 +60,9 @@ function isValidWebsite(website: string): boolean {
 }
 
 function validateForm(data: ProfileForm): string | null {
+  if (data.address.trim() && !isCompleteVietnamAddress(data.address)) {
+    return 'Vui lòng chọn tỉnh/thành, phường/xã và nhập số nhà, tên đường.';
+  }
   if (data.address.trim().length > MAX_ADDRESS_LENGTH) {
     return `Địa chỉ tối đa ${MAX_ADDRESS_LENGTH} ký tự.`;
   }
@@ -114,7 +118,7 @@ function getBrandSubmitFields(data: ProfileForm): BrandSubmitField[] {
     { id: 'logo', label: 'Logo thương hiệu', met: data.logoUrl.trim().length > 0 },
     { id: 'company', label: 'Tên thương hiệu', met: data.company.trim().length > 0 },
     { id: 'industry', label: 'Ngành nghề', met: data.industry.trim().length > 0 },
-    { id: 'address', label: 'Địa chỉ', met: data.address.trim().length > 0 },
+    { id: 'address', label: 'Địa chỉ', met: isCompleteVietnamAddress(data.address) },
     { id: 'country', label: 'Quốc gia', met: data.country.trim().length > 0 },
     { id: 'bio', label: 'Giới thiệu', met: data.bio.trim().length > 0 },
     { id: 'website', label: 'Website', met: data.website.trim().length > 0 },

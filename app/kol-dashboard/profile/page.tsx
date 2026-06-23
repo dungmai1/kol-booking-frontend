@@ -48,6 +48,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/currency-input';
 import { parsePriceDigits, validatePriceDigits } from '@/lib/currency-input';
+import { LocationSelect } from '@/components/location-select';
+import { isCompleteVietnamAddress } from '@/lib/location/address';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -70,6 +72,8 @@ import {
 } from '@/lib/validation/date-of-birth';
 
 // ───────────────────────────── Constants ─────────────────────────────
+
+const MAX_KOL_ADDRESS_LENGTH = 255;
 
 const vnd = new Intl.NumberFormat('vi-VN', {
   style: 'currency', currency: 'VND', maximumFractionDigits: 0,
@@ -249,6 +253,15 @@ export default function KolProfileEditPage() {
       toast.error(dobErr);
       return;
     }
+    const cityValue = form.city?.trim() ?? '';
+    if (cityValue && !isCompleteVietnamAddress(cityValue)) {
+      toast.error('Vui lòng chọn tỉnh/thành, phường/xã và nhập số nhà, tên đường.');
+      return;
+    }
+    if (cityValue.length > MAX_KOL_ADDRESS_LENGTH) {
+      toast.error(`Địa chỉ tối đa ${MAX_KOL_ADDRESS_LENGTH} ký tự.`);
+      return;
+    }
     setIsSaving(true);
     try {
       const payload: UpdateKolProfileRequest = {
@@ -259,7 +272,7 @@ export default function KolProfileEditPage() {
         bio: form.bio ?? undefined,
         gender: form.gender,
         dateOfBirth: dob ? isoDate(dob) : undefined,
-        city: form.city || undefined,
+        city: cityValue || undefined,
         country: form.country || undefined,
         categoryIds: form.categoryIds ?? [],
       };
@@ -661,13 +674,14 @@ export default function KolProfileEditPage() {
                     {dobError && <p className="text-xs text-red-600 mt-1">{dobError}</p>}
                   </div>
 
-                  <div>
-                    <Label htmlFor="city" className="mb-2 block">Thành phố</Label>
-                    <Input
-                      id="city"
+                  <div className="md:col-span-2">
+                    <Label className="mb-2 block">Địa chỉ</Label>
+                    <p className="text-xs text-mute mb-2">
+                      Chọn tỉnh/thành, phường/xã rồi nhập số nhà, tên đường.
+                    </p>
+                    <LocationSelect
                       value={form.city ?? ''}
-                      onChange={(e) => setField('city', e.target.value)}
-                      placeholder="TP. Hồ Chí Minh"
+                      onChange={(v) => setField('city', v)}
                     />
                   </div>
 

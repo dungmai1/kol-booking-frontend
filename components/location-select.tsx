@@ -1,37 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import provincesData from '@/lib/data/vietnamProvincesWards.json';
-
-type Ward = { ward_code: string; ward_name: string };
-type Province = { province_code: string; province_name: string; wards: Ward[] };
-
-const PROVINCES = provincesData as Province[];
-
-function compose(street: string, ward: string, province: string): string {
-  return [street.trim(), ward, province].filter(Boolean).join(', ');
-}
-
-function parse(address: string): { street: string; ward: string; province: string } {
-  const parts = address.split(', ');
-  let province = '';
-  let ward = '';
-  let streetParts = [...parts];
-
-  const matchedProvince = PROVINCES.find((p) => p.province_name === parts[parts.length - 1]);
-  if (matchedProvince) {
-    province = matchedProvince.province_name;
-    streetParts = parts.slice(0, -1);
-
-    const matchedWard = matchedProvince.wards.find((w) => w.ward_name === streetParts[streetParts.length - 1]);
-    if (matchedWard) {
-      ward = matchedWard.ward_name;
-      streetParts = streetParts.slice(0, -1);
-    }
-  }
-
-  return { street: streetParts.join(', '), ward, province };
-}
+import {
+  composeVietnamAddress,
+  parseVietnamAddress,
+  PROVINCES,
+} from '@/lib/location/address';
 
 interface LocationSelectProps {
   value: string;
@@ -44,16 +18,13 @@ export function LocationSelect({ value, onChange, required = false, disabled = f
   const [province, setProvince] = useState('');
   const [ward, setWard] = useState('');
   const [street, setStreet] = useState('');
-  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    if (initialized) return;
-    const parsed = parse(value);
+    const parsed = parseVietnamAddress(value);
     setProvince(parsed.province);
     setWard(parsed.ward);
     setStreet(parsed.street);
-    setInitialized(true);
-  }, [value, initialized]);
+  }, [value]);
 
   const wards = useMemo(() => {
     const found = PROVINCES.find((p) => p.province_name === province);
@@ -63,62 +34,72 @@ export function LocationSelect({ value, onChange, required = false, disabled = f
   function onProvinceChange(newProvince: string) {
     setProvince(newProvince);
     setWard('');
-    onChange(compose(street, '', newProvince));
+    onChange(composeVietnamAddress(street, '', newProvince));
   }
 
   function onWardChange(newWard: string) {
     setWard(newWard);
-    onChange(compose(street, newWard, province));
+    onChange(composeVietnamAddress(street, newWard, province));
   }
 
   function onStreetChange(newStreet: string) {
     setStreet(newStreet);
-    onChange(compose(newStreet, ward, province));
+    onChange(composeVietnamAddress(newStreet, ward, province));
   }
 
   return (
     <div className="space-y-3">
-      <select
-        value={province}
-        onChange={(e) => onProvinceChange(e.target.value)}
-        disabled={disabled}
-        required={required}
-        className="pin-input"
-        aria-label="Tỉnh / Thành phố"
-      >
-        <option value="">-- Chọn tỉnh / thành phố --</option>
-        {PROVINCES.map((p) => (
-          <option key={p.province_code} value={p.province_name}>
-            {p.province_name}
-          </option>
-        ))}
-      </select>
+      <div>
+        <label className="block text-xs font-semibold text-mute mb-1">Tỉnh / Thành phố</label>
+        <select
+          value={province}
+          onChange={(e) => onProvinceChange(e.target.value)}
+          disabled={disabled}
+          required={required}
+          className="pin-input"
+        >
+          <option value="">-- Chọn tỉnh / thành phố --</option>
+          {PROVINCES.map((p) => (
+            <option key={p.province_code} value={p.province_name}>
+              {p.province_name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <select
-        value={ward}
-        onChange={(e) => onWardChange(e.target.value)}
-        disabled={disabled || !province}
-        className="pin-input"
-        aria-label="Phường / Xã"
-      >
-        <option value="">{province ? '-- Chọn phường / xã --' : '-- Chọn tỉnh trước --'}</option>
-        {wards.map((w) => (
-          <option key={w.ward_code} value={w.ward_name}>
-            {w.ward_name}
-          </option>
-        ))}
-      </select>
+      <div>
+        <label className="block text-xs font-semibold text-mute mb-1">Phường / Xã</label>
+        <select
+          value={ward}
+          onChange={(e) => onWardChange(e.target.value)}
+          disabled={disabled || !province}
+          required={required}
+          className="pin-input"
+        >
+          <option value="">{province ? '-- Chọn phường / xã --' : '-- Chọn tỉnh / thành trước --'}</option>
+          {wards.map((w) => (
+            <option key={w.ward_code} value={w.ward_name}>
+              {w.ward_name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <input
-        type="text"
-        value={street}
-        onChange={(e) => onStreetChange(e.target.value)}
-        placeholder="Số nhà, tên đường..."
-        maxLength={200}
-        disabled={disabled}
-        className="pin-input"
-        aria-label="Số nhà, tên đường"
-      />
+      <div>
+        <label className="block text-xs font-semibold text-mute mb-1">Số nhà, tên đường</label>
+        <input
+          type="text"
+          value={street}
+          onChange={(e) => onStreetChange(e.target.value)}
+          placeholder="VD: 123 Nguyễn Huệ"
+          maxLength={200}
+          disabled={disabled}
+          required={required}
+          className="pin-input"
+        />
+      </div>
     </div>
   );
 }
+
+export { composeVietnamAddress, parseVietnamAddress, isCompleteVietnamAddress } from '@/lib/location/address';
