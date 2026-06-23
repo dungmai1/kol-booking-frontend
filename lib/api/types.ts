@@ -531,6 +531,7 @@ export interface ProductResponse {
   title: string;
   description: string | null;
   imageUrl: string | null;
+  attachmentUrl: string | null;
   budget: number | null;
   categoryId: number | null;
   categoryName: string | null;
@@ -550,6 +551,7 @@ export interface ProductCreateRequest {
   title: string;
   description?: string;
   imageUrl?: string;
+  attachmentUrl?: string;
   budget?: number;
   categoryId?: number;
   requiredPlatform?: Platform;
@@ -655,6 +657,7 @@ export interface AdminUserResponse {
   createdAt: string;
   profileDisplayName?: string | null;
   kolSlug?: string | null;
+  kolProfileStatus?: ProfileStatus | null;
   brandProfileId?: number | null;
 }
 

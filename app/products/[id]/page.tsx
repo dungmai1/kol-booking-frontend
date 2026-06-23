@@ -21,6 +21,8 @@ import {
   ClipboardList,
   ImageIcon,
   AlertCircle,
+  FileText,
+  ExternalLink,
 } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ProductStatusPill } from '@/components/product-status-pill';
@@ -287,6 +289,25 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 <Fact icon={<Users className="w-4 h-4" />} label="Đã ứng tuyển" value={`${product.applicationCount}`} />
               </dl>
             </div>
+
+            {product.attachmentUrl && (
+              <div className="bg-canvas rounded-2xl border border-hairline p-6">
+                <h2 className="font-display font-bold text-lg text-ink mb-2">Tài liệu đính kèm</h2>
+                <p className="text-sm text-mute mb-4">
+                  Hợp đồng hoặc điều khoản từ thương hiệu — vui lòng xem trước khi ứng tuyển.
+                </p>
+                <a
+                  href={resolveMediaUrl(product.attachmentUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-hairline bg-surface-soft hover:border-ink text-sm font-semibold text-ink transition-colors"
+                >
+                  <FileText className="w-4 h-4 shrink-0" />
+                  Xem hợp đồng / điều khoản
+                  <ExternalLink className="w-3.5 h-3.5 text-mute" />
+                </a>
+              </div>
+            )}
           </div>
 
           {/* ─── Right: action card (sticky) ────────────────────────────────── */}

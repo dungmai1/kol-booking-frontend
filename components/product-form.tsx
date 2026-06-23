@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Loader2, ImagePlus, X } from 'lucide-react';
+import { Loader2, ImagePlus, X, Paperclip, FileText, ExternalLink } from 'lucide-react';
 import { categoriesApi } from '@/lib/api/categories';
 import { resolveMediaUrl } from '@/lib/api/client';
 import { filesApi } from '@/lib/api/files';
 import type { CategoryResponse, Platform, ProductResponse, ProductCreateRequest } from '@/lib/api/types';
 import { PLATFORM_LABEL, PLATFORM_OPTIONS } from '@/lib/products/meta';
-import { ACCEPTED_IMAGE_ACCEPT, validateUploadFile } from '@/lib/uploads/validate';
-import { CurrencyInput } from '@/components/currency-input';
+import { ACCEPTED_DOCUMENT_ACCEPT, ACCEPTED_IMAGE_ACCEPT, validateUploadFile } from '@/lib/uploads/validate';
+import { BudgetCombobox } from '@/components/budget-combobox';
 import { parsePriceDigits, priceToDigits, validatePriceDigits } from '@/lib/currency-input';
 
 interface ProductFormProps {
@@ -34,11 +34,24 @@ function todayISO(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function labelFromAttachmentUrl(url: string): string {
+  const part = url.split('/').pop() ?? '';
+  try {
+    return decodeURIComponent(part) || 'Tệp đính kèm';
+  } catch {
+    return part || 'Tệp đính kèm';
+  }
+}
+
 export function ProductForm({ initial, submitLabel, submitting, error, disabled = false, onSubmit, onCancel }: ProductFormProps) {
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? '');
+  const [attachmentUrl, setAttachmentUrl] = useState(initial?.attachmentUrl ?? '');
+  const [attachmentLabel, setAttachmentLabel] = useState(
+    initial?.attachmentUrl ? labelFromAttachmentUrl(initial.attachmentUrl) : '',
+  );
   const [budget, setBudget] = useState(priceToDigits(initial?.budget));
   const [categoryId, setCategoryId] = useState(initial?.categoryId != null ? String(initial.categoryId) : '');
   const [platform, setPlatform] = useState<string>(initial?.requiredPlatform ?? '');
@@ -47,7 +60,9 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
   const [deadline, setDeadline] = useState(toDateInput(initial?.deadline));
 
   const [uploading, setUploading] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [attachmentUploadError, setAttachmentUploadError] = useState('');
   const [formError, setFormError] = useState('');
 
   // Per-field errors
@@ -130,6 +145,29 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
     }
   }
 
+  async function handleAttachmentFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const validationError = validateUploadFile(file, 'document');
+    if (validationError) {
+      setAttachmentUploadError(validationError);
+      e.target.value = '';
+      return;
+    }
+    setUploadingAttachment(true);
+    setAttachmentUploadError('');
+    try {
+      const res = await filesApi.upload(file);
+      setAttachmentUrl(res.url);
+      setAttachmentLabel(file.name);
+    } catch {
+      setAttachmentUploadError('Tải tệp thất bại. Vui lòng thử lại.');
+    } finally {
+      setUploadingAttachment(false);
+      e.target.value = '';
+    }
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError('');
@@ -155,6 +193,7 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
       title: title.trim(),
       description: description.trim() || undefined,
       imageUrl: imageUrl.trim() || undefined,
+      attachmentUrl: attachmentUrl.trim() || (initial ? '' : undefined),
       budget: budget ? parsePriceDigits(budget) ?? undefined : undefined,
       categoryId: categoryId ? Number(categoryId) : undefined,
       requiredPlatform: (platform as Platform) || undefined,
@@ -205,6 +244,59 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
         {uploadError && <p className="text-sm text-pin-red mt-1.5">{uploadError}</p>}
       </div>
 
+      {/* Attachment — contract / terms for KOLs */}
+      <div>
+        <label className={labelClass}>Tệp đính kèm (hợp đồng / điều khoản)</label>
+        {attachmentUrl ? (
+          <div className="flex items-center gap-3 p-3 rounded-xl border border-hairline bg-surface-soft">
+            <FileText className="w-5 h-5 text-mute shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-ink truncate">{attachmentLabel}</p>
+              <a
+                href={resolveMediaUrl(attachmentUrl)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-mute hover:text-ink mt-0.5"
+              >
+                Xem trước
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setAttachmentUrl('');
+                setAttachmentLabel('');
+              }}
+              className="grid place-items-center w-8 h-8 rounded-full hover:bg-hairline text-mute hover:text-ink shrink-0"
+              aria-label="Xoá tệp đính kèm"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <label className="flex items-center gap-3 w-full px-3 py-3 rounded-xl border-2 border-dashed border-hairline bg-surface-soft cursor-pointer hover:border-ink transition-colors">
+            {uploadingAttachment ? (
+              <Loader2 className="w-5 h-5 text-mute animate-spin shrink-0" />
+            ) : (
+              <Paperclip className="w-5 h-5 text-mute shrink-0" />
+            )}
+            <div className="min-w-0">
+              <span className="text-sm text-ink font-medium block">Tải hợp đồng hoặc điều khoản</span>
+              <span className="text-xs text-mute">PDF, DOC, DOCX — tối đa 10MB (tuỳ chọn)</span>
+            </div>
+            <input
+              type="file"
+              accept={ACCEPTED_DOCUMENT_ACCEPT}
+              onChange={handleAttachmentFile}
+              className="hidden"
+              disabled={uploadingAttachment}
+            />
+          </label>
+        )}
+        {attachmentUploadError && <p className="text-sm text-pin-red mt-1.5">{attachmentUploadError}</p>}
+      </div>
+
       {/* Title */}
       <div>
         <label className={labelClass}>Tiêu đề <span className="text-pin-red">*</span></label>
@@ -251,13 +343,15 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
         {/* Budget */}
         <div>
           <label className={labelClass}>Ngân sách (VND)</label>
-          <CurrencyInput
+          <BudgetCombobox
             value={budget}
             onValueChange={(digits) => { setBudget(digits); if (budgetError) setBudgetError(''); }}
             onValidate={setBudgetError}
             validateOptions={{ fieldLabel: 'Ngân sách' }}
             className={budgetError ? inputErrorClass : inputClass}
+            hasError={!!budgetError}
           />
+          <p className="text-[11px] text-mute mt-1">Chọn mức gợi ý hoặc nhập số tùy ý.</p>
           {budgetError && <p className="text-xs text-red-600 mt-1">{budgetError}</p>}
         </div>
 
@@ -349,7 +443,7 @@ export function ProductForm({ initial, submitLabel, submitting, error, disabled 
             Huỷ
           </button>
         )}
-        <button type="submit" disabled={disabled || submitting || uploading} className="btn-pin-primary !rounded-full disabled:opacity-50">
+        <button type="submit" disabled={disabled || submitting || uploading || uploadingAttachment} className="btn-pin-primary !rounded-full disabled:opacity-50">
           {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
           {submitLabel}
         </button>

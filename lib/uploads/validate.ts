@@ -13,7 +13,18 @@ export const ACCEPTED_VIDEO_TYPES = ['video/mp4'] as const;
 export const ACCEPTED_IMAGE_ACCEPT = ACCEPTED_IMAGE_TYPES.join(',');
 export const ACCEPTED_VIDEO_ACCEPT = ACCEPTED_VIDEO_TYPES.join(',');
 
-export type UploadKind = 'image' | 'video';
+export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+
+export const ACCEPTED_DOCUMENT_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+] as const;
+
+export const ACCEPTED_DOCUMENT_ACCEPT =
+  '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+export type UploadKind = 'image' | 'video' | 'document';
 
 function formatMB(bytes: number): string {
   return `${Math.round(bytes / (1024 * 1024))}MB`;
@@ -30,6 +41,16 @@ export function validateUploadFile(file: File, kind: UploadKind): string | null 
     }
     if (file.size > MAX_IMAGE_BYTES) {
       return `Ảnh vượt quá dung lượng tối đa ${formatMB(MAX_IMAGE_BYTES)}.`;
+    }
+    return null;
+  }
+
+  if (kind === 'document') {
+    if (!ACCEPTED_DOCUMENT_TYPES.includes(file.type as (typeof ACCEPTED_DOCUMENT_TYPES)[number])) {
+      return 'Chỉ chấp nhận PDF, DOC hoặc DOCX.';
+    }
+    if (file.size > MAX_DOCUMENT_BYTES) {
+      return `Tệp vượt quá dung lượng tối đa ${formatMB(MAX_DOCUMENT_BYTES)}.`;
     }
     return null;
   }
