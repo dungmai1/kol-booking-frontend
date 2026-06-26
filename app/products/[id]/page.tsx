@@ -31,7 +31,7 @@ import { brandApi } from '@/lib/api/brand';
 import { kolApi } from '@/lib/api/kol';
 import { useAuth } from '@/contexts/AuthContext';
 import { ApiError, resolveMediaUrl } from '@/lib/api/client';
-import { CurrencyInput } from '@/components/currency-input';
+import { BudgetCombobox } from '@/components/budget-combobox';
 import { parsePriceDigits, validatePriceDigits } from '@/lib/currency-input';
 import type { ProductResponse } from '@/lib/api/types';
 import { brandProfilePath } from '@/lib/brands/display';
@@ -530,7 +530,7 @@ function KolApplyPanel({
       </div>
       <div>
         <label className="block text-xs font-semibold text-ink mb-1.5">Giá đề xuất (tuỳ chọn)</label>
-        <CurrencyInput
+        <BudgetCombobox
           value={proposedPrice}
           onValueChange={onPrice}
           onValidate={onPriceValidate}
@@ -539,6 +539,7 @@ function KolApplyPanel({
           className={`w-full px-3 py-2.5 rounded-xl border bg-surface-soft focus:bg-canvas focus:outline-none text-sm ${
             proposedPriceError ? 'border-pin-red focus:border-pin-red' : 'border-hairline focus:border-ink'
           }`}
+          hasError={!!proposedPriceError}
         />
         {proposedPriceError && <p className="text-xs text-pin-red mt-1">{proposedPriceError}</p>}
         <p className="text-[11px] text-mute mt-1">Nếu được duyệt, giá này sẽ là ngân sách của booking.</p>

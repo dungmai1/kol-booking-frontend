@@ -27,6 +27,7 @@ type BudgetComboboxProps = {
   onValueChange: (digits: string) => void;
   onValidate?: (error: string) => void;
   validateOptions?: ValidatePriceOptions;
+  placeholder?: string;
   className?: string;
   hasError?: boolean;
 };
@@ -36,6 +37,7 @@ export function BudgetCombobox({
   onValueChange,
   onValidate,
   validateOptions,
+  placeholder = PRICE_INPUT_PLACEHOLDER,
   className,
   hasError,
 }: BudgetComboboxProps) {
@@ -82,7 +84,7 @@ export function BudgetCombobox({
             onBlur={() => {
               onValidate?.(validatePriceDigits(value, validateOptions));
             }}
-            placeholder={PRICE_INPUT_PLACEHOLDER}
+            placeholder={placeholder}
             className={cn('pr-10', className, hasError && 'border-red-500')}
           />
           <button
