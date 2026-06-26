@@ -105,8 +105,8 @@ export function TikTokPortfolioPlayer({ url, title, compact, previewOnly }: TikT
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-[420px] gap-0 overflow-hidden p-0 sm:max-w-[420px]">
-          <DialogHeader className="border-b border-hairline px-4 py-3">
+        <DialogContent className="flex h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:h-[min(840px,calc(100dvh-2rem))] sm:max-w-[420px]">
+          <DialogHeader className="shrink-0 border-b border-hairline px-4 py-3">
             <DialogTitle className="line-clamp-2 pr-6 text-left text-sm font-bold">
               {title}
             </DialogTitle>
@@ -117,15 +117,14 @@ export function TikTokPortfolioPlayer({ url, title, compact, previewOnly }: TikT
               key={videoId}
               src={`${embedUrl}?lang=vi-VN`}
               title={title}
-              className="w-full border-0 bg-black"
-              style={{ height: '740px' }}
+              className="min-h-0 w-full flex-1 border-0 bg-black"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
               allowFullScreen
               loading="eager"
             />
           )}
 
-          <div className="border-t border-hairline px-4 py-3 text-center">
+          <div className="shrink-0 border-t border-hairline px-4 py-3 text-center">
             <a
               href={url}
               target="_blank"

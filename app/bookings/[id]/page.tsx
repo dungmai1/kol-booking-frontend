@@ -107,6 +107,15 @@ function formatDateTime(iso: string | null | undefined): string {
   }
 }
 
+function fileNameFromUrl(url: string): string {
+  const part = url.split('/').pop() ?? '';
+  try {
+    return decodeURIComponent(part) || 'Tệp đính kèm';
+  } catch {
+    return part || 'Tệp đính kèm';
+  }
+}
+
 type Tab = 'detail' | 'chat';
 
 export default function BookingDetailPage({
@@ -1242,6 +1251,19 @@ function DetailTab({
                 {booking.deliverables || '—'}
               </p>
             </DetailRow>
+            {booking.attachmentUrl && (
+              <DetailRow label="Tệp đính kèm">
+                <a
+                  href={resolveMediaUrl(booking.attachmentUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-bold text-ink hover:text-pin-red transition-colors break-all"
+                >
+                  <ExternalLink className="w-4 h-4 shrink-0" />
+                  {fileNameFromUrl(booking.attachmentUrl)}
+                </a>
+              </DetailRow>
+            )}
             <div className="grid sm:grid-cols-2 gap-4">
               <DetailRow label="Bắt đầu" icon={<Calendar className="w-4 h-4" />}>
                 <p className="text-ink font-bold">{formatDate(booking.startDate)}</p>

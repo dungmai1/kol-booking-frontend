@@ -385,6 +385,7 @@ export interface BookingResponse {
   revisionFeedback: string | null;
   revisionRequestedAt: string | null;
   invoiceUrl: string | null;
+  attachmentUrl: string | null;
   createdAt: string;
   updatedAt: string;
   submittedDeliverables: SubmittedDeliverableResponse[];
@@ -398,6 +399,7 @@ export interface CreateBookingRequest {
   budget: number;
   startDate: string;
   endDate: string;
+  attachmentUrl?: string;
 }
 
 export interface BookingMessageResponse {
