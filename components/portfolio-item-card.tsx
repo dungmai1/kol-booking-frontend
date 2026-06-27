@@ -101,7 +101,7 @@ export function PortfolioMediaPreview({
   if (mediaType === 'IMAGE') {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={resolveMediaUrl(mediaUrl)} alt="preview" className="h-full w-full object-cover" />
+      <img src={resolveMediaUrl(mediaUrl)} alt="preview" className="max-h-80 min-h-48 w-full bg-zinc-950 object-contain" />
     );
   }
 
@@ -110,7 +110,7 @@ export function PortfolioMediaPreview({
   }
 
   if (isDirectVideoUrl(mediaUrl)) {
-    return <video src={mediaUrl} className="h-full w-full object-cover" controls playsInline />;
+    return <video src={mediaUrl} className="max-h-80 min-h-48 w-full bg-zinc-950 object-contain" controls playsInline />;
   }
 
   return <ExternalVideoLink url={mediaUrl} title="Xem trước video" />;

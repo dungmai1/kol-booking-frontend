@@ -80,11 +80,11 @@ export function TikTokPortfolioPlayer({ url, title, compact, previewOnly }: TikT
   return (
     <>
       <div
-        className={`relative w-full overflow-hidden rounded-md bg-zinc-900 ${compact ? 'min-h-[320px]' : 'min-h-[380px]'}`}
+        className={`relative w-full overflow-hidden rounded-md bg-zinc-900 ${compact ? 'h-72 sm:h-80' : 'h-[360px] sm:h-[380px]'}`}
       >
         {thumb ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={thumb} alt={title} className="h-full w-full object-cover" />
+          <img src={thumb} alt={title} className="absolute inset-0 h-full w-full object-cover" />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900" />
         )}

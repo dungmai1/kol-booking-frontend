@@ -1163,7 +1163,7 @@ function PortfolioDialog({ onSubmit }: { onSubmit: (data: CreatePortfolioItemReq
   }
 
   return (
-    <DialogContent className="max-w-md">
+    <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-md overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Thêm mục portfolio</DialogTitle>
         <DialogDescription>Đính kèm ảnh hoặc video cùng thông tin chiến dịch.</DialogDescription>
@@ -1189,9 +1189,9 @@ function PortfolioDialog({ onSubmit }: { onSubmit: (data: CreatePortfolioItemReq
         </div>
         <div>
           <Label htmlFor="po-url" className="mb-2 block">Liên kết media</Label>
-          <div className="flex items-center gap-2">
-            <Input id="po-url" value={mediaUrl} maxLength={500} onChange={(e) => setMediaUrl(e.target.value)} placeholder="https://www.tiktok.com/@user/video/… hoặc link ảnh/mp4" />
-            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-hairline bg-canvas hover:bg-surface-card cursor-pointer text-sm font-semibold whitespace-nowrap">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Input id="po-url" className="min-w-0" value={mediaUrl} maxLength={500} onChange={(e) => setMediaUrl(e.target.value)} placeholder="https://www.tiktok.com/@user/video/… hoặc link ảnh/mp4" />
+            <label className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-hairline bg-canvas px-3 py-2 text-sm font-semibold whitespace-nowrap hover:bg-surface-card cursor-pointer sm:w-auto">
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               Tải lên
               <input
