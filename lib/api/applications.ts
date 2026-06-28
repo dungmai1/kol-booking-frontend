@@ -11,6 +11,12 @@ import type {
  * (`/api/v1/applications`). Creating an application is on `productsApi.apply`.
  */
 export const applicationsApi = {
+  // ─── Common ──────────────────────────────────────────────────────────────────
+
+  getById(id: number): Promise<ProductApplicationResponse> {
+    return api.get(`/applications/${id}`);
+  },
+
   // ─── KOL ─────────────────────────────────────────────────────────────────────
 
   listMine(page = 0, size = 20): Promise<PageResponse<ProductApplicationResponse>> {
