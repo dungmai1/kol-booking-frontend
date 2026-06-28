@@ -183,13 +183,12 @@ function fmtPeriodLabel(period: string, gran: StatsGranularity): string {
 }
 
 type Preset = '30d' | '90d' | '1y' | 'custom';
-type ChartType = 'bar' | 'line' | 'area' | 'stackbar';
+type ChartType = 'bar' | 'line' | 'area';
 
 const CHART_TYPE_OPTIONS: { t: ChartType; label: string }[] = [
   { t: 'bar',      label: 'Cột'   },
   { t: 'line',     label: 'Đường' },
   { t: 'area',     label: 'Vùng'  },
-  { t: 'stackbar', label: 'Chồng' },
 ];
 
 function computePresetRange(preset: Exclude<Preset, 'custom'>): {
@@ -817,7 +816,7 @@ export default function AdminDashboardPage() {
 
               return (
                 <ChartContainer config={chartConfig} className="h-[380px] w-full">
-                  {(activeChartType === 'bar' || activeChartType === 'stackbar') ? (
+                  {activeChartType === 'bar' ? (
                     <RechartsBarChart data={chartData} barSize={barSize} margin={{ top: 12, right: 12, left: 0, bottom: 4 }}>
                       {grid}{xAxis}{yAxis}{tooltip}
                       <Bar dataKey={dataKey} fill={color} radius={[6, 6, 0, 0]} />

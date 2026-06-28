@@ -10,6 +10,7 @@ import {
   formatFollowers,
   formatDate,
   daysUntil,
+  isProductDeadlineExpired,
 } from '@/lib/products/meta';
 
 /**
@@ -18,6 +19,7 @@ import {
  */
 export function ProductCard({ product }: { product: ProductResponse }) {
   const left = daysUntil(product.deadline);
+  const deadlineExpired = isProductDeadlineExpired(product.deadline);
   const deadlineSoon = left != null && left >= 0 && left <= 3;
 
   return (
@@ -41,10 +43,10 @@ export function ProductCard({ product }: { product: ProductResponse }) {
         <div className="absolute top-3 left-3">
           <ProductStatusPill status={product.status} />
         </div>
-        {deadlineSoon && (
+        {(deadlineSoon || deadlineExpired) && (
           <div className="absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-pin-red text-on-dark">
             <CalendarClock className="w-3 h-3" />
-            {left === 0 ? 'Hết hạn hôm nay' : `Còn ${left} ngày`}
+            {deadlineExpired ? 'Đã quá hạn' : left === 0 ? 'Hết hạn hôm nay' : `Còn ${left} ngày`}
           </div>
         )}
       </Link>
@@ -98,9 +100,9 @@ export function ProductCard({ product }: { product: ProductResponse }) {
         </div>
 
         {product.deadline && !deadlineSoon && (
-          <p className="text-[11px] text-mute mt-2 inline-flex items-center gap-1">
+          <p className={`text-[11px] mt-2 inline-flex items-center gap-1 ${deadlineExpired ? 'text-pin-red font-semibold' : 'text-mute'}`}>
             <CalendarClock className="w-3 h-3" />
-            Hạn: {formatDate(product.deadline)}
+            {deadlineExpired ? 'Quá hạn:' : 'Hạn:'} {formatDate(product.deadline)}
           </p>
         )}
       </div>

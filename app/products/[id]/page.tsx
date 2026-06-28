@@ -35,7 +35,15 @@ import { BudgetCombobox } from '@/components/budget-combobox';
 import { parsePriceDigits, validatePriceDigits } from '@/lib/currency-input';
 import type { ProductResponse } from '@/lib/api/types';
 import { brandProfilePath } from '@/lib/brands/display';
-import { PLATFORM_LABEL, vnd, formatFollowers, formatDate, daysUntil } from '@/lib/products/meta';
+import {
+  PLATFORM_LABEL,
+  vnd,
+  formatFollowers,
+  formatDate,
+  daysUntil,
+  isProductAcceptingApplications,
+  isProductDeadlineExpired,
+} from '@/lib/products/meta';
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: idStr } = use(params);
@@ -127,6 +135,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   async function handleApply(e: React.FormEvent) {
     e.preventDefault();
     if (!product) return;
+    if (!isProductAcceptingApplications(product)) {
+      setApplyError(
+        isProductDeadlineExpired(product.deadline)
+          ? 'Chiến dịch đã quá hạn ứng tuyển.'
+          : 'Chiến dịch này không còn nhận ứng tuyển.',
+      );
+      return;
+    }
 
     const priceErr = validatePriceDigits(proposedPrice, { fieldLabel: 'Giá đề xuất' });
     setProposedPriceError(priceErr);
@@ -212,6 +228,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const left = daysUntil(product.deadline);
   const isOpen = product.status === 'OPEN';
+  const isDeadlineExpired = isProductDeadlineExpired(product.deadline);
+  const isAcceptingApplications = isProductAcceptingApplications(product);
   const isKol = user?.role === 'KOL';
   const isBrand = user?.role === 'BRAND';
   const budgetText = product.budget != null && product.budget > 0 ? vnd.format(product.budget) : 'Thỏa thuận';
@@ -334,7 +352,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 />
               ) : isKol ? (
                 <KolApplyPanel
-                  isOpen={isOpen}
+                  canApply={isAcceptingApplications}
+                  deadlineExpired={isDeadlineExpired}
                   applied={applied}
                   kolApproved={kolApproved}
                   message={message}
@@ -451,7 +470,8 @@ function OwnerPanel({
 }
 
 function KolApplyPanel({
-  isOpen,
+  canApply,
+  deadlineExpired,
   applied,
   kolApproved,
   message,
@@ -464,7 +484,8 @@ function KolApplyPanel({
   onPriceValidate,
   onSubmit,
 }: {
-  isOpen: boolean;
+  canApply: boolean;
+  deadlineExpired: boolean;
   applied: boolean;
   kolApproved: boolean | null;
   message: string;
@@ -492,12 +513,18 @@ function KolApplyPanel({
     );
   }
 
-  if (!isOpen) {
+  if (!canApply) {
     return (
       <div className="text-center py-2">
         <Lock className="w-8 h-8 text-mute mx-auto mb-2" />
-        <p className="font-bold text-ink mb-1">Đã đóng nhận ứng tuyển</p>
-        <p className="text-sm text-mute">Chiến dịch này không còn nhận hồ sơ mới.</p>
+        <p className="font-bold text-ink mb-1">
+          {deadlineExpired ? 'Đã quá hạn ứng tuyển' : 'Đã đóng nhận ứng tuyển'}
+        </p>
+        <p className="text-sm text-mute">
+          {deadlineExpired
+            ? 'Chiến dịch này đã qua deadline nên không còn nhận hồ sơ mới.'
+            : 'Chiến dịch này không còn nhận hồ sơ mới.'}
+        </p>
       </div>
     );
   }

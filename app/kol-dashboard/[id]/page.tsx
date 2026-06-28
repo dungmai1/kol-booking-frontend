@@ -4,7 +4,7 @@ import { Header } from '@/components/header';
 import {
   Star, CheckCircle2, Users, TrendingUp, Calendar,
   DollarSign, Edit2, Settings, LogOut, MessageSquare,
-  AlertCircle, Loader2,
+  AlertCircle, Loader2, FileText, ExternalLink,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -38,6 +38,15 @@ const statusLabel: Record<string, string> = {
 };
 
 const vnd = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
+
+function fileNameFromUrl(url: string): string {
+  const part = url.split('/').pop() ?? '';
+  try {
+    return decodeURIComponent(part) || 'Tệp đính kèm';
+  } catch {
+    return part || 'Tệp đính kèm';
+  }
+}
 
 export default function KOLDashboardPage() {
   const { user } = useAuth();
@@ -323,9 +332,23 @@ export default function KOLDashboardPage() {
                           </div>
 
                           <div className="flex items-center justify-between">
-                            <p className="text-gray-700 text-sm">
-                              Ngân sách: <span className="font-semibold">{vnd.format(booking.budget)}</span>
-                            </p>
+                            <div className="space-y-1">
+                              <p className="text-gray-700 text-sm">
+                                Ngân sách: <span className="font-semibold">{vnd.format(booking.budget)}</span>
+                              </p>
+                              {booking.attachmentUrl && (
+                                <a
+                                  href={resolveMediaUrl(booking.attachmentUrl)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700"
+                                >
+                                  <FileText className="w-4 h-4" />
+                                  {fileNameFromUrl(booking.attachmentUrl)}
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
+                            </div>
 
                             {booking.status === 'PENDING' && (
                               <div className="flex gap-2">

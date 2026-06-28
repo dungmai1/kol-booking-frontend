@@ -74,12 +74,55 @@ export function formatDate(iso: string | null | undefined): string {
   }
 }
 
+function parseDateOnlyLocal(value: string): Date | null {
+  const datePart = value.slice(0, 10);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart);
+  if (!match) return null;
+  const [, y, m, d] = match;
+  const year = Number(y);
+  const month = Number(m) - 1;
+  const day = Number(d);
+  const parsed = new Date(year, month, day);
+  return parsed.getFullYear() === year && parsed.getMonth() === month && parsed.getDate() === day
+    ? parsed
+    : null;
+}
+
+function startOfLocalDay(date: Date): Date {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
 /** Days left until a deadline (null when no deadline). Negative when past. */
-export function daysUntil(deadline: string | null | undefined): number | null {
+export function daysUntil(deadline: string | null | undefined, now = new Date()): number | null {
   if (!deadline) return null;
-  const end = new Date(deadline).getTime();
+  const hasDateOnlyPrefix = /^\d{4}-\d{2}-\d{2}/.test(deadline);
+  const dateOnly = hasDateOnlyPrefix ? parseDateOnlyLocal(deadline) : null;
+  if (hasDateOnlyPrefix && !dateOnly) return null;
+  const parsed = dateOnly ?? new Date(deadline);
+  const end = startOfLocalDay(parsed).getTime();
   if (Number.isNaN(end)) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.ceil((end - today.getTime()) / 86_400_000);
+  const today = startOfLocalDay(now).getTime();
+  return Math.round((end - today) / 86_400_000);
+}
+
+export function isProductDeadlineExpired(
+  deadline: string | null | undefined,
+  now = new Date(),
+): boolean {
+  const left = daysUntil(deadline, now);
+  return left != null && left < 0;
+}
+
+interface ProductApplicationAvailability {
+  status: ProductStatus;
+  deadline: string | null | undefined;
+}
+
+export function isProductAcceptingApplications(
+  product: ProductApplicationAvailability,
+  now = new Date(),
+): boolean {
+  return product.status === 'OPEN' && !isProductDeadlineExpired(product.deadline, now);
 }

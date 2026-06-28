@@ -24,7 +24,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ApiError, resolveMediaUrl } from '@/lib/api/client';
 import { useBrandProfileGate } from '@/lib/hooks/use-brand-profile-gate';
 import type { ProductResponse } from '@/lib/api/types';
-import { vnd, formatDate } from '@/lib/products/meta';
+import { vnd, formatDate, isProductDeadlineExpired } from '@/lib/products/meta';
 
 const PAGE_SIZE = 10;
 
@@ -168,9 +168,9 @@ export default function ManageProductsPage() {
                     <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-mute">
                       <span>{p.budget != null && p.budget > 0 ? vnd.format(p.budget) : 'Thỏa thuận'}</span>
                       {p.deadline && (
-                        <span className="inline-flex items-center gap-1">
+                        <span className={`inline-flex items-center gap-1 ${isProductDeadlineExpired(p.deadline) ? 'text-pin-red font-semibold' : ''}`}>
                           <CalendarClock className="w-3 h-3" />
-                          Hạn {formatDate(p.deadline)}
+                          {isProductDeadlineExpired(p.deadline) ? 'Quá hạn' : 'Hạn'} {formatDate(p.deadline)}
                         </span>
                       )}
                     </div>

@@ -110,6 +110,11 @@ export default function ProductApplicantsPage({ params }: { params: Promise<{ id
         setTotalPages(res.totalPages);
       }
     } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        setItems([]);
+        setTotalPages(0);
+        return;
+      }
       setError(err instanceof ApiError ? err.message : 'Không thể tải danh sách ứng viên.');
       setItems([]);
     } finally {

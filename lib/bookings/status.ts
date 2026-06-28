@@ -128,6 +128,10 @@ export function isTerminalState(status: BookingStatus): boolean {
   return status === 'COMPLETED' || isBranchState(status);
 }
 
+export function canBrandCancelBooking(status: BookingStatus): boolean {
+  return status === 'PENDING' || status === 'ACCEPTED';
+}
+
 /**
  * For the main timeline: returns the index of the current step in BOOKING_MAIN_STEPS.
  * Branch states return the index of the last step the booking reached before branching:

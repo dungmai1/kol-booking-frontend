@@ -39,7 +39,7 @@ function slugify(name: string): string {
 }
 
 type DialogMode =
-  | { kind: 'create'; parent: CategoryResponse | null }
+  | { kind: 'create' }
   | { kind: 'edit'; target: CategoryResponse };
 
 type DeleteState = { target: CategoryResponse } | null;
@@ -98,20 +98,11 @@ export default function AdminCategoriesPage() {
   }
 
   function openCreateRoot() {
-    setDialog({ kind: 'create', parent: null });
+    setDialog({ kind: 'create' });
     setFormName('');
     setFormSlug('');
     setSlugTouched(false);
     setFormError(null);
-  }
-
-  function openCreateChild(parent: CategoryResponse) {
-    setDialog({ kind: 'create', parent });
-    setFormName('');
-    setFormSlug('');
-    setSlugTouched(false);
-    setFormError(null);
-    setExpanded((prev) => new Set(prev).add(parent.id));
   }
 
   function openEdit(target: CategoryResponse) {
@@ -167,7 +158,7 @@ export default function AdminCategoriesPage() {
       slug,
       parentId:
         dialog.kind === 'create'
-          ? dialog.parent?.id ?? null
+          ? null
           : dialog.target.parentId,
     };
 
@@ -230,8 +221,6 @@ export default function AdminCategoriesPage() {
     setStableDialogKind(dialog.kind);
     if (dialog.kind === 'edit') {
       setStableDialogTitle('Sửa danh mục');
-    } else if (dialog.parent) {
-      setStableDialogTitle(`Thêm danh mục con của "${dialog.parent.name}"`);
     } else {
       setStableDialogTitle('Thêm danh mục gốc');
     }
@@ -308,7 +297,6 @@ export default function AdminCategoriesPage() {
                 depth={0}
                 expanded={expanded}
                 onToggle={toggleExpand}
-                onAddChild={openCreateChild}
                 onEdit={openEdit}
                 onDelete={openDelete}
               />
@@ -466,7 +454,6 @@ function CategoryNode({
   depth,
   expanded,
   onToggle,
-  onAddChild,
   onEdit,
   onDelete,
 }: {
@@ -474,7 +461,6 @@ function CategoryNode({
   depth: number;
   expanded: Set<number>;
   onToggle: (id: number) => void;
-  onAddChild: (n: CategoryResponse) => void;
   onEdit: (n: CategoryResponse) => void;
   onDelete: (n: CategoryResponse) => void;
 }) {
@@ -517,15 +503,6 @@ function CategoryNode({
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
-            onClick={() => onAddChild(node)}
-            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold bg-surface-card text-ink hover:bg-secondary-bg transition-colors"
-            title="Thêm danh mục con"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Thêm con
-          </button>
-          <button
-            type="button"
             onClick={() => onEdit(node)}
             className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold bg-surface-card text-ink hover:bg-secondary-bg transition-colors"
             title="Sửa danh mục"
@@ -554,7 +531,6 @@ function CategoryNode({
               depth={depth + 1}
               expanded={expanded}
               onToggle={onToggle}
-              onAddChild={onAddChild}
               onEdit={onEdit}
               onDelete={onDelete}
             />

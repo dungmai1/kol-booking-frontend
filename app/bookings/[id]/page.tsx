@@ -64,6 +64,7 @@ import {
   BOOKING_STATUS_DESCRIPTION,
   isBranchState,
   bookingCommission,
+  canBrandCancelBooking,
 } from '@/lib/bookings/status';
 import {
   detectPlatformFromUrl,
@@ -238,8 +239,9 @@ export default function BookingDetailPage({
 
   async function handleCancel() {
     if (!booking) return;
-    const reason = window.prompt('Lý do hủy đơn? (tuỳ chọn)') ?? undefined;
-    if (reason === null) return; // user pressed cancel on prompt
+    if (!window.confirm('Bạn có chắc muốn hủy đơn này?')) return;
+    const reason = window.prompt('Lý do hủy đơn? (tuỳ chọn)');
+    if (reason === null) return;
     setActionLoading('cancel');
     try {
       await bookingsApi.cancel(booking.id, reason || undefined);
@@ -269,7 +271,7 @@ export default function BookingDetailPage({
 
   async function handleRejectDelivery() {
     if (!booking) return;
-    const reason = window.prompt('Lý do từ chối nội dung? (tuỳ chọn)') ?? undefined;
+    const reason = window.prompt('Lý do từ chối nội dung? (tuỳ chọn)');
     if (reason === null) return;
     if (
       !window.confirm(
@@ -340,7 +342,7 @@ export default function BookingDetailPage({
 
   async function handleReject() {
     if (!booking) return;
-    const reason = window.prompt('Lý do từ chối? (tuỳ chọn)') ?? undefined;
+    const reason = window.prompt('Lý do từ chối? (tuỳ chọn)');
     if (reason === null) return;
     setActionLoading('reject');
     try {
@@ -1048,7 +1050,7 @@ function DetailTab({
   // ─── BRAND action panel ────────────────────────────────────────────────────
   const brandActions: React.ReactNode[] = [];
   if (isBrand) {
-    if (booking.status === 'PENDING') {
+    if (canBrandCancelBooking(booking.status)) {
       brandActions.push(
         <button
           key="cancel"

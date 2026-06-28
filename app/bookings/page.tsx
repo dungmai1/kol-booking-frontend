@@ -16,8 +16,12 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
+  FileText,
+  ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
+import { resolveMediaUrl } from '@/lib/api/client';
+import { canBrandCancelBooking } from '@/lib/bookings/status';
 
 const statusLabels: Record<BookingStatus | 'all', string> = {
   all: 'Tất cả',
@@ -66,6 +70,15 @@ function statusIcon(status: BookingStatus) {
 
 const vnd = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
 
+function fileNameFromUrl(url: string): string {
+  const part = url.split('/').pop() ?? '';
+  try {
+    return decodeURIComponent(part) || 'Tệp đính kèm';
+  } catch {
+    return part || 'Tệp đính kèm';
+  }
+}
+
 export default function BookingsPage() {
   const { user, isAuthenticated } = useAuth();
   const [bookings, setBookings] = useState<BookingResponse[]>([]);
@@ -106,14 +119,16 @@ export default function BookingsPage() {
     catch { alert('Không thể chấp nhận đơn.'); } finally { setActionLoading(null); }
   }
   async function handleReject(id: number) {
-    const reason = window.prompt('Lý do từ chối (không bắt buộc):') ?? undefined;
+    const reason = window.prompt('Lý do từ chối (không bắt buộc):');
+    if (reason === null) return;
     setActionLoading(id);
     try { await bookingsApi.reject(id, reason || undefined); await fetchBookings(page); if (selectedBooking?.id === id) setSelectedBooking(null); }
     catch { alert('Không thể từ chối đơn.'); } finally { setActionLoading(null); }
   }
   async function handleCancel(id: number) {
     if (!confirm('Bạn có chắc muốn hủy đơn này?')) return;
-    const reason = window.prompt('Lý do hủy (không bắt buộc):') ?? undefined;
+    const reason = window.prompt('Lý do hủy (không bắt buộc):');
+    if (reason === null) return;
     setActionLoading(id);
     try { await bookingsApi.cancel(id, reason || undefined); await fetchBookings(page); if (selectedBooking?.id === id) setSelectedBooking(null); }
     catch { alert('Không thể hủy đơn.'); } finally { setActionLoading(null); }
@@ -219,6 +234,19 @@ export default function BookingsPage() {
 
                       <p className="text-sm text-body line-clamp-2 mb-5">{booking.campaignBrief}</p>
 
+                      {booking.attachmentUrl && (
+                        <a
+                          href={resolveMediaUrl(booking.attachmentUrl)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mb-4 inline-flex max-w-full items-center gap-1.5 text-xs font-bold text-ink hover:text-pin-red"
+                        >
+                          <FileText className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{fileNameFromUrl(booking.attachmentUrl)}</span>
+                          <ExternalLink className="w-3 h-3 shrink-0" />
+                        </a>
+                      )}
+
                       <div className="flex flex-wrap gap-2 pt-4 border-t border-hairline-soft">
                         <button onClick={() => setSelectedBooking(booking)} className="btn-pin-secondary !rounded-full !py-2 !px-4 text-xs">
                           <Eye className="w-3.5 h-3.5" /> Chi tiết
@@ -235,7 +263,7 @@ export default function BookingsPage() {
                             </button>
                           </>
                         )}
-                        {user?.role === 'BRAND' && booking.status === 'PENDING' && (
+                        {user?.role === 'BRAND' && canBrandCancelBooking(booking.status) && (
                           <button onClick={() => handleCancel(booking.id)} disabled={actionLoading === booking.id} className="btn-pin-tertiary !rounded-full !py-2 !px-4 text-xs">
                             <X className="w-3.5 h-3.5" /> Hủy đơn
                           </button>
@@ -333,6 +361,22 @@ export default function BookingsPage() {
               <div className="mb-6">
                 <h3 className="text-xs text-mute font-semibold mb-2">Yêu cầu giao nội dung</h3>
                 <p className="text-sm text-body whitespace-pre-wrap bg-surface-card p-4 rounded-md">{selectedBooking.deliverables}</p>
+              </div>
+            )}
+
+            {selectedBooking.attachmentUrl && (
+              <div className="mb-6">
+                <h3 className="text-xs text-mute font-semibold mb-2">Tệp đính kèm</h3>
+                <a
+                  href={resolveMediaUrl(selectedBooking.attachmentUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex max-w-full items-center gap-2 rounded-md border border-hairline bg-surface-card px-3 py-2 text-sm font-bold text-ink hover:text-pin-red"
+                >
+                  <FileText className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{fileNameFromUrl(selectedBooking.attachmentUrl)}</span>
+                  <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                </a>
               </div>
             )}
 
