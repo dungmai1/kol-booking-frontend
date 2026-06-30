@@ -16,11 +16,14 @@ import {
   Inbox,
   ArrowLeftRight,
   MessageSquare,
+  FileText,
 } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ApplicationStatusPill } from '@/components/product-status-pill';
 import { PaginationBar } from '@/components/pagination-bar';
 import { ApplicationNegotiationChat } from '@/components/application-negotiation-chat';
+import { DocumentPreviewModal } from '@/components/document-preview-modal';
+import { parseApplicationMessage } from '@/lib/applications/message';
 import { productsApi } from '@/lib/api/products';
 import { applicationsApi } from '@/lib/api/applications';
 import { useAuth } from '@/contexts/AuthContext';
@@ -485,6 +488,7 @@ function ApplicantCard({
   onCounterOffer: () => void;
   onChat: () => void;
 }) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const canCounterOffer = (app.status === 'PENDING' || app.status === 'SHORTLISTED') && app.proposedPrice != null && app.proposedPrice > 0;
   const canAccept = app.status === 'PENDING' || app.status === 'SHORTLISTED' || app.status === 'COUNTER_OFFERED';
   const canReject = app.status === 'PENDING' || app.status === 'SHORTLISTED' || app.status === 'COUNTER_OFFERED';
@@ -536,11 +540,28 @@ function ApplicantCard({
             )}
           </div>
 
-          {app.message && (
-            <p className="text-sm text-body bg-surface-soft rounded-xl px-3 py-2 mb-2 whitespace-pre-wrap">
-              {app.message}
-            </p>
-          )}
+          {(() => {
+            const { attachmentUrl, note } = parseApplicationMessage(app.message);
+            return (
+              <>
+                {attachmentUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewUrl(attachmentUrl)}
+                    className="inline-flex items-center gap-2 mb-2 px-3 py-2 rounded-xl border border-hairline bg-surface-soft hover:border-ink text-sm font-semibold text-ink transition-colors"
+                  >
+                    <FileText className="w-4 h-4 shrink-0" />
+                    Xem tài liệu ứng tuyển
+                  </button>
+                )}
+                {note && (
+                  <p className="text-sm text-body bg-surface-soft rounded-xl px-3 py-2 mb-2 whitespace-pre-wrap">
+                    {note}
+                  </p>
+                )}
+              </>
+            );
+          })()}
 
           <div className="flex flex-wrap items-center gap-3 text-xs">
             {app.proposedPrice != null && app.proposedPrice > 0 && (
@@ -616,6 +637,14 @@ function ApplicantCard({
             </button>
           )}
         </div>
+      )}
+
+      {previewUrl && (
+        <DocumentPreviewModal
+          url={previewUrl}
+          title={previewUrl.split('/').pop() || 'Tài liệu ứng tuyển'}
+          onClose={() => setPreviewUrl(null)}
+        />
       )}
     </li>
   );

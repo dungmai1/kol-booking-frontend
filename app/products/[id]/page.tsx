@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useCallback, useEffect, useState } from 'react';
+import { use, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -23,12 +23,16 @@ import {
   AlertCircle,
   FileText,
   ExternalLink,
+  Paperclip,
+  X,
 } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ProductStatusPill } from '@/components/product-status-pill';
 import { productsApi } from '@/lib/api/products';
 import { brandApi } from '@/lib/api/brand';
 import { kolApi } from '@/lib/api/kol';
+import { filesApi } from '@/lib/api';
+import { ACCEPTED_DOCUMENT_ACCEPT, validateUploadFile } from '@/lib/uploads/validate';
 import { useAuth } from '@/contexts/AuthContext';
 import { ApiError, resolveMediaUrl } from '@/lib/api/client';
 import { BudgetCombobox } from '@/components/budget-combobox';
@@ -66,6 +70,39 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState('');
   const [applied, setApplied] = useState(false);
+
+  // Tài liệu đính kèm bắt buộc KOL nộp lại trước khi ứng tuyển (yêu cầu của Brand).
+  const [applicantFileUrl, setApplicantFileUrl] = useState('');
+  const [applicantFileName, setApplicantFileName] = useState('');
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [fileError, setFileError] = useState('');
+  const applicantFileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleApplicantFile(file: File) {
+    const validationError = validateUploadFile(file, 'document');
+    if (validationError) {
+      setFileError(validationError);
+      return;
+    }
+    setUploadingFile(true);
+    setFileError('');
+    try {
+      const res = await filesApi.upload(file);
+      setApplicantFileUrl(res.url);
+      setApplicantFileName(file.name);
+    } catch (err) {
+      setFileError(err instanceof ApiError ? err.message : 'Tải tài liệu lên thất bại.');
+    } finally {
+      setUploadingFile(false);
+      if (applicantFileInputRef.current) applicantFileInputRef.current.value = '';
+    }
+  }
+
+  function clearApplicantFile() {
+    setApplicantFileUrl('');
+    setApplicantFileName('');
+    setFileError('');
+  }
 
   // Owner action state
   const [actionBusy, setActionBusy] = useState(false);
@@ -148,11 +185,29 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     setProposedPriceError(priceErr);
     if (priceErr) return;
 
+    // Tài liệu đính kèm bắt buộc — kiểm tra trước khi gửi.
+    if (uploadingFile) {
+      setFileError('Vui lòng đợi tải tài liệu lên xong.');
+      return;
+    }
+    if (!applicantFileUrl) {
+      setFileError('Vui lòng đính kèm tài liệu theo yêu cầu trước khi ứng tuyển.');
+      return;
+    }
+
+    // Gộp link tài liệu đính kèm vào nội dung gửi tới thương hiệu.
+    // Lưu URL gốc (tương đối) để phía Brand tự resolve khi hiển thị.
+    const note = message.trim();
+    const composedMessage = [
+      `Tài liệu đính kèm: ${applicantFileUrl}`,
+      ...(note ? ['', `Lời nhắn: ${note}`] : []),
+    ].join('\n');
+
     setApplying(true);
     setApplyError('');
     try {
       await productsApi.apply(product.id, {
-        message: message.trim() || undefined,
+        message: composedMessage,
         proposedPrice: proposedPrice ? parsePriceDigits(proposedPrice) ?? undefined : undefined,
       });
       setApplied(true);
@@ -356,12 +411,20 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   deadlineExpired={isDeadlineExpired}
                   applied={applied}
                   kolApproved={kolApproved}
+                  hasAttachment={!!product.attachmentUrl}
                   message={message}
                   proposedPrice={proposedPrice}
                   proposedPriceError={proposedPriceError}
+                  fileName={applicantFileName}
+                  fileUrl={applicantFileUrl}
+                  uploadingFile={uploadingFile}
+                  fileError={fileError}
+                  fileInputRef={applicantFileInputRef}
                   applying={applying}
                   error={applyError}
                   onMessage={setMessage}
+                  onFile={handleApplicantFile}
+                  onClearFile={clearApplicantFile}
                   onPrice={(v) => { setProposedPrice(v); if (proposedPriceError) setProposedPriceError(''); }}
                   onPriceValidate={setProposedPriceError}
                   onSubmit={handleApply}
@@ -474,12 +537,20 @@ function KolApplyPanel({
   deadlineExpired,
   applied,
   kolApproved,
+  hasAttachment,
   message,
   proposedPrice,
   proposedPriceError,
+  fileName,
+  fileUrl,
+  uploadingFile,
+  fileError,
+  fileInputRef,
   applying,
   error,
   onMessage,
+  onFile,
+  onClearFile,
   onPrice,
   onPriceValidate,
   onSubmit,
@@ -488,12 +559,20 @@ function KolApplyPanel({
   deadlineExpired: boolean;
   applied: boolean;
   kolApproved: boolean | null;
+  hasAttachment: boolean;
   message: string;
   proposedPrice: string;
   proposedPriceError: string;
+  fileName: string;
+  fileUrl: string;
+  uploadingFile: boolean;
+  fileError: string;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   applying: boolean;
   error: string;
   onMessage: (v: string) => void;
+  onFile: (file: File) => void;
+  onClearFile: () => void;
   onPrice: (v: string) => void;
   onPriceValidate: (error: string) => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -544,12 +623,76 @@ function KolApplyPanel({
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <p className="text-xs font-bold uppercase tracking-wide text-mute">Ứng tuyển chiến dịch</p>
+
+      {/* Tài liệu đính kèm bắt buộc trước khi ứng tuyển */}
+      <div className="rounded-xl border border-hairline bg-surface-soft/60 p-3 space-y-2">
+        <p className="text-xs font-bold text-ink">
+          Tài liệu ứng tuyển <span className="text-pin-red">*</span>
+        </p>
+        <p className="text-[11px] text-mute leading-relaxed">
+          {hasAttachment
+            ? 'Vui lòng tải xuống hợp đồng/điều khoản đính kèm phía trên, điền đầy đủ rồi đính kèm lại tại đây (PDF, DOC, DOCX — tối đa 10MB).'
+            : 'Vui lòng đính kèm tài liệu theo yêu cầu của chiến dịch (PDF, DOC, DOCX — tối đa 10MB).'}
+        </p>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED_DOCUMENT_ACCEPT}
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onFile(f);
+          }}
+        />
+
+        {fileUrl ? (
+          <div className="flex items-center gap-2 rounded-xl border border-hairline bg-canvas px-3 py-2.5">
+            <FileText className="w-4 h-4 shrink-0 text-ink" />
+            <a
+              href={resolveMediaUrl(fileUrl)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-ink font-semibold truncate flex-1 hover:text-pin-red"
+              title={fileName}
+            >
+              {fileName || 'Tài liệu đã tải lên'}
+            </a>
+            <button
+              type="button"
+              onClick={onClearFile}
+              disabled={uploadingFile || applying}
+              className="grid place-items-center w-7 h-7 rounded-full text-mute hover:text-pin-red hover:bg-surface-card disabled:opacity-50 transition-colors"
+              aria-label="Xoá tài liệu"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingFile || applying}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-dashed border-hairline bg-canvas px-3 py-2.5 text-sm font-semibold text-ink hover:border-ink disabled:opacity-50 transition-colors"
+          >
+            {uploadingFile ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Paperclip className="w-4 h-4" />
+            )}
+            {uploadingFile ? 'Đang tải lên…' : 'Đính kèm tài liệu'}
+          </button>
+        )}
+
+        {fileError && <p className="text-xs text-pin-red">{fileError}</p>}
+      </div>
+
       <div>
-        <label className="block text-xs font-semibold text-ink mb-1.5">Lời nhắn tới thương hiệu</label>
+        <label className="block text-xs font-semibold text-ink mb-1.5">Lời nhắn tới thương hiệu (tuỳ chọn)</label>
         <textarea
           value={message}
           onChange={(e) => onMessage(e.target.value)}
-          rows={4}
+          rows={3}
           maxLength={2000}
           placeholder="Giới thiệu ngắn gọn vì sao bạn phù hợp với chiến dịch…"
           className="w-full px-3 py-2.5 rounded-xl border border-hairline bg-surface-soft focus:bg-canvas focus:border-ink focus:outline-none text-sm resize-none"
@@ -572,7 +715,12 @@ function KolApplyPanel({
         <p className="text-[11px] text-mute mt-1">Nếu được duyệt, giá này sẽ là ngân sách của booking.</p>
       </div>
       {error && <p className="text-sm text-pin-red font-medium">{error}</p>}
-      <button type="submit" disabled={applying} className="btn-pin-primary !rounded-xl w-full justify-center disabled:opacity-50">
+      <button
+        type="submit"
+        disabled={applying || uploadingFile || !fileUrl}
+        title={!fileUrl ? 'Vui lòng đính kèm tài liệu trước khi ứng tuyển.' : undefined}
+        className="btn-pin-primary !rounded-xl w-full justify-center disabled:opacity-50"
+      >
         {applying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         Gửi ứng tuyển
       </button>

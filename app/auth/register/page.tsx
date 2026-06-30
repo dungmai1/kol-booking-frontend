@@ -6,6 +6,16 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { ApiError } from '@/lib/api/client';
 import { Eye, EyeOff, Loader2, Building2, Star } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { TermsContent } from '@/components/legal/terms-content';
 
 type Role = 'BRAND' | 'KOL';
 
@@ -41,6 +51,11 @@ export default function RegisterPage() {
   const [role, setRole] = useState<Role>('BRAND');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Điều khoản: bắt buộc tick trước khi đăng ký
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [termsError, setTermsError] = useState('');
+  const [termsOpen, setTermsOpen] = useState(false);
 
   // Per-field errors
   const [emailError, setEmailError] = useState('');
@@ -81,12 +96,14 @@ export default function RegisterPage() {
     const eErr = validateEmail(email);
     const pErr = validatePassword(password);
     const cErr = validateConfirmPassword(confirmPassword);
+    const tErr = agreedTerms ? '' : 'Vui lòng đọc và chấp nhận điều khoản sử dụng để tiếp tục.';
 
     setEmailError(eErr);
     setPasswordError(pErr);
     setConfirmPasswordError(cErr);
+    setTermsError(tErr);
 
-    if (eErr || pErr || cErr) return;
+    if (eErr || pErr || cErr || tErr) return;
 
     setIsLoading(true);
     try {
@@ -231,17 +248,62 @@ export default function RegisterPage() {
               {confirmPasswordError && <p className="text-xs text-red-600 mt-1">{confirmPasswordError}</p>}
             </div>
 
+            {/* Điều khoản sử dụng — bắt buộc tick trước khi tạo tài khoản */}
+            <div>
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="agree-terms"
+                  checked={agreedTerms}
+                  onCheckedChange={(checked) => {
+                    setAgreedTerms(checked === true);
+                    if (checked === true) setTermsError('');
+                  }}
+                  aria-invalid={!!termsError}
+                  className="mt-0.5"
+                />
+                <label htmlFor="agree-terms" className="text-sm text-body leading-relaxed cursor-pointer">
+                  Tôi đã đọc và chấp nhận mọi{' '}
+                  <Dialog open={termsOpen} onOpenChange={setTermsOpen}>
+                    <DialogTrigger asChild>
+                      <button
+                        type="button"
+                        className="text-pin-red font-semibold underline-offset-2 hover:underline"
+                      >
+                        điều kiện của nền tảng
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-[640px] max-h-[85vh] overflow-hidden flex flex-col">
+                      <DialogHeader>
+                        <DialogTitle className="font-display">Điều khoản sử dụng khi đăng ký tài khoản</DialogTitle>
+                        <DialogDescription>
+                          Vui lòng đọc kỹ các điều khoản dưới đây trước khi tiếp tục.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="overflow-y-auto pr-1 -mr-1 py-2">
+                        <TermsContent />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAgreedTerms(true);
+                          setTermsError('');
+                          setTermsOpen(false);
+                        }}
+                        className="btn-pin-primary w-full !py-3 !rounded-full text-base"
+                      >
+                        Tôi đã đọc và đồng ý
+                      </button>
+                    </DialogContent>
+                  </Dialog>.
+                </label>
+              </div>
+              {termsError && <p className="text-xs text-red-600 mt-2">{termsError}</p>}
+            </div>
+
             <button type="submit" disabled={isLoading} className="btn-pin-primary w-full !py-3 !rounded-full text-base">
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
               {isLoading ? 'Đang tạo tài khoản…' : 'Tiếp tục'}
             </button>
-
-            <p className="text-xs text-mute text-center leading-relaxed">
-              Bằng cách đăng ký, bạn đồng ý với{' '}
-              <Link href="/terms" className="text-ink-soft font-semibold hover:text-pin-red">Điều khoản</Link>
-              {' '}và{' '}
-              <Link href="/privacy" className="text-ink-soft font-semibold hover:text-pin-red">Chính sách bảo mật</Link>.
-            </p>
           </form>
 
           <div className="mt-6 pt-6 border-t border-hairline-soft text-center">

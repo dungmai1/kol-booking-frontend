@@ -1,6 +1,7 @@
 'use client';
 
 import { Header } from '@/components/header';
+import { IntroFaq } from '@/components/home/intro-faq';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
@@ -117,6 +118,9 @@ export default function HomePage() {
             ]}
           />
         </section>
+
+        {/* ============== CÂU HỎI THƯỜNG GẶP / GIỚI THIỆU (accordion) ============== */}
+        <IntroFaq />
 
         {/* ============== DARK CTA STRIP (hero-cta-strip) ============== */}
         <section className="bg-surface-dark text-on-dark">

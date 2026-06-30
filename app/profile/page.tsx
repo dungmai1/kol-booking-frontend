@@ -3,6 +3,14 @@
 import Link from 'next/link';
 import { Header } from '@/components/header';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { BrandPublicHero, type BrandPublicHeroData } from '@/components/brand-public-hero';
 import { useAuth } from '@/contexts/AuthContext';
 import { brandApi, filesApi } from '@/lib/api';
@@ -27,7 +35,7 @@ import { isCompleteVietnamAddress } from '@/lib/location/address';
 
 const MAX_ADDRESS_LENGTH = 255;
 const MAX_BIO_LENGTH = 500;
-const MAX_TAX_CODE_LENGTH = 20;
+const TAX_CODE_LENGTH = 12;
 const MAX_WEBSITE_LENGTH = 500;
 
 const COUNTRIES = ['Việt Nam', 'Thái Lan', 'Indonesia', 'Philippines', 'Singapore', 'Malaysia'] as const;
@@ -69,8 +77,8 @@ function validateForm(data: ProfileForm): string | null {
   if (data.bio.length > MAX_BIO_LENGTH) {
     return `Giới thiệu tối đa ${MAX_BIO_LENGTH} ký tự.`;
   }
-  if (data.taxCode.trim().length > MAX_TAX_CODE_LENGTH) {
-    return `Mã số thuế tối đa ${MAX_TAX_CODE_LENGTH} ký tự.`;
+  if (data.taxCode.trim() && !/^\d{12}$/.test(data.taxCode.trim())) {
+    return `Mã số thuế phải gồm đúng ${TAX_CODE_LENGTH} chữ số.`;
   }
   if (data.website.trim().length > MAX_WEBSITE_LENGTH) {
     return `Website tối đa ${MAX_WEBSITE_LENGTH} ký tự.`;
@@ -165,6 +173,8 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  // Bảng cam kết hiển thị khi Brand bấm "Lưu thay đổi"
+  const [confirmSaveOpen, setConfirmSaveOpen] = useState(false);
   const [brandStatus, setBrandStatus] = useState<NormalizedProfileStatus | null>(null);
   const [rejectReason, setRejectReason] = useState<string | null>(null);
   const [brandProfileId, setBrandProfileId] = useState<number | null>(null);
@@ -274,7 +284,7 @@ export default function ProfilePage() {
     else toast.info('Không có dữ liệu để khôi phục.');
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isBrand) {
       toast.info('Chỉ tài khoản Brand mới có thể cập nhật hồ sơ doanh nghiệp tại đây.');
@@ -287,6 +297,12 @@ export default function ProfilePage() {
       return;
     }
 
+    // Trước khi lưu, yêu cầu Brand xác nhận cam kết thông tin chính xác.
+    setConfirmSaveOpen(true);
+  }
+
+  async function performSave() {
+    setConfirmSaveOpen(false);
     setIsSaving(true);
     try {
       const updated = await brandApi.updateMyProfile(toUpdatePayload(formData));
@@ -558,6 +574,27 @@ export default function ProfilePage() {
                     </Field>
 
                     <Field
+                      label="Mã số thuế"
+                      hint="Gồm đúng 12 chữ số. Dùng để xuất hóa đơn và đối soát giao dịch."
+                    >
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        name="taxCode"
+                        value={formData.taxCode}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            taxCode: e.target.value.replace(/\D/g, '').slice(0, TAX_CODE_LENGTH),
+                          }))
+                        }
+                        maxLength={TAX_CODE_LENGTH}
+                        placeholder="VD: 031234567890"
+                        className="pin-input"
+                      />
+                    </Field>
+
+                    <Field
                       label="Ngành nghề"
                       required={showSubmitBrand}
                       hint={
@@ -687,6 +724,39 @@ export default function ProfilePage() {
           )}
         </div>
       </main>
+
+      {/* Bảng cam kết trước khi lưu thay đổi */}
+      <Dialog open={confirmSaveOpen} onOpenChange={(open) => { if (!isSaving) setConfirmSaveOpen(open); }}>
+        <DialogContent className="sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>Cam kết thông tin</DialogTitle>
+            <DialogDescription>
+              Tôi cam kết các thông tin doanh nghiệp đã cung cấp (bao gồm mã số thuế, địa chỉ và thông tin
+              liên hệ) là chính xác, trung thực và chịu trách nhiệm trước pháp luật về tính xác thực của
+              các thông tin này.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setConfirmSaveOpen(false)}
+              disabled={isSaving}
+              className="rounded-full px-4 py-2 text-sm font-bold bg-surface-card text-ink hover:bg-secondary-bg disabled:opacity-50 transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={() => void performSave()}
+              disabled={isSaving}
+              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold bg-pin-red text-on-dark hover:opacity-90 disabled:opacity-50 transition-colors"
+            >
+              {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+              Tôi cam kết & lưu
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -13,11 +13,14 @@ import {
   Check,
   X,
   MessageSquare,
+  FileText,
 } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ApplicationStatusPill } from '@/components/product-status-pill';
 import { PaginationBar } from '@/components/pagination-bar';
 import { ApplicationNegotiationChat } from '@/components/application-negotiation-chat';
+import { DocumentPreviewModal } from '@/components/document-preview-modal';
+import { parseApplicationMessage } from '@/lib/applications/message';
 import { applicationsApi } from '@/lib/api/applications';
 import { productsApi } from '@/lib/api/products';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,6 +46,7 @@ export default function MyApplicationsPage() {
   const [rejectCounterReply, setRejectCounterReply] = useState('');
   const [rejectCounterSubmitting, setRejectCounterSubmitting] = useState(false);
   const [chatFor, setChatFor] = useState<ProductApplicationResponse | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -262,11 +266,28 @@ export default function MyApplicationsPage() {
                       </div>
                     )}
 
-                    {a.message && (
-                      <p className="text-sm text-body bg-surface-soft rounded-xl px-3 py-2 mb-2 whitespace-pre-wrap">
-                        {a.message}
-                      </p>
-                    )}
+                    {(() => {
+                      const { attachmentUrl, note } = parseApplicationMessage(a.message);
+                      return (
+                        <>
+                          {attachmentUrl && (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewDoc(attachmentUrl)}
+                              className="inline-flex items-center gap-2 mb-2 px-3 py-2 rounded-xl border border-hairline bg-surface-soft hover:border-ink text-sm font-semibold text-ink transition-colors"
+                            >
+                              <FileText className="w-4 h-4 shrink-0" />
+                              Xem tài liệu đã gửi
+                            </button>
+                          )}
+                          {note && (
+                            <p className="text-sm text-body bg-surface-soft rounded-xl px-3 py-2 mb-2 whitespace-pre-wrap">
+                              {note}
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
                     <div className="flex flex-wrap items-center gap-3 text-xs">
                       {a.proposedPrice != null && a.proposedPrice > 0 && !hasCounterOffer && (
                         <span className="font-semibold text-ink">Giá đề xuất: {vnd.format(a.proposedPrice)}</span>
@@ -396,6 +417,15 @@ export default function MyApplicationsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Xem trước tài liệu đã gửi */}
+      {previewDoc && (
+        <DocumentPreviewModal
+          url={previewDoc}
+          title={previewDoc.split('/').pop() || 'Tài liệu đã gửi'}
+          onClose={() => setPreviewDoc(null)}
+        />
       )}
     </div>
   );

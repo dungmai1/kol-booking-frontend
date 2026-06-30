@@ -16,6 +16,10 @@ import {
   User,
   Hash,
   Briefcase,
+  Flag,
+  FileText,
+  Clock,
+  ShieldAlert,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -33,13 +37,29 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { Badge } from '@/components/ui/badge';
 import { PaginationBar } from '@/components/pagination-bar';
 import { adminApi } from '@/lib/api/admin';
 import { ApiError, resolveMediaUrl } from '@/lib/api/client';
+import {
+  isPendingReview,
+  profileStatusBadgeVariant,
+  profileStatusDisplayLabel,
+} from '@/lib/profile-status';
 import type { BrandProfileResponse, PageResponse } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
-const PENDING_STATUS = 'PENDING_REVIEW';
+
+// Bộ lọc trạng thái — admin có thể xem toàn bộ Brand ở mọi trạng thái.
+const STATUS_FILTERS = [
+  { value: 'ALL', label: 'Tất cả' },
+  { value: 'PENDING_REVIEW', label: 'Chờ duyệt' },
+  { value: 'APPROVED', label: 'Đã duyệt' },
+  { value: 'REJECTED', label: 'Bị từ chối' },
+  { value: 'DRAFT', label: 'Bản nháp' },
+] as const;
+
+type StatusFilter = (typeof STATUS_FILTERS)[number]['value'];
 
 function formatDate(iso: string): string {
   try {
@@ -57,6 +77,7 @@ function formatDate(iso: string): string {
 
 export default function AdminBrandReviewPage() {
   const [page, setPage] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('PENDING_REVIEW');
   const [data, setData] = useState<PageResponse<BrandProfileResponse> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +105,7 @@ export default function AdminBrandReviewPage() {
     setError(null);
     try {
       const res = await adminApi.getPendingBrands({
-        status: PENDING_STATUS,
+        status: statusFilter === 'ALL' ? undefined : statusFilter,
         page,
         size: PAGE_SIZE,
       });
@@ -98,7 +119,7 @@ export default function AdminBrandReviewPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page]);
+  }, [page, statusFilter]);
 
   useEffect(() => {
     fetchList();
@@ -179,7 +200,7 @@ export default function AdminBrandReviewPage() {
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <h2 className="font-display font-bold text-ink text-[20px] tracking-tight">
-          Duyệt hồ sơ Brand{' '}
+          Hồ sơ Brand{' '}
           {!isLoading && (
             <span className="text-pin-red">({totalElements})</span>
           )}
@@ -193,6 +214,31 @@ export default function AdminBrandReviewPage() {
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           Làm mới
         </button>
+      </div>
+
+      {/* Status filter chips */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        {STATUS_FILTERS.map((f) => {
+          const active = statusFilter === f.value;
+          return (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => {
+                if (f.value === statusFilter) return;
+                setPage(0);
+                setStatusFilter(f.value);
+              }}
+              className={`rounded-full px-4 py-1.5 text-sm font-bold transition-colors ${
+                active
+                  ? 'bg-ink text-on-dark'
+                  : 'bg-surface-card text-ink hover:bg-secondary-bg'
+              }`}
+            >
+              {f.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Content region */}
@@ -213,9 +259,11 @@ export default function AdminBrandReviewPage() {
       ) : items.length === 0 ? (
         <div className="bg-canvas rounded-md border border-hairline p-12 text-center">
           <Inbox className="w-12 h-12 text-mute mx-auto mb-4" />
-          <p className="text-ink text-lg font-bold mb-1">Không có hồ sơ chờ duyệt</p>
+          <p className="text-ink text-lg font-bold mb-1">Không có hồ sơ Brand</p>
           <p className="text-mute text-sm">
-            Tất cả Brand đã được xử lý. Quay lại sau khi có hồ sơ mới.
+            {statusFilter === 'ALL'
+              ? 'Chưa có Brand nào trong hệ thống.'
+              : 'Không có Brand nào ở trạng thái đã chọn.'}
           </p>
         </div>
       ) : (
@@ -241,6 +289,9 @@ export default function AdminBrandReviewPage() {
                   </th>
                   <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide whitespace-nowrap">
                     Ngày tạo
+                  </th>
+                  <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide whitespace-nowrap">
+                    Trạng thái
                   </th>
                   <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide text-right">
                     Hành động
@@ -295,34 +346,45 @@ export default function AdminBrandReviewPage() {
                       <td className="px-4 py-3 align-top text-mute text-xs whitespace-nowrap">
                         {formatDate(brand.createdAt)}
                       </td>
+                      <td className="px-4 py-3 align-top whitespace-nowrap">
+                        <Badge variant={profileStatusBadgeVariant(brand.status)}>
+                          {profileStatusDisplayLabel(brand.status)}
+                        </Badge>
+                      </td>
                       <td
                         className="px-4 py-3 align-top"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleApprove(brand)}
-                            disabled={isRowPending}
-                            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {isRowPending ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <Check className="w-3.5 h-3.5" />
-                            )}
-                            Duyệt
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openReject(brand)}
-                            disabled={isRowPending}
-                            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold bg-pin-red text-on-dark hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                            Từ chối
-                          </button>
-                        </div>
+                        {isPendingReview(brand.status) ? (
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleApprove(brand)}
+                              disabled={isRowPending}
+                              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              {isRowPending ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Check className="w-3.5 h-3.5" />
+                              )}
+                              Duyệt
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openReject(brand)}
+                              disabled={isRowPending}
+                              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold bg-pin-red text-on-dark hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              Từ chối
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-end">
+                            <span className="text-xs text-mute">Xem chi tiết</span>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -378,6 +440,11 @@ export default function AdminBrandReviewPage() {
                     <SheetDescription className="text-mute text-xs mt-1">
                       Brand ID #{detailTarget.id} • user #{detailTarget.userId}
                     </SheetDescription>
+                    <div className="mt-2">
+                      <Badge variant={profileStatusBadgeVariant(detailTarget.status)}>
+                        {profileStatusDisplayLabel(detailTarget.status)}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
               </SheetHeader>
@@ -411,6 +478,11 @@ export default function AdminBrandReviewPage() {
                   value={detailTarget.address}
                 />
                 <DetailRow
+                  icon={Flag}
+                  label="Quốc gia"
+                  value={detailTarget.country}
+                />
+                <DetailRow
                   icon={User}
                   label="Người liên hệ"
                   value={detailTarget.contactName}
@@ -420,40 +492,64 @@ export default function AdminBrandReviewPage() {
                   label="Số điện thoại"
                   value={detailTarget.contactPhone}
                 />
+                <DetailRow
+                  icon={FileText}
+                  label="Giới thiệu"
+                  value={detailTarget.bio}
+                />
+                <DetailRow
+                  icon={Clock}
+                  label="Ngày tạo"
+                  value={formatDate(detailTarget.createdAt)}
+                />
+                <DetailRow
+                  icon={Clock}
+                  label="Cập nhật gần nhất"
+                  value={formatDate(detailTarget.updatedAt)}
+                />
+                {detailTarget.rejectReason && (
+                  <DetailRow
+                    icon={ShieldAlert}
+                    label="Lý do từ chối"
+                    value={detailTarget.rejectReason}
+                  />
+                )}
               </div>
 
-              <div className="border-t border-hairline-soft p-6 flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const target = detailTarget;
-                    setDetailTarget(null);
-                    if (target) handleApprove(target);
-                  }}
-                  disabled={pendingId === detailTarget.id}
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors"
-                >
-                  {pendingId === detailTarget.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Check className="w-4 h-4" />
-                  )}
-                  Duyệt
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const target = detailTarget;
-                    setDetailTarget(null);
-                    if (target) openReject(target);
-                  }}
-                  disabled={pendingId === detailTarget.id}
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold bg-pin-red text-on-dark hover:opacity-90 disabled:opacity-50 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                  Từ chối
-                </button>
-              </div>
+              {isPendingReview(detailTarget.status) && (
+                <div className="border-t border-hairline-soft p-6 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = detailTarget;
+                      setDetailTarget(null);
+                      if (target) handleApprove(target);
+                    }}
+                    disabled={pendingId === detailTarget.id}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+                  >
+                    {pendingId === detailTarget.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4" />
+                    )}
+                    Duyệt
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = detailTarget;
+                      setDetailTarget(null);
+                      if (target) openReject(target);
+                    }}
+                    disabled={pendingId === detailTarget.id}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold bg-pin-red text-on-dark hover:opacity-90 disabled:opacity-50 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                    Từ chối
+                  </button>
+                </div>
+              )}
             </>
           )}
         </SheetContent>
