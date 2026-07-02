@@ -40,6 +40,11 @@ import { parsePriceDigits, validatePriceDigits } from '@/lib/currency-input';
 import type { ProductResponse } from '@/lib/api/types';
 import { brandProfilePath } from '@/lib/brands/display';
 import {
+  buildApplicationMessage,
+  canSubmitApplication,
+  shouldShowApplicantDocumentUpload,
+} from '@/lib/products/application-documents';
+import {
   PLATFORM_LABEL,
   vnd,
   formatFollowers,
@@ -71,7 +76,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [applyError, setApplyError] = useState('');
   const [applied, setApplied] = useState(false);
 
-  // Tài liệu đính kèm bắt buộc KOL nộp lại trước khi ứng tuyển (yêu cầu của Brand).
+  // Tài liệu ứng tuyển KOL có thể nộp khi Brand đã đính kèm tài liệu chiến dịch.
   const [applicantFileUrl, setApplicantFileUrl] = useState('');
   const [applicantFileName, setApplicantFileName] = useState('');
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -185,29 +190,28 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     setProposedPriceError(priceErr);
     if (priceErr) return;
 
-    // Tài liệu đính kèm bắt buộc — kiểm tra trước khi gửi.
-    if (uploadingFile) {
+    const canSubmitWithDocumentState = canSubmitApplication({
+      uploadingApplicantDocument: uploadingFile,
+      applicantDocumentUrl: applicantFileUrl,
+    });
+    if (!canSubmitWithDocumentState) {
       setFileError('Vui lòng đợi tải tài liệu lên xong.');
       return;
     }
-    if (!applicantFileUrl) {
-      setFileError('Vui lòng đính kèm tài liệu theo yêu cầu trước khi ứng tuyển.');
-      return;
-    }
+    setFileError('');
 
-    // Gộp link tài liệu đính kèm vào nội dung gửi tới thương hiệu.
+    // Gộp link tài liệu đính kèm vào nội dung gửi tới thương hiệu khi KOL có tải lên.
     // Lưu URL gốc (tương đối) để phía Brand tự resolve khi hiển thị.
-    const note = message.trim();
-    const composedMessage = [
-      `Tài liệu đính kèm: ${applicantFileUrl}`,
-      ...(note ? ['', `Lời nhắn: ${note}`] : []),
-    ].join('\n');
+    const composedMessage = buildApplicationMessage({
+      applicantDocumentUrl: shouldShowApplicantDocumentUpload(product.attachmentUrl) ? applicantFileUrl : '',
+      note: message,
+    });
 
     setApplying(true);
     setApplyError('');
     try {
       await productsApi.apply(product.id, {
-        message: composedMessage,
+        message: composedMessage || undefined,
         proposedPrice: proposedPrice ? parsePriceDigits(proposedPrice) ?? undefined : undefined,
       });
       setApplied(true);
@@ -411,7 +415,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   deadlineExpired={isDeadlineExpired}
                   applied={applied}
                   kolApproved={kolApproved}
-                  hasAttachment={!!product.attachmentUrl}
+                  hasAttachment={shouldShowApplicantDocumentUpload(product.attachmentUrl)}
                   message={message}
                   proposedPrice={proposedPrice}
                   proposedPriceError={proposedPriceError}
@@ -624,68 +628,65 @@ function KolApplyPanel({
     <form onSubmit={onSubmit} className="space-y-3">
       <p className="text-xs font-bold uppercase tracking-wide text-mute">Ứng tuyển chiến dịch</p>
 
-      {/* Tài liệu đính kèm bắt buộc trước khi ứng tuyển */}
-      <div className="rounded-xl border border-hairline bg-surface-soft/60 p-3 space-y-2">
-        <p className="text-xs font-bold text-ink">
-          Tài liệu ứng tuyển <span className="text-pin-red">*</span>
-        </p>
-        <p className="text-[11px] text-mute leading-relaxed">
-          {hasAttachment
-            ? 'Vui lòng tải xuống hợp đồng/điều khoản đính kèm phía trên, điền đầy đủ rồi đính kèm lại tại đây (PDF, DOC, DOCX — tối đa 10MB).'
-            : 'Vui lòng đính kèm tài liệu theo yêu cầu của chiến dịch (PDF, DOC, DOCX — tối đa 10MB).'}
-        </p>
+      {hasAttachment && (
+        <div className="rounded-xl border border-hairline bg-surface-soft/60 p-3 space-y-2">
+          <p className="text-xs font-bold text-ink">Tài liệu ứng tuyển (tùy chọn)</p>
+          <p className="text-[11px] text-mute leading-relaxed">
+            Nếu bạn cần nộp lại hợp đồng/điều khoản đã hoàn tất, hãy đính kèm tại đây (PDF, DOC, DOCX — tối đa 10MB).
+          </p>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={ACCEPTED_DOCUMENT_ACCEPT}
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onFile(f);
-          }}
-        />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_DOCUMENT_ACCEPT}
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) onFile(f);
+            }}
+          />
 
-        {fileUrl ? (
-          <div className="flex items-center gap-2 rounded-xl border border-hairline bg-canvas px-3 py-2.5">
-            <FileText className="w-4 h-4 shrink-0 text-ink" />
-            <a
-              href={resolveMediaUrl(fileUrl)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-ink font-semibold truncate flex-1 hover:text-pin-red"
-              title={fileName}
-            >
-              {fileName || 'Tài liệu đã tải lên'}
-            </a>
+          {fileUrl ? (
+            <div className="flex items-center gap-2 rounded-xl border border-hairline bg-canvas px-3 py-2.5">
+              <FileText className="w-4 h-4 shrink-0 text-ink" />
+              <a
+                href={resolveMediaUrl(fileUrl)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-ink font-semibold truncate flex-1 hover:text-pin-red"
+                title={fileName}
+              >
+                {fileName || 'Tài liệu đã tải lên'}
+              </a>
+              <button
+                type="button"
+                onClick={onClearFile}
+                disabled={uploadingFile || applying}
+                className="grid place-items-center w-7 h-7 rounded-full text-mute hover:text-pin-red hover:bg-surface-card disabled:opacity-50 transition-colors"
+                aria-label="Xoá tài liệu"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
             <button
               type="button"
-              onClick={onClearFile}
+              onClick={() => fileInputRef.current?.click()}
               disabled={uploadingFile || applying}
-              className="grid place-items-center w-7 h-7 rounded-full text-mute hover:text-pin-red hover:bg-surface-card disabled:opacity-50 transition-colors"
-              aria-label="Xoá tài liệu"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-dashed border-hairline bg-canvas px-3 py-2.5 text-sm font-semibold text-ink hover:border-ink disabled:opacity-50 transition-colors"
             >
-              <X className="w-4 h-4" />
+              {uploadingFile ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Paperclip className="w-4 h-4" />
+              )}
+              {uploadingFile ? 'Đang tải lên…' : 'Đính kèm tài liệu'}
             </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadingFile || applying}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-dashed border-hairline bg-canvas px-3 py-2.5 text-sm font-semibold text-ink hover:border-ink disabled:opacity-50 transition-colors"
-          >
-            {uploadingFile ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Paperclip className="w-4 h-4" />
-            )}
-            {uploadingFile ? 'Đang tải lên…' : 'Đính kèm tài liệu'}
-          </button>
-        )}
+          )}
 
-        {fileError && <p className="text-xs text-pin-red">{fileError}</p>}
-      </div>
+          {fileError && <p className="text-xs text-pin-red">{fileError}</p>}
+        </div>
+      )}
 
       <div>
         <label className="block text-xs font-semibold text-ink mb-1.5">Lời nhắn tới thương hiệu (tuỳ chọn)</label>
@@ -717,8 +718,7 @@ function KolApplyPanel({
       {error && <p className="text-sm text-pin-red font-medium">{error}</p>}
       <button
         type="submit"
-        disabled={applying || uploadingFile || !fileUrl}
-        title={!fileUrl ? 'Vui lòng đính kèm tài liệu trước khi ứng tuyển.' : undefined}
+        disabled={applying || uploadingFile}
         className="btn-pin-primary !rounded-xl w-full justify-center disabled:opacity-50"
       >
         {applying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
