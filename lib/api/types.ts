@@ -389,6 +389,8 @@ export interface BookingResponse {
   createdAt: string;
   updatedAt: string;
   submittedDeliverables: SubmittedDeliverableResponse[];
+  /** Document the KOL attached when applying to the product this booking came from. Null for direct bookings / legacy applications. */
+  kolApplicationDocumentUrl: string | null;
 }
 
 export interface CreateBookingRequest {

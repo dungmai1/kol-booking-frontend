@@ -36,6 +36,7 @@ const bookingResponseWithAttachment: BookingResponse = {
   createdAt: '2026-06-26T00:00:00Z',
   updatedAt: '2026-06-26T00:00:00Z',
   submittedDeliverables: [],
+  kolApplicationDocumentUrl: null,
 };
 
 void bookingResponseWithAttachment;

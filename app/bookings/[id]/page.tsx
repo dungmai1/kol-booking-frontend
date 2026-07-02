@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   CreditCard,
   ExternalLink,
+  FileText,
   Hash,
   Loader2,
   MessageSquare,
@@ -30,6 +31,7 @@ import {
   validateUploadFile,
 } from '@/lib/uploads/validate';
 import { DeliverableMediaPreview } from '@/components/deliverable-media-preview';
+import { DocumentPreviewModal } from '@/components/document-preview-modal';
 import { isPreviewableDeliverableUrl } from '@/lib/portfolio/media';
 import { Header } from '@/components/header';
 import {
@@ -1277,6 +1279,11 @@ function DetailTab({
           </div>
         </section>
 
+        {/* KOL application document — the file the KOL attached when applying */}
+        {booking.kolApplicationDocumentUrl && (
+          <KolApplicationDocumentSection url={booking.kolApplicationDocumentUrl} />
+        )}
+
         {/* Submitted deliverables — visible to both sides when content has been submitted */}
         {booking.submittedDeliverables && booking.submittedDeliverables.length > 0 && (
           <SubmittedDeliverablesSection
@@ -1440,6 +1447,44 @@ function DetailRow({
       </p>
       {children}
     </div>
+  );
+}
+
+function KolApplicationDocumentSection({ url }: { url: string }) {
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const name = fileNameFromUrl(url);
+  return (
+    <section className="pin-card p-5 md:p-6">
+      <div className="flex items-center gap-2 mb-2">
+        <FileText className="w-5 h-5 text-ink" />
+        <h2 className="font-display font-bold text-lg text-ink">Tệp đính kèm từ KOL</h2>
+      </div>
+      <p className="text-sm text-mute mb-4">
+        Tài liệu KOL đã tải lên khi ứng tuyển chiến dịch này.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setPreviewOpen(true)}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-hairline bg-surface-soft hover:border-ink text-sm font-semibold text-ink transition-colors"
+        >
+          <FileText className="w-4 h-4 shrink-0" />
+          Xem tài liệu
+        </button>
+        <a
+          href={resolveMediaUrl(url)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-sm font-bold text-ink hover:text-pin-red transition-colors break-all"
+        >
+          <ExternalLink className="w-4 h-4 shrink-0" />
+          {name}
+        </a>
+      </div>
+      {previewOpen && (
+        <DocumentPreviewModal url={url} title={name} onClose={() => setPreviewOpen(false)} />
+      )}
+    </section>
   );
 }
 
